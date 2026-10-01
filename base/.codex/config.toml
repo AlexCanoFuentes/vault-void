@@ -1,0 +1,9 @@
+# Candados de Codex en este vault. Codex los lee solo si confías en esta carpeta.
+# Trabaja y escribe solo dentro de la carpeta, sin internet, y pide permiso para salir de ahí.
+# En este modo .git y .codex son de solo lectura para Codex: guardar en git, subir a GitHub
+# o cambiar este archivo te lo pregunta antes. herramientas/revisar.py avisa si se afloja.
+sandbox_mode = "workspace-write"
+approval_policy = "on-request"
+
+[sandbox_workspace_write]
+network_access = false

@@ -1,0 +1,8 @@
+# Codex en este repo: escribe solo aquí dentro, sin red, y pide permiso para salir del sandbox
+# (un commit, un push). Solo se carga si marcas el proyecto como de confianza.
+# Codex ya trata .git, .codex y .agents como solo lectura dentro de workspace-write.
+sandbox_mode = "workspace-write"
+approval_policy = "on-request"
+
+[sandbox_workspace_write]
+network_access = false

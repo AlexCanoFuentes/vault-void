@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""pre-push: la rama principal ni se fuerza ni se borra, y no se empuja a otro remoto.
+
+Es la ultima barrera en el cliente. Se salta con --no-verify (la guardia se lo prohibe al agente,
+no a la persona), asi que si tu proveedor de git permite proteger la rama en el servidor, hazlo.
+Escape, solo para la persona: CANDADOS_A_PROPOSITO=1 git push ...
+"""
+import os
+import subprocess
+import sys
+
+RAIZ = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip()
+sys.path.insert(0, RAIZ)
+import candados  # noqa: E402
+
+CERO = "0" * 40
+PRINCIPALES = ("refs/heads/main", "refs/heads/master")
+
+
+def no(motivo):
+    sys.stderr.write("\nCANDADO (pre-push): %s.\nSi es a proposito, lo hace la persona: %s git push ...\n\n"
+                     % (motivo, candados.ESCAPE))
+    sys.exit(1)
+
+
+def main():
+    if os.environ.get("CANDADOS_A_PROPOSITO") == "1":
+        sys.stderr.write("pre-push: saltado a proposito.\n")
+        return
+    url = sys.argv[2] if len(sys.argv) > 2 else ""
+    remoto = candados.config()["remoto"]
+    if remoto and remoto not in url:
+        no("esto empuja a '%s', que no es el remoto de este repo (%s)" % (url, remoto))
+    for linea in sys.stdin:
+        p = linea.split()
+        if len(p) != 4 or p[2] not in PRINCIPALES:
+            continue
+        _, local_sha, ref, remoto_sha = p
+        if local_sha == CERO:
+            no("esto BORRA %s en el remoto" % ref)
+        if remoto_sha == CERO:
+            continue
+        r = subprocess.run(["git", "merge-base", "--is-ancestor", remoto_sha, local_sha], capture_output=True)
+        if r.returncode == 1:
+            no("esto FUERZA %s: lo que hay en el remoto no esta dentro de lo que subes. "
+               "Haz git pull --rebase y vuelve a empujar" % ref)
+        if r.returncode != 0:
+            no("no tengo en local lo que hay en el remoto, asi que no puedo comprobar que no lo pisas. Haz git fetch")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except SystemExit:
+        raise
+    except Exception as e:
+        sys.stderr.write("pre-push: el candado ha fallado (%s) y deja pasar. Arreglalo.\n" % e)

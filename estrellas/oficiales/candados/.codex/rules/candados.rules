@@ -1,0 +1,49 @@
+# Reglas de comandos de Codex (experimentales en Codex, Starlark). Son de PREFIJO EXACTO:
+# `git push origin main --force` no lo caza ["git", "push", "--force"]. Por eso lo mismo lo para
+# también guardia.py, y al final el pre-push. Tres capas porque cada una deja pasar algo.
+
+prefix_rule(
+    pattern = ["git", "reset", "--hard"],
+    decision = "forbidden",
+    justification = "Borra trabajo sin dejar rastro. Usa git stash o pregunta a la persona.",
+    match = ["git reset --hard", "git reset --hard HEAD~1"],
+    not_match = ["git reset HEAD fichero.md"],
+)
+
+prefix_rule(
+    pattern = ["git", "clean"],
+    decision = "forbidden",
+    justification = "Borra ficheros sin versionar, que pueden ser de otro agente o de la persona.",
+    match = ["git clean -fd"],
+)
+
+prefix_rule(
+    pattern = ["git", "push", ["--force", "-f", "--force-with-lease", "--no-verify", "--delete", "-d"]],
+    decision = "forbidden",
+    justification = "Nunca se fuerza ni se borra en el remoto. Haz git pull --rebase y empuja normal.",
+    match = ["git push --force origin main", "git push -f", "git push --delete origin main"],
+    not_match = ["git push origin HEAD:main"],
+)
+
+prefix_rule(
+    pattern = ["git", "commit", "--no-verify"],
+    decision = "forbidden",
+    justification = "--no-verify se salta los candados de git.",
+    match = ["git commit --no-verify -m x"],
+    not_match = ["git commit -m x"],
+)
+
+prefix_rule(
+    pattern = ["rm", ["-rf", "-fr", "-r", "-R", "--recursive"]],
+    decision = "forbidden",
+    justification = "Borrado recursivo prohibido. Si hay que quitar algo, se le dice a la persona.",
+    match = ["rm -rf carpeta", "rm -r carpeta"],
+    not_match = ["rm fichero.md"],
+)
+
+prefix_rule(
+    pattern = ["git", "push"],
+    decision = "prompt",
+    justification = "Subir lo autoriza la persona.",
+    match = ["git push origin HEAD:main"],
+)

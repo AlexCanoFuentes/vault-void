@@ -1,0 +1,5 @@
+# Los ficheros que solo crecen se fusionan solos cuando dos agentes les añaden algo a la vez:
+# merge=union se queda con las dos versiones en vez de dar conflicto. Pon aquí los mismos de candados.json.
+# Solo para ficheros que solo crecen: union no sabe de orden ni de duplicados.
+docs/bitacora.md merge=union
+docs/decisiones/** merge=union

@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""pre-commit: ninguna credencial entra en un commit, y los ficheros que solo crecen no pierden lineas.
+
+Vale para cualquier agente y para la persona, porque git es lo unico que comparten todos.
+Escape, solo para la persona: CANDADOS_A_PROPOSITO=1 git commit ...
+"""
+import os
+import subprocess
+import sys
+
+RAIZ = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip()
+sys.path.insert(0, RAIZ)
+import candados  # noqa: E402
+
+
+def no(motivo):
+    sys.stderr.write("\nCANDADO (pre-commit): %s.\nSi es a proposito, lo hace la persona: %s git commit ...\n\n"
+                     % (motivo, candados.ESCAPE))
+    sys.exit(1)
+
+
+def main():
+    if os.environ.get("CANDADOS_A_PROPOSITO") == "1":
+        sys.stderr.write("pre-commit: saltado a proposito.\n")
+        return
+    cfg = candados.config()
+    diff = subprocess.run(["git", "diff", "--cached", "-U0", "--no-color", "--no-ext-diff"],
+                          capture_output=True, text=True, encoding="utf-8", errors="replace").stdout
+    fichero, anadido = None, []
+    for l in diff.splitlines():
+        if l.startswith("+++ "):
+            fichero = l[6:] if l.startswith("+++ b/") else None
+        elif l.startswith("--- "):
+            continue
+        elif l.startswith("+") and fichero:
+            anadido.append(l[1:])
+        elif l.startswith("-") and fichero and candados.es_solo_crece(fichero, cfg):
+            no("%s solo crece y este commit le quita lineas" % fichero)
+    borrados = subprocess.run(["git", "diff", "--cached", "--name-only", "--diff-filter=D"],
+                              capture_output=True, text=True).stdout.split()
+    for f in borrados:
+        if candados.es_solo_crece(f, cfg):
+            no("%s solo crece y este commit lo borra" % f)
+    s = candados.busca_secreto("\n".join(anadido))
+    if s:
+        no("este commit mete una credencial (%s)" % s)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except SystemExit:
+        raise
+    except Exception as e:
+        sys.stderr.write("pre-commit: el candado ha fallado (%s) y deja pasar. Arreglalo.\n" % e)

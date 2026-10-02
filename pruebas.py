@@ -36,11 +36,13 @@ import void as REF  # noqa: E402  la versión buena, para montar los datos de la
 import regenerar_manifiesto  # noqa: E402
 import formato as REF_F  # noqa: E402
 import puerta as REF_P  # noqa: E402
+import regenerar_catalogo as REF_C  # noqa: E402
 
 VOID_PY = AQUI / "void.py"   # el fichero bajo prueba (el sabotaje lo cambia por uno roto)
 V = REF                      # el módulo bajo prueba
 F = REF_F                    # formato.py bajo prueba
 P = REF_P                    # puerta.py bajo prueba
+C = REF_C                    # regenerar_catalogo.py bajo prueba
 
 TMP_GLOBAL = None
 
@@ -969,6 +971,84 @@ def fugas_mod():
     return fugas
 
 
+# ---------------------------------------------------------------- estrellas: el catálogo
+
+class Catalogo(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="void-catalogo-"))
+
+    def tearDown(self):
+        borrar(str(self.tmp))
+
+    def regenerar(self, *args):
+        out = io.StringIO()
+        with redirect_stdout(out), redirect_stderr(out):
+            codigo = C.main(list(args), raiz=self.tmp)
+        return codigo, out.getvalue()
+
+    def test_catalogo_del_repo_al_dia(self):
+        out = io.StringIO()
+        with redirect_stdout(out), redirect_stderr(out):
+            codigo = REF_C.main(["--comprobar"])
+        self.assertEqual(codigo, 0, out.getvalue())
+
+    def test_las_estrellas_del_repo_pasan_la_puerta(self):
+        carpetas, sueltos = REF_P.todas(AQUI)
+        self.assertEqual(sueltos, [])
+        self.assertTrue(carpetas, "estrellas/ está vacío")
+        for c in carpetas:
+            v = REF_P.juzgar(c)
+            self.assertEqual(v["rechazo"], [], c.name)
+
+    def test_el_kit_esta_en_la_liga_grande_y_se_encuentra_por_su_error(self):
+        e = json.loads((AQUI / "catalogo.json").read_text(encoding="utf-8"))["estrellas"]["candados"]
+        self.assertEqual((e["liga"], e["nivel"]), ("grande", "oficiales"))
+        self.assertGreaterEqual(e["kernel"]["total"], 80)
+        for buscado in ("dos agentes se pisan", "regla que solo vive en un documento", "construyendo",
+                        "clave en un commit"):
+            self.assertIn(buscado, e["buscar"])
+        self.assertEqual(e["ficheros"], REF_F.ficheros_de(AQUI / e["ruta"]))
+
+    def test_lleva_lo_que_necesita_el_buscador(self):
+        hacer_estrella(self.tmp, ficha_completa("grande"))
+        hacer_estrella(self.tmp, ficha_minima("pequena", "comunidad"))
+        codigo, out = self.regenerar()
+        self.assertEqual(codigo, 0, out)
+        cat = json.loads((self.tmp / "catalogo.json").read_text(encoding="utf-8"))["estrellas"]
+        self.assertEqual(sorted(cat), ["grande", "pequena"])
+        self.assertEqual((cat["grande"]["liga"], cat["pequena"]["liga"]), ("grande", "pequeña"))
+        self.assertEqual(cat["pequena"]["nivel"], "comunidad")
+        self.assertIn("un dato que faltaba se leyo como cero", cat["pequena"]["buscar"],
+                      "el buscador no lleva el error que la hizo nacer, sin tildes")
+        self.assertEqual(cat["grande"]["palabras_clave"], ["cero", "dato que falta", "contador"])
+        self.assertEqual(self.regenerar("--comprobar")[0], 0)
+
+    def test_una_estrella_rechazada_no_deja_escribir_el_catalogo(self):
+        hacer_estrella(self.tmp, ficha_completa("buena"))
+        mala = ficha_completa("mala")
+        mala["nacio_de"] = []
+        hacer_estrella(self.tmp, mala)
+        codigo, out = self.regenerar()
+        self.assertEqual(codigo, 1, "escribió el catálogo con una estrella rechazada")
+        self.assertFalse((self.tmp / "catalogo.json").exists())
+        self.assertIn("mala: rechazada por la puerta", out)
+
+    def test_dos_estrellas_con_el_mismo_nombre(self):
+        hacer_estrella(self.tmp, ficha_completa("igual", "oficiales"))
+        hacer_estrella(self.tmp, ficha_completa("igual", "comunidad"))
+        codigo, out = self.regenerar()
+        self.assertEqual(codigo, 1)
+        self.assertIn("ya hay una estrella que se llama igual", out)
+
+    def test_catalogo_desfasado(self):
+        c = hacer_estrella(self.tmp, ficha_completa("una"))
+        self.assertEqual(self.regenerar()[0], 0)
+        ficha = json.loads((c / "estrella.json").read_text(encoding="utf-8"))
+        ficha["version"] = "0.2.0"
+        escribir_ficha(c, ficha)
+        self.assertEqual(self.regenerar("--comprobar")[0], 1, "no ve un catálogo desfasado")
+
+
 # ---------------------------------------------------------------- sabotaje
 
 SABOTAJES = [
@@ -1053,6 +1133,13 @@ SABOTAJES = [
      [('    if antes.get("ficheros") != ahora["ficheros"] and ahora["version"] == antes["version"]:',
        "    if False:")],
      ["Puerta.test_cambia_ficheros_sin_subir_version"], "puerta.py"),
+    ("catálogo: mete las estrellas rechazadas",
+     [('        if v["rechazo"]:\n            problemas.append', '        if False:\n            problemas.append')],
+     ["Catalogo.test_una_estrella_rechazada_no_deja_escribir_el_catalogo"], "regenerar_catalogo.py"),
+    ("catálogo: no comprueba si está al día",
+     [("        if not destino.is_file() or void.huella(destino.read_bytes()) != void.huella(nuevo):",
+       "        if not destino.is_file():")],
+     ["Catalogo.test_catalogo_desfasado"], "regenerar_catalogo.py"),
 ]
 
 
@@ -1074,19 +1161,21 @@ def razon(traza):
 
 def poner_bajo_prueba(fichero, modulo):
     """Cambia el módulo que usan las pruebas: el bueno o uno saboteado."""
-    global V, VOID_PY, F, P
+    global V, VOID_PY, F, P, C
     if fichero == "void.py":
         V, VOID_PY = modulo, Path(modulo.__file__)
     elif fichero == "formato.py":
         F = modulo
     elif fichero == "puerta.py":
         P = modulo
+    elif fichero == "regenerar_catalogo.py":
+        C = modulo
     else:
         raise ValueError(fichero)
 
 
 def buenos():
-    return {"void.py": REF, "formato.py": REF_F, "puerta.py": REF_P}
+    return {"void.py": REF, "formato.py": REF_F, "puerta.py": REF_P, "regenerar_catalogo.py": REF_C}
 
 
 def sabotaje():

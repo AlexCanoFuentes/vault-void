@@ -1,0 +1,133 @@
+{
+  "aviso": "Lo genera regenerar_catalogo.py a partir de estrellas/. No se cambia a mano.",
+  "formato": 1,
+  "estrellas": {
+    "candados": {
+      "titulo": "Candados para agentes",
+      "version": "0.1.0",
+      "nivel": "oficiales",
+      "autor": "AlexCanoFuentes",
+      "regla": "Ningún agente fuerza, borra ni se salta los candados: si de verdad hace falta, lo hace la persona desde su terminal.",
+      "resuelve": {
+        "frase": "Claude Code y Codex trabajan en el mismo repositorio con los mismos candados: sin pisarse el trabajo, sin meter claves en un commit y sin reescribir lo que solo crece.",
+        "medido": "probar.py hace 33 comprobaciones: 21 rojos que tienen que parar (17 de la guardia y 4 de git), 11 verdes que tienen que pasar y 1 de sabotaje, que repite los 17 rojos de la guardia contra una guardia vacía y comprueba que dejan de cazar."
+      },
+      "nacio_de": [
+        {
+          "fallo": "regla que solo vive en un documento",
+          "que_paso": "Dos agentes de IA (Claude Code y Codex) en el mismo repositorio, con las reglas y los candados escritos solo para uno de ellos: el otro no los leía ni le frenaban, y podía forzar un push sobre el trabajo del primero, meter una clave en un commit o reescribir un fichero que solo crece.",
+          "coste": "sin medir"
+        }
+      ],
+      "criterio": "Cada capa deja pasar algo, así que van tres (la guardia del agente, las reglas de Codex y los candados de git), y un candado no cuenta hasta verlo cazar en rojo y dejar de cazar sin él.",
+      "cuando": [
+        "construyendo",
+        "al publicar"
+      ],
+      "palabras_clave": [
+        "dos agentes se pisan",
+        "varios agentes en el mismo repositorio",
+        "Claude Code y Codex",
+        "push forzado",
+        "una clave en un commit",
+        "ficheros que solo crecen",
+        "hooks de git",
+        "pasar trabajo entre agentes"
+      ],
+      "no_protege": [
+        "A la persona de sí misma: desde su terminal puede usar --no-verify o CANDADOS_A_PROPOSITO=1, y es a propósito.",
+        "El servidor: si tu proveedor de git deja proteger la rama principal (no forzar, no borrar), hazlo; es la única capa que no se salta desde un cliente.",
+        "Todas las claves del mundo: caza las formas conocidas (GitHub, OpenAI, Anthropic, AWS, Google, Stripe, Slack, Supabase, JWT, claves privadas); no es un escáner completo.",
+        "Lo que el agente lee: el sandbox de Codex limita lo que escribe, no lo que lee. No dejes un .env en el clon del agente.",
+        "Las reglas de Codex comparan el principio exacto del comando: «git push origin main --force» se les escapa y lo para la guardia.",
+        "Si la guardia se rompe, deja pasar (falla abierta), a propósito: un candado que tumba el trabajo por un fallo suyo se desactiva en un día.",
+        "Windows nativo: los hooks llaman a python3; si tu Windows solo tiene py, hay que cambiarlo a mano en .claude/settings.json, .codex/hooks.json y la primera línea de .githooks/."
+      ],
+      "requisitos": "Python 3.8 o más nuevo y git. Sin dependencias.",
+      "instalar": [
+        "Di qué ficheros solo crecen en candados.json y ponlos también en .gitattributes.",
+        "python3 instalar.py (en Windows, py instalar.py), en cada clon: también en el de cada agente.",
+        "python3 probar.py: tiene que salir todo en verde.",
+        "En Codex: marca el proyecto como de confianza y aprueba la guardia en /hooks la primera vez."
+      ],
+      "probado_en": [
+        "Linux (WSL), con probar.py mandando las llamadas con la forma de Claude Code y la de Codex.",
+        "Desde Codex de verdad: sin ver todavía (a 3-oct-2026)."
+      ],
+      "riesgo": {
+        "ejecuta": "guardia.py antes de cada acción de Claude Code o de Codex (por .claude/settings.json y .codex/hooks.json), y .githooks/pre-commit y pre-push en cada commit y cada push, una vez activados con instalar.py. Al traerla no se ejecuta nada.",
+        "red": "No usa la red.",
+        "deshacer": "git revert del commit de void, y git config --unset core.hooksPath en cada clon donde se activó."
+      },
+      "prueba": {
+        "comando": [
+          "python",
+          "probar.py"
+        ],
+        "comprobaciones": 33,
+        "rojos": 21,
+        "sabotaje": "Repite los 17 rojos de la guardia contra una guardia vacía y comprueba que dejan de cazar. Los 4 rojos de git cuentan solo si el mensaje dice CANDADO, pero no tienen sabotaje propio."
+      },
+      "uso": {
+        "vaults": 0,
+        "semanas": 0,
+        "nota": "El kit se escribió desde cero el 2-oct-2026 a partir de los candados que su autor usa en su propio vault desde ese mismo día. El kit en sí no está instalado todavía en ningún vault."
+      },
+      "liga": "grande",
+      "kernel": {
+        "total": 85,
+        "dimensiones": {
+          "Claridad": [
+            20,
+            20
+          ],
+          "Alcance": [
+            20,
+            20
+          ],
+          "Contexto": [
+            15,
+            15
+          ],
+          "Riesgo": [
+            15,
+            15
+          ],
+          "Validación": [
+            15,
+            15
+          ],
+          "Prioridad": [
+            0,
+            15
+          ]
+        },
+        "mas_debil": "Prioridad"
+      },
+      "buscar": "candados para agentes ningun agente fuerza, borra ni se salta los candados: si de verdad hace falta, lo hace la persona desde su terminal. claude code y codex trabajan en el mismo repositorio con los mismos candados: sin pisarse el trabajo, sin meter claves en un commit y sin reescribir lo que solo crece. probar.py hace 33 comprobaciones: 21 rojos que tienen que parar (17 de la guardia y 4 de git), 11 verdes que tienen que pasar y 1 de sabotaje, que repite los 17 rojos de la guardia contra una guardia vacia y comprueba que dejan de cazar. cada capa deja pasar algo, asi que van tres (la guardia del agente, las reglas de codex y los candados de git), y un candado no cuenta hasta verlo cazar en rojo y dejar de cazar sin el. regla que solo vive en un documento dos agentes de ia (claude code y codex) en el mismo repositorio, con las reglas y los candados escritos solo para uno de ellos: el otro no los leia ni le frenaban, y podia forzar un push sobre el trabajo del primero, meter una clave en un commit o reescribir un fichero que solo crece. construyendo al publicar dos agentes se pisan varios agentes en el mismo repositorio claude code y codex push forzado una clave en un commit ficheros que solo crecen hooks de git pasar trabajo entre agentes",
+      "ruta": "estrellas/oficiales/candados",
+      "ficheros": {
+        ".claude/settings.json": "099922d62132086c2f42a43b9e2bb26da7c2e161d5fae74b7497d91cfe49bfef",
+        ".codex/config.toml": "27903635f8339a2afc82b645b23728d58a02d4ca85d7b2b4a82a1b352b7e410a",
+        ".codex/hooks.json": "9dfa4399ffce9cfa536f24d1779b367eb3cc373c7db1f8ab5f94a52393cfef36",
+        ".codex/rules/candados.rules": "3b18727d5f9a4f6864e44324e51919eb86e44e2407fb7a9a07905c0b23364e4c",
+        ".gitattributes": "a8ebe1068d292bd794b628464fefdef267106ab4499fdfe689ce88c6d73337a0",
+        ".githooks/pre-commit": "0c535d50d5e95d32b42d261d921e8e02cb90aa1de8ffbebcab6de47bbd51fa1e",
+        ".githooks/pre-push": "0a0e3dfc10b8b49d7f75e2ad9307d1775e537ae4b924269ca38f8841ed2853ba",
+        "AGENTS.md": "4778526dc4b13ee46c5d5945ce55fc7f33415bd4038ebca6765f6d910fd125b6",
+        "CLAUDE.md": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49",
+        "README.md": "87a2f2bd8a054b4aaa6e822df12da320bc2dec113e60712455e35c4c77aef375",
+        "candados.json": "210c5e07dfc9d11b30fc10a588a3a6e07a7cd44f14e1197ec3a2e9b08270f89c",
+        "candados.py": "9658cc956049d179ad7b152384a0865ff4e7a398235b7600418bce6d366ed2cf",
+        "guardia.py": "176a1e99984d381dedcfd2d70b153aba8226d5cddf76f272a038aa652d2be789",
+        "instalar.py": "3407696fe58783cfb2eadf907b3948c5a8bfa7720885a911258ab8d8d6c7217e",
+        "mesa.py": "baf7726753df334b92ac48f5849008dfc49475f5d06efa1209e4a6be60313992",
+        "probar.py": "e092d858e4659af2b11bf73701628d5ae1273641cd0cd6a7efad5a6c1c2dbbde"
+      },
+      "no_se_instala": [
+        "README.md"
+      ],
+      "huella_ficha": "1126e5a85ef7389de998e3863b426d500b2dc1dfb1ac557cc118aea5d2e0ffee"
+    }
+  }
+}

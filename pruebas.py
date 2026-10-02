@@ -33,9 +33,11 @@ AQUI = Path(__file__).resolve().parent
 sys.path.insert(0, str(AQUI))
 import void as REF  # noqa: E402  la versión buena, para montar los datos de las pruebas
 import regenerar_manifiesto  # noqa: E402
+import formato as REF_F  # noqa: E402
 
 VOID_PY = AQUI / "void.py"   # el fichero bajo prueba (el sabotaje lo cambia por uno roto)
 V = REF                      # el módulo bajo prueba
+F = REF_F                    # formato.py bajo prueba
 
 TMP_GLOBAL = None
 
@@ -684,6 +686,153 @@ class Fugas(unittest.TestCase):
         self.assertIn("nombre de fichero", donde)
 
 
+# ---------------------------------------------------------------- estrellas: el formato
+
+HERRAMIENTA = ("def leer(valor):\n"
+               "    if valor is None:\n"
+               "        raise ValueError(\"falta el dato: pregunta la causa antes de escribir un cero\")\n"
+               "    return valor\n").encode("utf-8")
+PRUEBA_VERDE = (b"import sys\nimport herramienta\ntry:\n    herramienta.leer(None)\nexcept ValueError:\n"
+                b"    sys.exit(0)\nsys.exit(1)\n")
+ESTRELLA_FICHEROS = {"herramienta.py": HERRAMIENTA, "probar.py": PRUEBA_VERDE,
+                     "README.md": "# Prueba\n\nUna estrella de prueba.\n".encode("utf-8")}
+
+
+def ficha_minima(nombre="prueba", nivel="oficiales"):
+    """Lo obligatorio y nada más: vale, pero no llega a la liga grande."""
+    return {
+        "formato": 1, "nombre": nombre, "titulo": "Una estrella de prueba", "version": "0.1.0",
+        "nivel": nivel, "autor": "alguien",
+        "regla": "No escribas un cero donde falta un dato: pregunta la causa.",
+        "resuelve": {"frase": "Un dato que falta deja de leerse como un cero."},
+        "nacio_de": [{"fallo": "dato inventado",
+                      "que_paso": "Un dato que faltaba se leyó como cero y se decidió con él.",
+                      "coste": "días"}],
+        "criterio": "Un contador a cero tiene dos lecturas: pregunta cuál antes de escribirlo.",
+        "ficheros": {},
+    }
+
+
+def ficha_completa(nombre="prueba", nivel="oficiales"):
+    """Todo declarado: tiene que llegar a la liga grande."""
+    f = ficha_minima(nombre, nivel)
+    f["resuelve"]["medido"] = "1 prueba: con un dato que falta, para en rojo."
+    f.update({
+        "cuando": ["construyendo"],
+        "palabras_clave": ["cero", "dato que falta", "contador"],
+        "no_protege": ["Un cero de verdad.", "Un dato mal escrito.", "Lo que no pasa por leer()."],
+        "requisitos": "Python 3.8 o más nuevo.",
+        "instalar": ["python probar.py"],
+        "probado_en": ["Linux"],
+        "riesgo": {"ejecuta": "Nada al instalarse.", "red": "No usa la red.",
+                   "deshacer": "git revert del commit de void."},
+        "prueba": {"comando": ["python", "probar.py"], "comprobaciones": 1, "rojos": 1,
+                   "sabotaje": "Sin el raise, probar.py sale en rojo."},
+        "vive_en": "herramienta.py:3",
+        "uso": {"vaults": 1, "semanas": 6},
+    })
+    return f
+
+
+def escribir_ficha(carpeta, ficha):
+    (Path(carpeta) / REF_F.FICHA).write_text(json.dumps(ficha, ensure_ascii=False, indent=2) + "\n",
+                                             encoding="utf-8")
+
+
+def hacer_estrella(raiz, ficha=None, ficheros=None, huellas=True):
+    """estrellas/<nivel>/<nombre>/ con sus ficheros y su estrella.json, con las huellas al día."""
+    ficha = ficha if ficha is not None else ficha_completa()
+    carpeta = Path(raiz) / "estrellas" / ficha["nivel"] / ficha["nombre"]
+    for ruta, datos in (ESTRELLA_FICHEROS if ficheros is None else ficheros).items():
+        p = carpeta.joinpath(*ruta.split("/"))
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(datos)
+    if huellas:
+        ficha["ficheros"] = REF_F.ficheros_de(carpeta)
+    escribir_ficha(carpeta, ficha)
+    return carpeta
+
+
+class Formato(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="void-estrella-"))
+
+    def tearDown(self):
+        borrar(str(self.tmp))
+
+    def problemas(self, carpeta):
+        return " | ".join(F.validar(carpeta))
+
+    def test_estrella_buena_vale(self):
+        for ficha in (ficha_minima(), ficha_completa("completa")):
+            c = hacer_estrella(self.tmp, ficha)
+            self.assertEqual(F.validar(c), [], "rechaza una estrella buena")
+
+    def test_sin_el_error_que_la_hizo_nacer(self):
+        for nacio in (None, []):
+            ficha = ficha_completa()
+            if nacio is None:
+                del ficha["nacio_de"]
+            else:
+                ficha["nacio_de"] = nacio
+            c = hacer_estrella(self.tmp, ficha)
+            if "nacio_de" not in self.problemas(c):
+                self.fail("deja pasar una estrella sin «el error que la hizo nacer» ({!r})".format(nacio))
+
+    def test_el_error_tiene_que_ser_de_la_lista_cerrada(self):
+        ficha = ficha_completa()
+        ficha["nacio_de"][0]["fallo"] = "uno que me invento"
+        self.assertIn("lista cerrada", self.problemas(hacer_estrella(self.tmp, ficha)))
+
+    def test_hash_que_no_cuadra(self):
+        c = hacer_estrella(self.tmp)
+        (c / "herramienta.py").write_bytes(HERRAMIENTA + b"# cambiado despues\n")
+        self.assertIn("huella de herramienta.py no cuadra", self.problemas(c),
+                      "no ve un fichero cambiado después de apuntar su huella")
+
+    def test_fichero_que_no_esta_en_la_lista(self):
+        c = hacer_estrella(self.tmp)
+        (c / "colado.py").write_bytes(b"x = 1\n")
+        self.assertIn("colado.py está en la carpeta y no en «ficheros»", self.problemas(c))
+
+    def test_fichero_de_la_lista_que_falta(self):
+        c = hacer_estrella(self.tmp)
+        (c / "probar.py").unlink()
+        self.assertIn("probar.py está en «ficheros» y no en la carpeta", self.problemas(c))
+
+    def test_campo_que_no_es_del_formato(self):
+        ficha = ficha_completa()
+        ficha["mi_vault"] = "lo que sea"
+        self.assertIn("«mi_vault» no es un campo del formato", self.problemas(hacer_estrella(self.tmp, ficha)))
+
+    def test_nivel_y_nombre_son_sus_carpetas(self):
+        ficha = ficha_completa()
+        c = hacer_estrella(self.tmp, ficha)
+        ficha["nivel"] = "socio"
+        escribir_ficha(c, ficha)
+        self.assertIn("no es la carpeta donde vive", self.problemas(c))
+        ficha["nivel"], ficha["nombre"] = "oficiales", "otra"
+        escribir_ficha(c, ficha)
+        self.assertIn("no es el de su carpeta", self.problemas(c))
+
+    def test_vive_en_tiene_que_existir(self):
+        ficha = ficha_completa()
+        ficha["vive_en"] = "herramienta.py:400"
+        self.assertIn("no tiene una línea 400", self.problemas(hacer_estrella(self.tmp, ficha)))
+
+    def test_ruta_que_no_se_puede_instalar(self):
+        ficha = ficha_completa()
+        c = hacer_estrella(self.tmp, ficha)
+        ficha["ficheros"]["../fuera.py"] = "0" * 64
+        escribir_ficha(c, ficha)
+        self.assertIn("no es una ruta que se pueda instalar", self.problemas(c))
+
+    def test_huellas_iguales_que_void(self):
+        """La huella del formato es la de void.py: si no, traer rechazaría estrellas buenas."""
+        c = hacer_estrella(self.tmp, ficheros={"a.txt": b"uno\r\ndos\r\n"})
+        self.assertEqual(REF_F.ficheros_de(c)["a.txt"], REF.huella(b"uno\ndos\n"))
+
+
 # ---------------------------------------------------------------- sabotaje
 
 SABOTAJES = [
@@ -729,6 +878,23 @@ SABOTAJES = [
      [('    if b"\\0" not in datos:\n        datos = datos.replace(b"\\r\\n", b"\\n")\n    return hashlib',
        "    return hashlib")],
      ["Actualizar.test_finales_de_linea_de_windows"]),
+    ("formato: no exige el error que la hizo nacer",
+     [('        problemas.append("«nacio_de» tiene que decir al menos un error que la hizo nacer")',
+       "        pass"),
+      ('        if clave not in ficha:\n            problemas.append("falta «{}»".format(clave))',
+       '        if clave not in ficha and clave != "nacio_de":\n'
+       '            problemas.append("falta «{}»".format(clave))'),
+      ('    nacio = ficha["nacio_de"]', '    nacio = ficha.get("nacio_de", [])')],
+     ["Formato.test_sin_el_error_que_la_hizo_nacer"], "formato.py"),
+    ("formato: no compara las huellas",
+     [("        elif reales[ruta] != declarados[ruta]:", "        elif False:")],
+     ["Formato.test_hash_que_no_cuadra"], "formato.py"),
+    ("formato: no mira si sobran ficheros",
+     [("    for ruta in sorted(set(reales) - set(declarados)):", "    for ruta in []:")],
+     ["Formato.test_fichero_que_no_esta_en_la_lista"], "formato.py"),
+    ("formato: acepta campos que no son del formato",
+     [("        if clave not in OBLIGATORIOS and clave not in OPCIONALES:", "        if False:")],
+     ["Formato.test_campo_que_no_es_del_formato"], "formato.py"),
 ]
 
 
@@ -748,13 +914,29 @@ def razon(traza):
     return ultima.replace("AssertionError: ", "")[:220]
 
 
+def poner_bajo_prueba(fichero, modulo):
+    """Cambia el módulo que usan las pruebas: el bueno o uno saboteado."""
+    global V, VOID_PY, F
+    if fichero == "void.py":
+        V, VOID_PY = modulo, Path(modulo.__file__)
+    elif fichero == "formato.py":
+        F = modulo
+    else:
+        raise ValueError(fichero)
+
+
+def buenos():
+    return {"void.py": REF, "formato.py": REF_F}
+
+
 def sabotaje():
-    global V, VOID_PY
-    original = VOID_PY.read_text(encoding="utf-8")
     tmp = Path(tempfile.mkdtemp(prefix="void-sabotaje-"))
     fallos = 0
     try:
-        for nombre, cambios, pruebas in SABOTAJES:
+        for s in SABOTAJES:
+            nombre, cambios, pruebas = s[:3]
+            fichero = s[3] if len(s) > 3 else "void.py"
+            original = (AQUI / fichero).read_text(encoding="utf-8")
             texto = original
             for buscar, poner in cambios:
                 if buscar not in texto:
@@ -763,10 +945,13 @@ def sabotaje():
                     break
                 texto = texto.replace(buscar, poner)
             else:
-                roto = tmp / "void.py"
+                roto = tmp / fichero
                 roto.write_text(texto, encoding="utf-8")
-                V, VOID_PY = cargar(roto), roto
-                r = correr_pruebas(pruebas)
+                poner_bajo_prueba(fichero, cargar(roto))
+                try:
+                    r = correr_pruebas(pruebas)
+                finally:
+                    poner_bajo_prueba(fichero, buenos()[fichero])
                 rojas = r.failures + r.errors
                 if not rojas:
                     print("NO LO CAZA: " + nombre)
@@ -776,7 +961,8 @@ def sabotaje():
                     for prueba, traza in rojas:
                         print("    {} -> {}".format(prueba.id().split(".", 1)[1], razon(traza)))
     finally:
-        V, VOID_PY = REF, AQUI / "void.py"
+        for fichero, modulo in buenos().items():
+            poner_bajo_prueba(fichero, modulo)
         borrar(str(tmp))
     print()
     if fallos:

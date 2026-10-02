@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vault Void</title>
+<meta name="description" content="Vault Void: donde los vaults se conectan y se actualizan. Tu vault se queda en tu casa; Void reparte instrumentos.">
+<meta property="og:title" content="Vault Void">
+<meta property="og:description" content="Donde los vaults se conectan y se actualizan. Tu vault se queda en tu casa.">
+<meta property="og:url" content="https://vaultvoid.app/">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Void es el plano publico del ecosistema: oscuro por defecto (es un vacio), con la misma
+   tinta y el mismo rojo que la web de Alex para que se vea la familia. Claro si se pide. */
+:root{
+  --bg:#0E0D0C; --ink:#F2EFE9; --ink-2:#C4BFB7; --muted:#8C877F; --rule:#2A2724; --rojo:#EE7365; --neon:#5FE3B0;
+}
+@media (prefers-color-scheme:light){
+  :root:not([data-theme="dark"]){--bg:#FBFAF8;--ink:#141414;--ink-2:#454340;--muted:#75726C;--rule:#E5E1DA;--rojo:#B4241C;--neon:#1F8A63}
+}
+:root[data-theme="light"]{--bg:#FBFAF8;--ink:#141414;--ink-2:#454340;--muted:#75726C;--rule:#E5E1DA;--rojo:#B4241C;--neon:#1F8A63}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16.5px/1.6 "IBM Plex Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.w{max-width:760px;margin:0 auto;padding:0 24px}
+@media(max-width:640px){.w{padding:0 16px}}
+header{padding:clamp(64px,14vh,140px) 0 48px;border-bottom:1px solid var(--rule)}
+.eyebrow{font:500 11px "IBM Plex Mono",monospace;letter-spacing:.22em;text-transform:uppercase;color:var(--neon);margin:0 0 22px}
+.eyebrow::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--neon);
+  box-shadow:0 0 10px var(--neon);margin-right:10px;vertical-align:1px}
+h1{font:400 clamp(46px,9vw,92px)/.98 "Instrument Serif",Georgia,serif;letter-spacing:-.022em;margin:0 0 24px;text-wrap:balance}
+h1 em{color:var(--rojo)}
+.dek{font-size:19px;color:var(--ink-2);max-width:520px;margin:0}
+section{padding:52px 0;border-bottom:1px solid var(--rule)}
+h2{font:400 clamp(30px,4.6vw,42px)/1.06 "Instrument Serif",Georgia,serif;letter-spacing:-.015em;margin:0 0 14px}
+h2 em{color:var(--rojo)}
+p{margin:0 0 14px;color:var(--ink-2);max-width:620px}
+p strong{color:var(--ink)}
+.planos{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--rule);margin-top:22px}
+.planos>div{padding:18px 20px}
+.planos>div+div{border-left:1px solid var(--rule)}
+.planos h3{font:500 11px "IBM Plex Mono",monospace;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+.planos p{font-size:15.5px;margin:0}
+@media(max-width:640px){.planos{grid-template-columns:1fr}.planos>div+div{border-left:0;border-top:1px solid var(--rule)}}
+pre{font:13px/1.7 "IBM Plex Mono",monospace;background:transparent;border:1px solid var(--rule);padding:14px 16px;overflow-x:auto;color:var(--ink);margin:18px 0}
+pre .c{color:var(--muted)}
+ul{margin:0;padding:0;list-style:none}
+li{padding:12px 0;border-bottom:1px solid var(--rule);display:grid;grid-template-columns:110px 1fr;gap:4px 18px;color:var(--ink-2)}
+li:last-child{border-bottom:0}
+li b{font:500 11px "IBM Plex Mono",monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding-top:4px;font-weight:500}
+li.hoy b{color:var(--neon)}
+@media(max-width:640px){li{grid-template-columns:1fr}}
+a{color:var(--ink);text-decoration-color:var(--rojo);text-underline-offset:3px}
+a:focus-visible{outline:2px solid var(--rojo);outline-offset:3px}
+footer{padding:36px 0 72px;font:12px/1.8 "IBM Plex Mono",monospace;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="w">
+
+<header>
+  <p class="eyebrow">Vault Void · v0 experimental</p>
+  <h1>Donde los vaults<br>se <em>conectan.</em></h1>
+  <p class="dek">Un vault es tu cerebro en ficheros: lo que decides, lo que descartas y por qué, en un repositorio tuyo que tu agente lee antes de trabajar. Void es el sitio donde los vaults se conectan y se actualizan.</p>
+</header>
+
+<section>
+  <h2>Tu vault no sube aquí. <em>Nunca.</em></h2>
+  <p>Void reparte instrumentos y arreglos. Lo tuyo se queda en tu casa. Si Void desapareciera mañana, tu vault seguiría entero y funcionando.</p>
+  <div class="planos">
+    <div><h3>Void, público</h3><p>Los instrumentos, sus versiones y la huella de cada fichero.</p></div>
+    <div><h3>Tu vault, tuyo</h3><p>Tus decisiones, tu dinero, tus personas. En tu máquina.</p></div>
+  </div>
+</section>
+
+<section>
+  <h2>Lo que hay hoy</h2>
+  <p>La base común de los vaults (versión 0.1) y el cliente que la actualiza, construidos y probados: 44 pruebas, también con el Python de Windows. Se abren al público con su repositorio. Con ellos, un arreglo hecho una vez llega a todos los vaults con una orden:</p>
+<pre><span class="c"># desde la carpeta de tu vault</span>
+python herramientas/void.py estado
+python herramientas/void.py actualizar</pre>
+  <p><strong>Antes de escribir, comprueba la huella de cada fichero.</strong> Si cambiaste algo de la base, no lo pisa: deja la versión nueva al lado y te lo dice. Cada actualización es un commit propio que se deshace con <code>git revert</code>. Funciona con Claude o con Codex, y en Windows sin nada más que Python y git.</p>
+</section>
+
+<section>
+  <h2>Las <em>estrellas</em></h2>
+  <p>Una estrella es una plantilla que alguien publica en Void porque le resolvió algo. Entra con la regla que costó equivocarse, no con una lista de funciones.</p>
+  <ul>
+    <li class="hoy"><b>6 de octubre</b><span><strong>La primera: el kit de candados para agentes.</strong> Claude y Codex en el mismo repositorio sin pisarse, con los mismos candados, y una prueba que demuestra que cada uno salta.</span></li>
+    <li><b>En camino</b><span>El catálogo: solo entra lo que pasa una puntuación estricta. Lo que no la pasa va a una liga pequeña, donde otros pueden ayudar a subirlo.</span></li>
+    <li><b>En camino</b><span>Tu perfil dentro del ecosistema, con tus estrellas.</span></li>
+  </ul>
+</section>
+
+<section>
+  <h2>¿Quieres tu vault?</h2>
+  <p>Hoy los monto a mano, uno a uno, para personas concretas. Cuéntame cómo trabajas: <a href="https://alexcanofuentes.com/#vault">alexcanofuentes.com</a>.</p>
+</section>
+
+<footer>Vault Void · un producto experimental de <a href="https://alexcanofuentes.com/#lexlabs">LexLabs</a> · Tenerife</footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,11 @@
+# vaultvoid.app · la pagina de Void v0 (estatica, sin codigo de servidor).
+# Desplegar SOLO con el si de Alex: npx -y wrangler@4 deploy  (desde esta carpeta)
+name = "vault-void-web"
+compatibility_date = "2026-10-01"
+
+[assets]
+directory = "./web"
+
+[[routes]]
+pattern = "vaultvoid.app"
+custom_domain = true

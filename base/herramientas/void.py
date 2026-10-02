@@ -1,25 +1,30 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Void: trae la base común de los vaults y la deja en un commit que se deshace.
+"""Void: trae la base común de los vaults, o una estrella del catálogo, y la deja en un commit que
+se deshace.
 
 Uso, desde la carpeta del vault:
   python herramientas/void.py estado
   python herramientas/void.py actualizar
   python herramientas/void.py actualizar --conectar     la primera vez (el vault aún no tiene void.json)
+  python herramientas/void.py traer <estrella>          trae una estrella del catálogo, o la actualiza
+  python herramientas/void.py traer <estrella> --conectar   igual, en un vault que aún no tiene void.json
 
 Opciones:
   --vault CARPETA     el vault sobre el que trabaja. Si no se dice: la carpeta de encima de
                       herramientas/ cuando void.py vive ahí; si no, la carpeta actual.
-  --desde RUTA        trae la base de una carpeta o de un .zip en vez de GitHub (para probar).
+  --desde RUTA        trae de una carpeta o de un .zip en vez de GitHub (para probar).
 
 Qué garantiza:
-  - Comprueba la huella (sha256) de cada fichero contra base/MANIFIESTO.json ANTES de escribir.
-    Si una no cuadra, no escribe nada.
+  - Comprueba la huella (sha256) de cada fichero contra base/MANIFIESTO.json, o contra
+    catalogo.json si es una estrella, ANTES de escribir. Si una no cuadra, no escribe nada.
   - Nunca ejecuta lo que descarga: solo lo escribe, y solo dentro del vault.
-  - No pisa lo tuyo: si cambiaste un fichero de la base, deja la versión nueva al lado como
-    <fichero>.base-nueva y te lo dice.
-  - En los .md con <!-- base:inicio --> y <!-- base:fin -->, solo cambia lo de dentro.
-  - Deja UN commit «void: base <versión>». Para deshacerlo: git revert HEAD.
+  - No pisa lo tuyo: si cambiaste un fichero de la base o de una estrella, deja la versión nueva al
+    lado como <fichero>.base-nueva y te lo dice. Una estrella tampoco pisa lo de la base ni lo de
+    otra estrella.
+  - En los .md de la base con <!-- base:inicio --> y <!-- base:fin -->, solo cambia lo de dentro.
+  - Deja UN commit: «void: base <versión>» o «void: estrella <nombre> <versión>».
+    Para deshacerlo: git revert HEAD.
 
 Solo biblioteca estándar de Python 3.8 o más nuevo, y git. Funciona igual en Windows.
 """
@@ -45,21 +50,26 @@ RAMA = "main"
 URL_BASE = "https://codeload.github.com/{}/zip/refs/heads/{}".format(REPO, RAMA)
 
 MANIFIESTO = "MANIFIESTO.json"
+CATALOGO = "catalogo.json"
+NIVELES = ("oficiales", "socio", "comunidad")
+LIGAS = ("grande", "pequeña")
 VOID_JSON = "void.json"
 SUFIJO_NUEVA = ".base-nueva"
 MARCA_INICIO = "<!-- base:inicio -->"
 MARCA_FIN = "<!-- base:fin -->"
 
 MAX_DESCARGA = 20 * 1024 * 1024   # el zip entero
-MAX_FICHERO = 5 * 1024 * 1024     # cada fichero de la base
+MAX_FICHERO = 5 * 1024 * 1024     # cada fichero de la base o de una estrella
 TIEMPO_RED = 30                   # segundos
 
-MSG_SIN_RED = ("No hay conexión a internet para descargar la base: si estás en Codex, pide permiso "
-               "de red para este comando, o ejecútalo tú en una terminal con "
-               "«python herramientas/void.py actualizar».")
+MSG_SIN_RED = ("No hay conexión a internet para descargar de Void: si estás en Codex, pide permiso "
+               "de red para este comando, o ejecútalo tú en una terminal.")
 MSG_SIN_VOID_JSON = ("Esta carpeta no está conectada a Void (no tiene void.json), así que no toco nada. "
                      "Si es tu vault y quieres conectarlo, ejecuta "
                      "«python herramientas/void.py actualizar --conectar».")
+MSG_SIN_VOID_JSON_ESTRELLA = ("Esta carpeta no está conectada a Void (no tiene void.json), así que no toco "
+                              "nada. Si es tu vault, añade --conectar: «python herramientas/void.py traer "
+                              "{} --conectar».")
 
 PROHIBIDOS_WINDOWS = set('<>:"|?*\\')
 RESERVADOS_WINDOWS = {"con", "prn", "aux", "nul"} | {"com%d" % i for i in range(1, 10)} | {
@@ -225,29 +235,30 @@ class Fuente:
         return contenido
 
 
-def fuente_de_carpeta(carpeta):
-    raiz = carpeta / "base" if (carpeta / "base" / MANIFIESTO).is_file() else carpeta
-
+def lector_de_carpeta(raiz):
+    """Una forma de leer ficheros de una carpeta, por su ruta posix. No sigue enlaces."""
     def leer(ruta):
         p = raiz.joinpath(*PurePosixPath(ruta).parts)
         if not p.is_file() or p.is_symlink():
             return None
         if p.stat().st_size > MAX_FICHERO:
-            raise Fallo("{} pesa demasiado para ser parte de la base: no he escrito nada.".format(ruta))
+            raise Fallo("{} pesa demasiado para venir de Void: no he escrito nada.".format(ruta))
         return p.read_bytes()
-    return Fuente(str(raiz), leer)
+    return leer
 
 
-def fuente_de_zip(datos, descripcion):
+def lector_de_zip(datos, descripcion, ancla):
+    """Una forma de leer ficheros de un zip como los de GitHub (todo dentro de una carpeta), por su
+    ruta posix desde esa carpeta. ancla es un fichero que tiene que estar, una sola vez."""
     try:
         zf = zipfile.ZipFile(io.BytesIO(datos))
     except zipfile.BadZipFile:
         raise Fallo("Lo descargado no es un zip válido: no he escrito nada. Vuelve a probar más tarde.")
     nombres = zf.namelist()
-    candidatos = [n for n in nombres if re.fullmatch(r"[^/]+/base/" + re.escape(MANIFIESTO), n)]
+    candidatos = [n for n in nombres if re.fullmatch(r"[^/]+/" + re.escape(ancla), n)]
     if len(candidatos) != 1:
-        raise Fallo("En {} no está base/{}: no he escrito nada.".format(descripcion, MANIFIESTO))
-    prefijo = candidatos[0][:-len(MANIFIESTO)]
+        raise Fallo("En {} no está {}: no he escrito nada.".format(descripcion, ancla))
+    prefijo = candidatos[0][:-len(ancla)]
     entradas = set(nombres)
 
     def leer(ruta):
@@ -256,22 +267,37 @@ def fuente_de_zip(datos, descripcion):
             return None
         info = zf.getinfo(nombre)
         if info.file_size > MAX_FICHERO:
-            raise Fallo("{} pesa demasiado para ser parte de la base: no he escrito nada.".format(ruta))
+            raise Fallo("{} pesa demasiado para venir de Void: no he escrito nada.".format(ruta))
         with zf.open(info) as f:
             leido = f.read(MAX_FICHERO + 1)
         if len(leido) > MAX_FICHERO:
-            raise Fallo("{} pesa demasiado para ser parte de la base: no he escrito nada.".format(ruta))
+            raise Fallo("{} pesa demasiado para venir de Void: no he escrito nada.".format(ruta))
         return leido
-    return Fuente(descripcion, leer)
+    return leer
+
+
+def fuente_de_carpeta(carpeta):
+    raiz = carpeta / "base" if (carpeta / "base" / MANIFIESTO).is_file() else carpeta
+    return Fuente(str(raiz), lector_de_carpeta(raiz))
+
+
+def fuente_de_zip(datos, descripcion):
+    leer = lector_de_zip(datos, descripcion, "base/" + MANIFIESTO)
+    return Fuente(descripcion, lambda ruta: leer("base/" + ruta))
 
 
 def descargar(url=URL_BASE):
+    return fuente_de_zip(bajar(url), "GitHub ({})".format(REPO))
+
+
+def bajar(url=URL_BASE):
+    """El zip del repo de Void, en bytes."""
     try:
         with urllib.request.urlopen(url, timeout=TIEMPO_RED) as r:
             datos = r.read(MAX_DESCARGA + 1)
     except urllib.error.HTTPError as e:
         if e.code == 404:
-            raise Fallo("No encuentro la base en GitHub ({}): puede que la dirección haya cambiado; "
+            raise Fallo("No encuentro Void en GitHub ({}): puede que la dirección haya cambiado; "
                         "avisa a quien te pasó el vault.".format(url))
         raise Fallo("GitHub ha contestado con un error ({}): vuelve a probar en un rato.".format(e.code))
     except urllib.error.URLError as e:
@@ -282,8 +308,8 @@ def descargar(url=URL_BASE):
     except (socket.timeout, TimeoutError, ConnectionError, OSError):
         raise Fallo(MSG_SIN_RED)
     if len(datos) > MAX_DESCARGA:
-        raise Fallo("Lo descargado pesa más de lo que puede pesar la base: no he escrito nada.")
-    return fuente_de_zip(datos, "GitHub ({})".format(REPO))
+        raise Fallo("Lo descargado pesa más de lo que puede pesar Void: no he escrito nada.")
+    return datos
 
 
 def abrir_fuente(desde):
@@ -295,6 +321,99 @@ def abrir_fuente(desde):
     if p.is_file():
         return fuente_de_zip(p.read_bytes(), str(p))
     raise Fallo("No existe {}: dime una carpeta o un .zip con la base.".format(desde))
+
+
+# ---------------------------------------------------------------- de dónde salen las estrellas
+
+RE_NOMBRE_ESTRELLA = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
+
+
+def validar_estrella(nombre, e):
+    """Comprueba la entrada del catálogo de una estrella antes de leer ningún fichero suyo."""
+    malo = "La entrada de {} en el catálogo está rota ({}): no he escrito nada."
+    if not isinstance(e, dict):
+        raise Fallo(malo.format(nombre, "no es un objeto"))
+    if not isinstance(e.get("version"), str) or not re.fullmatch(r"\d+(\.\d+)*", e["version"]):
+        raise Fallo(malo.format(nombre, "versión"))
+    if e.get("nivel") not in NIVELES or e.get("liga") not in LIGAS:
+        raise Fallo(malo.format(nombre, "nivel o liga"))
+    if e.get("ruta") != "estrellas/{}/{}".format(e["nivel"], nombre):
+        raise Fallo(malo.format(nombre, "ruta"))
+    ficheros = e.get("ficheros")
+    if not isinstance(ficheros, dict) or not ficheros:
+        raise Fallo(malo.format(nombre, "no lista ficheros"))
+    vistos = set()
+    for ruta, h in ficheros.items():
+        if not ruta_segura(ruta):
+            raise Fallo("La estrella {} trae una ruta que saldría del vault o no vale en Windows ({}): "
+                        "no he escrito nada.".format(nombre, ruta))
+        if not isinstance(h, str) or not re.fullmatch(r"[0-9a-f]{64}", h):
+            raise Fallo(malo.format(nombre, "huella de " + ruta))
+        if ruta.lower() in vistos:
+            raise Fallo(malo.format(nombre, "repite " + ruta))
+        vistos.add(ruta.lower())
+    no_se_instala = e.get("no_se_instala", [])
+    if not isinstance(no_se_instala, list) or any(r not in ficheros for r in no_se_instala):
+        raise Fallo(malo.format(nombre, "no_se_instala"))
+    instalar = e.get("instalar", [])
+    if not isinstance(instalar, list) or not all(isinstance(x, str) for x in instalar):
+        raise Fallo(malo.format(nombre, "instalar"))
+    return e
+
+
+class Catalogo:
+    """El catálogo de Void y una forma de leer los ficheros de cada estrella. No ejecuta nada."""
+
+    def __init__(self, descripcion, leer):
+        self.descripcion = descripcion
+        self._leer = leer
+        crudo = leer(CATALOGO)
+        if crudo is None:
+            raise Fallo("No encuentro {} en {}: no he escrito nada.".format(CATALOGO, descripcion))
+        try:
+            datos = json.loads(crudo.decode("utf-8"))
+        except (UnicodeDecodeError, ValueError):
+            raise Fallo("El catálogo está roto: no he escrito nada.")
+        estrellas = datos.get("estrellas") if isinstance(datos, dict) else None
+        if not isinstance(estrellas, dict):
+            raise Fallo("El catálogo no lista estrellas: no he escrito nada.")
+        self.estrellas = estrellas
+
+    def estrella(self, nombre):
+        if not RE_NOMBRE_ESTRELLA.fullmatch(nombre or "") or nombre not in self.estrellas:
+            hay = ", ".join(sorted(self.estrellas)) or "ninguna"
+            raise Fallo("No hay ninguna estrella que se llame «{}» en el catálogo. Las que hay: {}."
+                        .format(nombre, hay))
+        return validar_estrella(nombre, self.estrellas[nombre])
+
+    def leer_estrella(self, nombre, e):
+        """{ruta: bytes} de lo que se instala, con cada huella comprobada contra el catálogo. Si una
+        no cuadra, no devuelve ninguna."""
+        contenido = {}
+        for ruta, esperada in sorted(e["ficheros"].items()):
+            if ruta in e.get("no_se_instala", []):
+                continue
+            datos = self._leer(e["ruta"] + "/" + ruta)
+            if datos is None:
+                raise Fallo("A la estrella {} le falta {}, que el catálogo sí lista: no he escrito nada."
+                            .format(nombre, ruta))
+            if huella(datos) != esperada:
+                raise Fallo("La estrella {} no cuadra con el catálogo en {}: puede haberse cambiado por el "
+                            "camino, así que no he escrito nada. Vuelve a probar más tarde y, si se repite, "
+                            "avisa a quien mantiene Void.".format(nombre, ruta))
+            contenido[ruta] = datos
+        return contenido
+
+
+def abrir_catalogo(desde):
+    if desde is None:
+        return Catalogo("GitHub ({})".format(REPO), lector_de_zip(bajar(), "GitHub ({})".format(REPO), CATALOGO))
+    p = Path(desde)
+    if p.is_dir():
+        return Catalogo(str(p), lector_de_carpeta(p))
+    if p.is_file():
+        return Catalogo(str(p), lector_de_zip(p.read_bytes(), str(p), CATALOGO))
+    raise Fallo("No existe {}: dime una carpeta o un .zip con el catálogo.".format(desde))
 
 
 # ---------------------------------------------------------------- git
@@ -379,23 +498,28 @@ def leer_void_json(vault):
     try:
         v = json.loads(p.read_text(encoding="utf-8"))
         assert isinstance(v, dict) and isinstance(v.get("ficheros", {}), dict)
+        estrellas = v.get("estrellas", {})
+        assert isinstance(estrellas, dict)
+        assert all(isinstance(e, dict) and isinstance(e.get("ficheros", {}), dict) for e in estrellas.values())
         return v
     except (ValueError, AssertionError, UnicodeDecodeError):
         raise Fallo("void.json está roto, así que no toco nada: recupéralo con "
                     "«git checkout -- void.json».")
 
 
-def escribir_void_json(version, instalados, descripcion):
-    datos = {
-        "aviso": "Lo escribe herramientas/void.py. No se cambia a mano.",
-        "base": version,
-        "fuente": descripcion,
-        "ficheros": dict(sorted(instalados.items())),
-    }
+def escribir_void_json(version, instalados, descripcion, estrellas=None):
+    """version None: el vault no tiene la base (solo estrellas)."""
+    datos = {"aviso": "Lo escribe herramientas/void.py. No se cambia a mano."}
+    if version is not None:
+        datos["base"] = version
+        datos["fuente"] = descripcion
+    datos["ficheros"] = dict(sorted(instalados.items()))
+    if estrellas:
+        datos["estrellas"] = {n: estrellas[n] for n in sorted(estrellas)}
     return (json.dumps(datos, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
 
 
-def plan(vault, actual, version, nuevos):
+def plan(vault, actual, version, nuevos, marcas_md=True):
     """Decide qué pasa con cada fichero. No escribe nada.
 
     Devuelve (escrituras, borrados, instalados, avisos, resumen):
@@ -413,7 +537,7 @@ def plan(vault, actual, version, nuevos):
         destino = vault.joinpath(*PurePosixPath(ruta).parts)
         if not dentro(vault, destino) or destino.is_symlink():
             raise Fallo("{} apunta fuera del vault (es un enlace), así que no toco nada.".format(ruta))
-        marcas = es_md_con_marcas(ruta, base)
+        marcas = marcas_md and es_md_con_marcas(ruta, base)
         propio = partir_marcas(base)[1] if marcas else base
         h_nueva = huella(propio)
         h_instalada = instalados_antes.get(ruta)
@@ -568,23 +692,8 @@ def pendientes(vault):
 
 # ---------------------------------------------------------------- órdenes
 
-def orden_estado(vault, desde):
-    actual = leer_void_json(vault)
-    if actual is None:
-        raise Fallo(MSG_SIN_VOID_JSON)
-    print("Vault: {}".format(vault))
-    print("Base instalada: {}".format(actual.get("base", "?")))
-    try:
-        fuente = abrir_fuente(desde)
-        if fuente.version == actual.get("base"):
-            print("Base disponible: {} (es la que tienes).".format(fuente.version))
-        else:
-            print("Base disponible: {}. Para traerla: python herramientas/void.py actualizar"
-                  .format(fuente.version))
-    except Fallo as e:
-        print("No he podido mirar si hay base nueva. {}".format(e))
-    print("Ficheros de la base:")
-    for ruta, h in sorted(actual.get("ficheros", {}).items()):
+def estado_ficheros(vault, ficheros):
+    for ruta, h in sorted(ficheros.items()):
         destino = vault.joinpath(*PurePosixPath(ruta).parts)
         if not ruta_segura(ruta) or not destino.is_file():
             como = "falta"
@@ -594,6 +703,45 @@ def orden_estado(vault, desde):
             huellas = {huella(local)} | ({huella(partes[1])} if partes else set())
             como = "como se instaló" if h in huellas else "cambiado por ti"
         print("  {:<17} {}".format(como, ruta))
+
+
+def contar_ficheros(resumen):
+    partes = []
+    for clave, uno, varios in (("nuevos", "nuevo", "nuevos"), ("cambiados", "cambiado", "cambiados"),
+                               ("marcados", "con marcas puestas", "con marcas puestas"),
+                               ("iguales", "sin cambios", "sin cambios"),
+                               ("tuyos", "sin tocar porque es tuyo", "sin tocar porque son tuyos"),
+                               ("quitados", "quitado", "quitados")):
+        n = len(resumen[clave])
+        if n:
+            partes.append("{} {}".format(n, uno if n == 1 else varios))
+    return "Ficheros: " + ", ".join(partes) + "."
+
+
+def orden_estado(vault, desde):
+    actual = leer_void_json(vault)
+    if actual is None:
+        raise Fallo(MSG_SIN_VOID_JSON)
+    print("Vault: {}".format(vault))
+    if "base" in actual:
+        print("Base instalada: {}".format(actual.get("base", "?")))
+        try:
+            fuente = abrir_fuente(desde)
+            if fuente.version == actual.get("base"):
+                print("Base disponible: {} (es la que tienes).".format(fuente.version))
+            else:
+                print("Base disponible: {}. Para traerla: python herramientas/void.py actualizar"
+                      .format(fuente.version))
+        except Fallo as e:
+            print("No he podido mirar si hay base nueva. {}".format(e))
+        print("Ficheros de la base:")
+        estado_ficheros(vault, actual.get("ficheros", {}))
+    else:
+        print("Base: no la tienes (este vault solo tiene estrellas).")
+    for nombre, e in sorted(actual.get("estrellas", {}).items()):
+        print("Estrella {} {} ({}, liga {}):".format(nombre, e.get("version", "?"), e.get("nivel", "?"),
+                                                     e.get("liga", "?")))
+        estado_ficheros(vault, e.get("ficheros", {}))
     nuevas = pendientes(vault)
     if nuevas:
         print("Por revisar (versión nueva que no puse para no pisar lo tuyo):")
@@ -619,7 +767,8 @@ def orden_actualizar(vault, desde, conectar):
     antes = (actual or {}).get("base")
     # Con --desde no se apunta la ruta: es de la máquina de quien prueba y acabaría en el commit.
     void_json = escribir_void_json(fuente.version, instalados, "copia local (--desde)"
-                                   if desde else "github.com/{} ({})".format(REPO, RAMA))
+                                   if desde else "github.com/{} ({})".format(REPO, RAMA),
+                                   estrellas=(actual or {}).get("estrellas"))
     mensaje = "void: base {}".format(fuente.version)
     hecho = aplicar(vault, escrituras, borrados, void_json, mensaje)
 
@@ -632,19 +781,85 @@ def orden_actualizar(vault, desde, conectar):
             print("Base {} al día, en un commit («{}»).".format(fuente.version, mensaje))
         else:
             print("Base actualizada de {} a {}, en un commit («{}»).".format(antes, fuente.version, mensaje))
-        partes = []
-        for clave, uno, varios in (("nuevos", "nuevo", "nuevos"), ("cambiados", "cambiado", "cambiados"),
-                                   ("marcados", "con marcas puestas", "con marcas puestas"),
-                                   ("iguales", "sin cambios", "sin cambios"),
-                                   ("tuyos", "sin tocar porque es tuyo", "sin tocar porque son tuyos"),
-                                   ("quitados", "quitado", "quitados")):
-            n = len(resumen[clave])
-            if n:
-                partes.append("{} {}".format(n, uno if n == 1 else varios))
-        print("Ficheros: " + ", ".join(partes) + ".")
+        print(contar_ficheros(resumen))
         print("Para deshacerlo: git revert HEAD")
     for a in avisos:
         print("OJO: " + a)
+    return 0
+
+
+def orden_traer(vault, nombre, desde, conectar_estrella):
+    """Trae una estrella del catálogo (o la actualiza) en un commit propio que se deshace."""
+    actual = leer_void_json(vault)
+    if not conectar_estrella and actual is None:
+        raise Fallo(MSG_SIN_VOID_JSON_ESTRELLA.format(nombre))
+    crear_repo = comprobar_repo(vault, actual is None)
+
+    catalogo = abrir_catalogo(desde)
+    e = catalogo.estrella(nombre)
+    nuevos = catalogo.leer_estrella(nombre, e)   # todas las huellas, antes de escribir nada
+    if crear_repo:
+        vault.mkdir(parents=True, exist_ok=True)
+        git(vault, "init", "-q")
+
+    estrellas = dict((actual or {}).get("estrellas", {}))
+    previa = estrellas.get(nombre, {})
+    # Lo que ya es de la base o de otra estrella no es de esta: no lo pisa ni lo hace suyo.
+    ajenos = {r: "la base" for r in (actual or {}).get("ficheros", {})}
+    for otra, datos in estrellas.items():
+        if otra != nombre:
+            ajenos.update({r: "la estrella " + otra for r in datos.get("ficheros", {})})
+    propios = {r: d for r, d in nuevos.items() if r not in ajenos}
+    antes = {"ficheros": {r: h for r, h in previa.get("ficheros", {}).items() if r not in ajenos}}
+    escrituras, borrados, instalados, avisos, resumen = plan(vault, antes, e["version"], propios,
+                                                              marcas_md=False)
+    for ruta in sorted(set(nuevos) - set(propios)):
+        destino = vault.joinpath(*PurePosixPath(ruta).parts)
+        if not dentro(vault, destino) or destino.is_symlink():
+            raise Fallo("{} apunta fuera del vault (es un enlace), así que no toco nada.".format(ruta))
+        local = destino.read_bytes() if destino.is_file() else None
+        if local is not None and huella(local) == huella(nuevos[ruta]):
+            resumen["iguales"].append(ruta)
+            continue
+        escrituras[ruta + SUFIJO_NUEVA] = con_finales(nuevos[ruta], usa_crlf(local or b""))
+        resumen["tuyos"].append(ruta)
+        avisos.append("No he tocado {0} porque es de {1}; la versión de la estrella está en {0}{2}."
+                      .format(ruta, ajenos[ruta], SUFIJO_NUEVA))
+
+    estrellas[nombre] = {"version": e["version"], "nivel": e["nivel"], "liga": e["liga"],
+                         "ficheros": dict(sorted(instalados.items()))}
+    if actual is not None and "base" in actual:
+        void_json = escribir_void_json(actual["base"], actual.get("ficheros", {}), actual.get("fuente"),
+                                       estrellas=estrellas)
+    else:
+        void_json = escribir_void_json(None, (actual or {}).get("ficheros", {}), None, estrellas=estrellas)
+    mensaje = "void: estrella {} {}".format(nombre, e["version"])
+    hecho = aplicar(vault, escrituras, borrados, void_json, mensaje)
+
+    version_antes = previa.get("version")
+    if not hecho:
+        print("Ya tienes la estrella {} {}. No hay nada que traer.".format(nombre, e["version"]))
+    else:
+        if version_antes is None:
+            print("Estrella {} {} traída, en un commit («{}»).".format(nombre, e["version"], mensaje))
+        elif version_antes == e["version"]:
+            print("Estrella {} {} al día, en un commit («{}»).".format(nombre, e["version"], mensaje))
+        else:
+            print("Estrella {} actualizada de {} a {}, en un commit («{}»).".format(
+                nombre, version_antes, e["version"], mensaje))
+        print(contar_ficheros(resumen))
+        print("Para deshacerlo: git revert HEAD")
+    for a in avisos:
+        print("OJO: " + a)
+    if e["liga"] != "grande":
+        print("OJO: está en la liga pequeña (KERNEL {}): no ha pasado la puerta grande del catálogo."
+              .format((e.get("kernel") or {}).get("total", "?")))
+    if e["nivel"] == "comunidad":
+        print("OJO: es de la comunidad. Léela antes de ejecutar nada de ella.")
+    if hecho and e.get("instalar"):
+        print("Para ponerla en marcha (void no ejecuta nada):")
+        for paso in e["instalar"]:
+            print("  - " + paso)
     return 0
 
 
@@ -671,7 +886,7 @@ def main(argv):
         print(AYUDA)
         return 0 if args else 2
     orden, resto = args[0], args[1:]
-    vault_arg = desde = None
+    vault_arg = desde = estrella = None
     conectar = False
     i = 0
     while i < len(resto):
@@ -682,8 +897,11 @@ def main(argv):
             else:
                 desde = resto[i + 1]
             i += 2
-        elif a == "--conectar" and orden == "actualizar":
+        elif a == "--conectar" and orden in ("actualizar", "traer"):
             conectar = True
+            i += 1
+        elif orden == "traer" and estrella is None and not a.startswith("-"):
+            estrella = a
             i += 1
         else:
             print("No entiendo «{}». Mira «python herramientas/void.py --help».".format(a), file=sys.stderr)
@@ -694,10 +912,15 @@ def main(argv):
             return orden_estado(vault, desde)
         if orden == "actualizar":
             return orden_actualizar(vault, desde, conectar)
+        if orden == "traer":
+            if not estrella:
+                print("Dime qué estrella: «python herramientas/void.py traer <estrella>».", file=sys.stderr)
+                return 2
+            return orden_traer(vault, estrella, desde, conectar)
     except Fallo as e:
         print(str(e), file=sys.stderr)
         return 1
-    print("Las órdenes son «estado» y «actualizar».", file=sys.stderr)
+    print("Las órdenes son «estado», «actualizar» y «traer».", file=sys.stderr)
     return 2
 
 

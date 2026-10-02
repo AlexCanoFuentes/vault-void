@@ -547,7 +547,7 @@ class Red(Caso):
         with mock.patch.object(V.urllib.request, "urlopen", side_effect=fallo):
             codigo, out, err = correr("actualizar", "--vault", v)
         self.assertEqual(codigo, 1)
-        self.assertIn("No encuentro la base en GitHub", err)
+        self.assertIn("No encuentro Void en GitHub", err)
 
 
 # ---------------------------------------------------------------- el repo
@@ -1049,6 +1049,213 @@ class Catalogo(unittest.TestCase):
         self.assertEqual(self.regenerar("--comprobar")[0], 1, "no ve un catálogo desfasado")
 
 
+# ---------------------------------------------------------------- estrellas: traer
+
+def hacer_repo_void(carpeta, *estrellas):
+    """Un repo de Void de prueba: estrellas/ y su catalogo.json, como lo bajaría void.py."""
+    carpeta = Path(carpeta)
+    for ficha, ficheros in estrellas:
+        hacer_estrella(carpeta, ficha, ficheros)
+    cat, problemas = REF_C.generar(carpeta)
+    if problemas:
+        raise AssertionError("el repo de prueba no pasa la puerta: {}".format(problemas))
+    (carpeta / "catalogo.json").write_bytes(REF_C.contenido(cat))
+    return carpeta
+
+
+def zip_de_carpeta(carpeta, prefijo="vault-void-main/"):
+    salida = io.BytesIO()
+    with zipfile.ZipFile(salida, "w") as zf:
+        for p in sorted(Path(carpeta).rglob("*")):
+            if p.is_file():
+                zf.writestr(prefijo + p.relative_to(carpeta).as_posix(), p.read_bytes())
+    return salida.getvalue()
+
+
+def ficha_para_traer(nombre="prueba", version="0.1.0"):
+    f = ficha_completa(nombre)
+    f["version"] = version
+    f["no_se_instala"] = ["README.md"]
+    return f
+
+
+class Traer(Caso):
+    def setUp(self):
+        super().setUp()
+        self.repo = hacer_repo_void(self.tmp / "void", (ficha_para_traer(), None))
+
+    def traer(self, v, nombre="prueba", desde=None, *extra):
+        return correr("traer", nombre, "--vault", v, "--desde", desde or self.repo, *extra)
+
+    def void_json(self, v):
+        return json.loads((v / "void.json").read_text(encoding="utf-8"))
+
+    def test_traer_un_commit_y_revert_byte_a_byte(self):
+        v = self.conectado()
+        antes, log = foto(v), commits(v)
+        codigo, out, err = self.traer(v)
+        self.assertEqual(codigo, 0, err)
+        self.assertEqual(commits(v), ["void: estrella prueba 0.1.0"] + log, "no dejó un solo commit propio")
+        self.assertTrue(limpio(v), "quedaron cambios fuera del commit")
+        self.assertEqual((v / "herramienta.py").read_bytes(), HERRAMIENTA)
+        self.assertEqual((v / "README.md").read_bytes(), antes["README.md"], "instaló lo que no se instala")
+        vj = self.void_json(v)
+        self.assertEqual(vj["base"], "0.1", "traer una estrella cambió la base apuntada")
+        self.assertEqual(sorted(vj["estrellas"]["prueba"]["ficheros"]), ["herramienta.py", "probar.py"])
+        self.assertIn("Para deshacerlo: git revert HEAD", out)
+        self.assertIn("python probar.py", out, "no dice cómo ponerla en marcha")
+        git(v, "revert", "--no-edit", "HEAD")
+        if foto(v) != antes:
+            self.fail("git revert HEAD no deja el vault como estaba")
+
+    def test_huella_que_no_cuadra_no_escribe_nada(self):
+        v = self.conectado()
+        antes, log = foto(v), commits(v)
+        (self.repo / "estrellas" / "oficiales" / "prueba" / "herramienta.py").write_bytes(b"import os\n")
+        codigo, out, err = self.traer(v)
+        if foto(v) != antes or commits(v) != log:
+            self.fail("escribió una estrella que no cuadra con su huella del catálogo")
+        self.assertEqual(codigo, 1)
+        self.assertIn("no cuadra con el catálogo en herramienta.py", err)
+
+    def test_no_pisa_lo_que_cambio_el_usuario(self):
+        v = self.conectado()
+        self.assertEqual(self.traer(v)[0], 0)
+        self.commit_usuario(v, "herramienta.py", b"lo mio\n")
+        nuevos = dict(ESTRELLA_FICHEROS)
+        nuevos["herramienta.py"] = HERRAMIENTA + b"# 0.2\n"
+        nuevos["probar.py"] = PRUEBA_VERDE + b"# 0.2\n"
+        r2 = hacer_repo_void(self.tmp / "void2", (ficha_para_traer(version="0.2.0"), nuevos))
+        codigo, out, err = self.traer(v, "prueba", r2)
+        self.assertEqual(codigo, 0, err)
+        self.assertEqual((v / "herramienta.py").read_bytes(), b"lo mio\n", "pisó un fichero que cambió el usuario")
+        self.assertEqual((v / "herramienta.py.base-nueva").read_bytes(), nuevos["herramienta.py"])
+        self.assertEqual((v / "probar.py").read_bytes(), nuevos["probar.py"], "no actualizó lo que no era suyo")
+        self.assertEqual(commits(v)[0], "void: estrella prueba 0.2.0")
+        self.assertIn("herramienta.py.base-nueva", out)
+
+    def test_no_pisa_ni_se_queda_lo_de_la_base(self):
+        for contenido in (UNO_01, b"la estrella trae otro uno.txt\n"):
+            borrar(str(self.tmp / "vault"))
+            borrar(str(self.tmp / "void3"))
+            v = self.conectado()
+            ficheros = dict(ESTRELLA_FICHEROS)
+            ficheros["uno.txt"] = contenido
+            r3 = hacer_repo_void(self.tmp / "void3", (ficha_para_traer(), ficheros))
+            codigo, out, err = self.traer(v, "prueba", r3)
+            self.assertEqual(codigo, 0, err)
+            self.assertEqual((v / "uno.txt").read_bytes(), UNO_01, "la estrella pisó un fichero de la base")
+            if "uno.txt" in self.void_json(v)["estrellas"]["prueba"]["ficheros"]:
+                self.fail("la estrella se apuntó como suyo un fichero de la base")
+            if contenido != UNO_01:
+                self.assertEqual((v / "uno.txt.base-nueva").read_bytes(), contenido)
+                self.assertIn("es de la base", out)
+
+    def test_sin_void_json_no_toca_nada_y_con_conectar_si(self):
+        v = hacer_vault(self.tmp / "vault")
+        antes, log = foto(v), commits(v)
+        codigo, out, err = self.traer(v)
+        if foto(v) != antes or commits(v) != log:
+            self.fail("trajo una estrella a una carpeta sin void.json y sin --conectar")
+        self.assertEqual(codigo, 1)
+        self.assertIn("no está conectada a Void", err)
+        codigo, out, err = self.traer(v, "prueba", None, "--conectar")
+        self.assertEqual(codigo, 0, err)
+        vj = self.void_json(v)
+        self.assertNotIn("base", vj, "apuntó una base que no se instaló")
+        self.assertIn("prueba", vj["estrellas"])
+        git(v, "revert", "--no-edit", "HEAD")
+        self.assertEqual(foto(v), antes)
+
+    def test_estrella_que_no_existe(self):
+        v = self.conectado()
+        antes = foto(v)
+        codigo, out, err = self.traer(v, "nada")
+        self.assertEqual(codigo, 1)
+        self.assertIn("No hay ninguna estrella que se llame «nada»", err)
+        self.assertIn("prueba", err, "no dice cuáles hay")
+        self.assertEqual(foto(v), antes)
+
+    def test_ruta_del_catalogo_que_sale_del_vault(self):
+        v = self.conectado()
+        antes = foto(v)
+        p = self.repo / "catalogo.json"
+        cat = json.loads(p.read_text(encoding="utf-8"))
+        cat["estrellas"]["prueba"]["ficheros"]["../fuera.py"] = REF.huella(b"x\n")
+        # Lo que leería una ruta con «..» existe de verdad: si algo la deja pasar, se escribe fuera.
+        (self.repo / "estrellas" / "oficiales" / "fuera.py").write_bytes(b"x\n")
+        p.write_text(json.dumps(cat), encoding="utf-8")
+        codigo, out, err = self.traer(v)
+        self.assertEqual(codigo, 1)
+        self.assertIn("saldría del vault", err)
+        self.assertEqual(foto(v), antes)
+        self.assertFalse((self.tmp / "fuera.py").exists())
+
+    def test_actualizar_la_base_conserva_las_estrellas(self):
+        v = self.conectado()
+        self.assertEqual(self.traer(v)[0], 0)
+        codigo, out, err = correr("actualizar", "--vault", v, "--desde", self.b02)
+        self.assertEqual(codigo, 0, err)
+        vj = self.void_json(v)
+        self.assertEqual(vj["base"], "0.2")
+        if "prueba" not in vj.get("estrellas", {}):
+            self.fail("actualizar la base borró las estrellas de void.json")
+
+    def test_traer_de_github(self):
+        v = self.conectado()
+        datos = zip_de_carpeta(self.repo)
+        with mock.patch.object(V.urllib.request, "urlopen", return_value=Respuesta(datos)):
+            codigo, out, err = correr("traer", "prueba", "--vault", v)
+        self.assertEqual(codigo, 0, err)
+        self.assertEqual((v / "herramienta.py").read_bytes(), HERRAMIENTA)
+
+    def test_nunca_ejecuta_lo_que_trae(self):
+        v = self.conectado()
+        marca = self.tmp / "EJECUTADO"
+        trampa = "open({!r}, 'w').write('x')\n".format(str(marca)).encode("utf-8")
+        ficheros = dict(ESTRELLA_FICHEROS)
+        ficheros["probar.py"] = trampa
+        ficheros["herramienta.py"] = HERRAMIENTA + trampa
+        r4 = hacer_repo_void(self.tmp / "void4", (ficha_para_traer(), ficheros))
+        self.assertEqual(self.traer(v, "prueba", r4)[0], 0)
+        self.assertFalse(marca.exists(), "void.py ejecutó algo de la estrella")
+
+    def test_liga_pequena_y_comunidad_avisan(self):
+        r5 = hacer_repo_void(self.tmp / "void5", (ficha_minima("menor", "comunidad"), None))
+        v = self.conectado()
+        codigo, out, err = self.traer(v, "menor", r5)
+        self.assertEqual(codigo, 0, err)
+        self.assertIn("liga pequeña (KERNEL", out)
+        self.assertIn("Léela antes de ejecutar", out)
+
+    def test_estado_dice_las_estrellas(self):
+        v = self.conectado()
+        self.assertEqual(self.traer(v)[0], 0)
+        codigo, out, err = correr("estado", "--vault", v, "--desde", self.b01)
+        self.assertEqual(codigo, 0, err)
+        self.assertIn("Estrella prueba 0.1.0", out)
+
+
+class TraerElKit(unittest.TestCase):
+    """La estrella de verdad, del catálogo de verdad, en un vault de juguete."""
+
+    def test_traer_candados_y_revert(self):
+        tmp = Path(tempfile.mkdtemp(prefix="void-kit-"))
+        try:
+            v = hacer_vault(tmp / "juguete", {"README.md": b"# Juguete\n", "notas.md": b"hola\n"})
+            antes = foto(v)
+            codigo, out, err = correr("traer", "candados", "--conectar", "--vault", v, "--desde", AQUI)
+            self.assertEqual(codigo, 0, err)
+            self.assertEqual(commits(v)[0], "void: estrella candados 0.1.0")
+            self.assertTrue((v / "guardia.py").is_file() and (v / ".githooks" / "pre-commit").is_file())
+            self.assertEqual((v / "README.md").read_bytes(), b"# Juguete\n")
+            self.assertIn("python3 instalar.py", out)
+            git(v, "revert", "--no-edit", "HEAD")
+            self.assertEqual(foto(v), antes, "git revert no deja el vault de juguete como estaba")
+        finally:
+            borrar(str(tmp))
+
+
 # ---------------------------------------------------------------- sabotaje
 
 SABOTAJES = [
@@ -1058,7 +1265,7 @@ SABOTAJES = [
     ("fichero modificado por el usuario: pisa lo suyo",
      [("elif h_instalada is not None and h_local == h_instalada:", "elif True:")],
      ["Actualizar.test_fichero_modificado_por_el_usuario",
-      "Actualizar.test_marcas_lo_de_dentro_cambiado_por_el_usuario"]),
+      "Actualizar.test_marcas_lo_de_dentro_cambiado_por_el_usuario", "Traer.test_no_pisa_lo_que_cambio_el_usuario"]),
     ("sin red: no da el error de una frase",
      [("raise Fallo(MSG_SIN_RED)", "raise")],
      ["Red.test_sin_red", "Red.test_sin_red_de_verdad"]),
@@ -1079,7 +1286,7 @@ SABOTAJES = [
      ["Actualizar.test_marcas_lo_de_fuera_es_tuyo"]),
     ("commit: escribe pero no guarda",
      [('codigo, _ = git(vault, "commit", "-q", "-m", mensaje, "--", *rutas, comprobar=False)', "codigo = 0")],
-     ["Actualizar.test_01_a_02_un_commit_y_revert_byte_a_byte"]),
+     ["Actualizar.test_01_a_02_un_commit_y_revert_byte_a_byte", "Traer.test_traer_un_commit_y_revert_byte_a_byte"]),
     ("finales de git: escribe \\n donde git sacaría \\r\\n",
      [("        crlf = usa_crlf(previo) if previo is not None else finales.get(ruta)\n",
        "        crlf = usa_crlf(previo) if previo is not None else None\n")],
@@ -1140,6 +1347,27 @@ SABOTAJES = [
      [("        if not destino.is_file() or void.huella(destino.read_bytes()) != void.huella(nuevo):",
        "        if not destino.is_file():")],
      ["Catalogo.test_catalogo_desfasado"], "regenerar_catalogo.py"),
+    ("traer: no comprueba la huella contra el catálogo",
+     [("            if huella(datos) != esperada:", "            if False:")],
+     ["Traer.test_huella_que_no_cuadra_no_escribe_nada"]),
+    ("traer: hace suyos los ficheros de la base",
+     [("    propios = {r: d for r, d in nuevos.items() if r not in ajenos}", "    propios = dict(nuevos)")],
+     ["Traer.test_no_pisa_ni_se_queda_lo_de_la_base"]),
+    ("traer: trae a una carpeta sin void.json",
+     [("    if not conectar_estrella and actual is None:", "    if False:")],
+     ["Traer.test_sin_void_json_no_toca_nada_y_con_conectar_si"]),
+    ("traer: actualizar la base pierde las estrellas",
+     [('                                   estrellas=(actual or {}).get("estrellas"))',
+       "                                   estrellas=None)")],
+     ["Traer.test_actualizar_la_base_conserva_las_estrellas"]),
+    ("traer: no valida las rutas del catálogo",
+     [("        if not ruta_segura(ruta):\n            raise Fallo(\"La estrella",
+       "        if False:\n            raise Fallo(\"La estrella"),
+      ("        if not dentro(vault, destino) or destino.is_symlink():", "        if False:"),
+      ("            if not dentro(vault, destino.parent if not destino.exists() else destino):",
+       "            if False:"),
+      ("            if not dentro(vault, destino.parent):", "            if False:")],
+     ["Traer.test_ruta_del_catalogo_que_sale_del_vault"]),
 ]
 
 

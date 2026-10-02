@@ -1,0 +1,4 @@
+# Quién revisa cada cambio. Solo obliga si la rama main exige la revisión del dueño del código
+# (Settings > Branches). Las estrellas oficiales las firma su autor; el resto, también, por ahora.
+*                     @AlexCanoFuentes
+/estrellas/oficiales/ @AlexCanoFuentes

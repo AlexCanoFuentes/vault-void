@@ -57,7 +57,7 @@ SECRETOS = [
 ]
 CORREO = r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"
 CORREOS_PERMITIDOS = re.compile(
-    r"(?i)(@example\.(?:com|org|net)$|@users\.noreply\.github\.com$|^noreply@anthropic\.com$)")
+    r"(?i)(@example\.(?:com|org|net)$|@users\.noreply\.github\.com$|^noreply@(?:anthropic|github)\.com$)")
 TELEFONOS = [
     ("teléfono internacional", r"(?<![\w+])\+\d{1,3}[ .-]?\(?\d{1,4}\)?(?:[ .-]?\d{2,4}){2,4}(?![\w])"),
     ("teléfono de España", r"(?<![\w.+-])[6789]\d{2}(?:[ .-]?\d{3}){2}(?![\w.-]?\d)(?!\w)"),

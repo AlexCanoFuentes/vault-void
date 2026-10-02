@@ -1,0 +1,77 @@
+# La puerta del catálogo, en cada pull request y en cada push a main.
+# Corre las pruebas, el escáner de fugas, comprueba que catalogo.json está al día y pasa puerta.py
+# sobre las estrellas que cambian, con su prueba ejecutada aquí (en la máquina de GitHub, nunca en
+# la de nadie). Un PR desde un fork recibe un token de solo lectura y ningún secreto.
+name: puerta
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  puerta:
+    name: pruebas, fugas y puerta
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0            # fugas.py mira toda la historia, y la puerta compara versiones
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Nombres a vigilar (secreto del repo; a un PR desde un fork no le llega)
+        env:
+          FUGAS_NOMBRES: ${{ secrets.FUGAS_NOMBRES }}
+        run: |
+          if [ -n "$FUGAS_NOMBRES" ]; then
+            printf '%s\n' "$FUGAS_NOMBRES" > .fugas-nombres
+            echo "Nombres vigilados: $(grep -c . .fugas-nombres)"
+          else
+            echo "::warning::Sin el secreto FUGAS_NOMBRES: esta pasada no vigila nombres de personas."
+          fi
+
+      - name: Pruebas
+        run: python pruebas.py
+
+      - name: Fugas (ficheros, historia, mensajes y autores de commit)
+        run: python fugas.py
+
+      - name: Catálogo al día
+        run: python regenerar_catalogo.py --comprobar
+
+      - name: La puerta, sobre las estrellas que cambian, con su prueba ejecutada
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ -n "$BASE" ] && [ "$BASE" != "0000000000000000000000000000000000000000" ] \
+             && git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            python puerta.py --cambiadas "$BASE" --ejecutar
+          else
+            python puerta.py --todas --ejecutar
+          fi
+
+  windows:
+    # void.py tiene que funcionar en Windows nativo. Este trabajo aún no se ha visto correr nunca:
+    # mientras no se vea en verde, no bloquea.
+    name: pruebas en Windows
+    runs-on: windows-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Pruebas
+        run: python pruebas.py

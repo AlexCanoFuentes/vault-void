@@ -639,6 +639,7 @@ NO_PLANTADOS = [
     "Escribe a prueba@example.com",         # dominio de ejemplo
     '"sha": "612345678abcdef0123456789"',   # números dentro de una huella
     "MAX = 20 * 1024 * 1024",
+    "Merge de GitHub <noreply@github.com>",  # el commit de prueba que monta Actions en cada PR
 ]
 
 
@@ -657,10 +658,18 @@ class Fugas(unittest.TestCase):
         h = self.fugas.escanear(AQUI)
         self.assertEqual(h, [], "hay fugas en el repo: {}".format(h[:5]))
 
+    def nombres_de_prueba(self):
+        """Con .fugas-nombres se prueba la lista de verdad. Sin ella (en Actions, si no llega el
+        secreto) se prueba el mecanismo con los nombres plantados, que se le pasan aparte."""
+        if self.fugas.NOMBRES:
+            return set()
+        return {self.fugas.h(_rev(n).lower()) for n in ("nauJ", "CMG", "raM", "ogeiD", "aznaeruA",
+                                                       "ocsicnarF", "omahC")}
+
     def test_cada_dato_plantado_sale_en_rojo(self):
         for tipo, linea in PLANTADOS:
             (self.repo / "nota.md").write_text(linea + "\n", encoding="utf-8")
-            tipos = {t for _, _, t, _ in self.fugas.escanear(self.repo)}
+            tipos = {t for _, _, t, _ in self.fugas.escanear(self.repo, self.nombres_de_prueba())}
             if tipo not in tipos:
                 self.fail("no caza un {} plantado (vio {})".format(tipo, tipos or "nada"))
 
@@ -682,12 +691,13 @@ class Fugas(unittest.TestCase):
         correo = "ana.lopez" + "@" + "gmail.com"
         git(self.repo, "-c", "user.email=" + correo, "-c", "user.name=x", "commit", "-q",
             "--allow-empty", "--author", "x <" + correo + ">", "-m", "va con " + _rev("nauJ"))
-        tipos = {t for d, _, t, _ in self.fugas.escanear(self.repo) if d == "mensajes y autores de commit"}
+        tipos = {t for d, _, t, _ in self.fugas.escanear(self.repo, self.nombres_de_prueba())
+                 if d == "mensajes y autores de commit"}
         self.assertEqual(tipos, {"correo", "nombre"}, "no mira el autor y el mensaje de cada commit")
 
     def test_nombre_de_fichero(self):
         (self.repo / ("notas-" + _rev("ogeid") + ".md")).write_text("x\n", encoding="utf-8")
-        donde = {d for d, _, _, _ in self.fugas.escanear(self.repo)}
+        donde = {d for d, _, _, _ in self.fugas.escanear(self.repo, self.nombres_de_prueba())}
         self.assertIn("nombre de fichero", donde)
 
 

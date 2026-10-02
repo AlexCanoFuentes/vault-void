@@ -18,6 +18,7 @@ import importlib.util
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -34,10 +35,12 @@ sys.path.insert(0, str(AQUI))
 import void as REF  # noqa: E402  la versión buena, para montar los datos de las pruebas
 import regenerar_manifiesto  # noqa: E402
 import formato as REF_F  # noqa: E402
+import puerta as REF_P  # noqa: E402
 
 VOID_PY = AQUI / "void.py"   # el fichero bajo prueba (el sabotaje lo cambia por uno roto)
 V = REF                      # el módulo bajo prueba
 F = REF_F                    # formato.py bajo prueba
+P = REF_P                    # puerta.py bajo prueba
 
 TMP_GLOBAL = None
 
@@ -833,6 +836,139 @@ class Formato(unittest.TestCase):
         self.assertEqual(REF_F.ficheros_de(c)["a.txt"], REF.huella(b"uno\ndos\n"))
 
 
+# ---------------------------------------------------------------- estrellas: la puerta
+
+class Puerta(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="void-puerta-"))
+
+    def tearDown(self):
+        borrar(str(self.tmp))
+
+    def con(self, plantado, ficha=None):
+        """Una estrella completa (liga grande) con una línea plantada en su README y las huellas al día:
+        si la rechaza, es por lo plantado y no por la huella."""
+        ficheros = dict(ESTRELLA_FICHEROS)
+        ficheros["README.md"] = ficheros["README.md"] + (plantado + "\n").encode("utf-8")
+        return hacer_estrella(self.tmp, ficha or ficha_completa(), ficheros)
+
+    def motivos(self, v):
+        return " | ".join(v["rechazo"])
+
+    def test_completa_entra_en_la_liga_grande(self):
+        v = P.juzgar(hacer_estrella(self.tmp))
+        self.assertEqual(v["rechazo"], [])
+        self.assertEqual(v["liga"], "grande", "una estrella con todo declarado no llega a la grande")
+        self.assertGreaterEqual(v["kernel"]["total"], 80)
+
+    def test_kernel_bajo_80_va_a_la_liga_pequena_y_no_se_rechaza(self):
+        v = P.juzgar(hacer_estrella(self.tmp, ficha_minima()))
+        if v["rechazo"]:
+            self.fail("rechazó una estrella válida por no llegar a 80: " + self.motivos(v))
+        self.assertLess(v["kernel"]["total"], 80)
+        if v["liga"] != "pequeña":
+            self.fail("una estrella con KERNEL {} entró en la liga {}".format(v["kernel"]["total"], v["liga"]))
+        salida = "\n".join(P.contar(v))
+        self.assertIn("KERNEL {}".format(v["kernel"]["total"]), salida, "no da el número crudo")
+        self.assertIn("más débil: " + v["kernel"]["mas_debil"], salida, "no dice la dimensión más débil")
+
+    def test_sin_el_error_que_la_hizo_nacer(self):
+        ficha = ficha_completa()
+        del ficha["nacio_de"]
+        v = P.juzgar(hacer_estrella(self.tmp, ficha))
+        self.assertIsNone(v["liga"], "una estrella sin «el error que la hizo nacer» entró en una liga")
+        self.assertIn("nacio_de", self.motivos(v))
+
+    def test_con_un_correo_dentro(self):
+        v = P.juzgar(self.con("Dudas a ana.lopez" + "@" + "gmail.com"))
+        self.assertIsNone(v["liga"], "entró una estrella con un correo dentro")
+        self.assertIn("correo", self.motivos(v))
+        self.assertNotIn("huella", self.motivos(v), "la rechazó por la huella, no por el correo")
+
+    def test_con_un_nombre_de_persona_dentro(self):
+        """Con un nombre de la lista que se le pasa: así se prueba igual en Actions, sin la lista privada."""
+        v = P.juzgar(self.con("Lo montó " + _rev("anemiX") + " un martes."),
+                     nombres={fugas_mod().h(_rev("anemix"))})
+        self.assertIsNone(v["liga"], "entró una estrella con un nombre de persona dentro")
+        self.assertIn("nombre", self.motivos(v))
+
+    def test_con_un_nombre_de_la_lista_privada(self):
+        if not fugas_mod().NOMBRES:
+            self.skipTest("sin .fugas-nombres en esta máquina")
+        v = P.juzgar(self.con("Lo pidió " + _rev("nauJ") + "."))
+        self.assertIsNone(v["liga"], "entró una estrella con un nombre de los vaults dentro")
+        self.assertIn("nombre", self.motivos(v))
+
+    def test_con_una_ruta_de_la_maquina_de_alguien(self):
+        for ruta in ("/ho" + "me/alguien/vault/notas.md", "C:" + "\\Users\\alguien\\vault"):
+            v = P.juzgar(self.con("Lee " + ruta))
+            self.assertIsNone(v["liga"], "entró una estrella conectada a un vault: " + ruta)
+            self.assertIn("ruta de la máquina", self.motivos(v))
+            borrar(str(self.tmp / "estrellas"))
+
+    def test_con_un_hash_que_no_cuadra(self):
+        c = hacer_estrella(self.tmp)
+        (c / "herramienta.py").write_bytes(HERRAMIENTA.replace(b"raise", b"return"))
+        v = P.juzgar(c)
+        self.assertIsNone(v["liga"], "entró una estrella cuyo fichero no cuadra con su huella")
+        self.assertIn("huella de herramienta.py no cuadra", self.motivos(v))
+
+    def test_con_ejecutar_su_prueba_tiene_que_pasar(self):
+        ficheros = dict(ESTRELLA_FICHEROS)
+        ficheros["probar.py"] = b"import sys\nprint('se rompe aqui')\nsys.exit(3)\n"
+        c = hacer_estrella(self.tmp, ficha_completa(), ficheros)
+        self.assertEqual(P.juzgar(c)["liga"], "grande", "sin --ejecutar la prueba no se corre")
+        v = P.juzgar(c, ejecutar=True)
+        self.assertIsNone(v["liga"], "entró una estrella cuya prueba no pasa")
+        self.assertIn("su prueba no pasa (sale con 3): se rompe aqui", self.motivos(v))
+        self.assertEqual(P.juzgar(hacer_estrella(self.tmp / "otra"), ejecutar=True)["liga"], "grande")
+
+    def test_cambia_ficheros_sin_subir_version(self):
+        antes = ficha_completa()
+        antes["ficheros"] = {"a.py": "1" * 64}
+        ahora = json.loads(json.dumps(antes))
+        ahora["ficheros"] = {"a.py": "2" * 64}
+        self.assertIn("no su versión", P.sube_de_version(antes, ahora) or "",
+                      "deja cambiar los ficheros sin subir la versión")
+        ahora["version"] = "0.1.1"
+        self.assertIsNone(P.sube_de_version(antes, ahora))
+        ahora["version"] = "0.0.9"
+        self.assertIn("baja de versión", P.sube_de_version(antes, ahora) or "")
+        self.assertIsNone(P.sube_de_version(None, ahora), "una estrella nueva no tiene versión anterior")
+
+    def test_sale_1_solo_si_rechaza(self):
+        buena = hacer_estrella(self.tmp, ficha_minima("pequena"))
+        out = io.StringIO()
+        with redirect_stdout(out):
+            self.assertEqual(P.main([str(buena)]), 0, "una estrella de la liga pequeña hace fallar la puerta")
+        mala = ficha_minima("mala")
+        mala["nacio_de"] = []
+        with redirect_stdout(out):
+            self.assertEqual(P.main([str(hacer_estrella(self.tmp, mala))]), 1)
+
+    def test_rubrica_es_la_de_kernel(self):
+        pesos = [(d, w) for d, w, _, _ in REF_P.RUBRICA]
+        self.assertEqual(sum(w for _, w in pesos), 100)
+        for d, w, _, comprobaciones in REF_P.RUBRICA:
+            self.assertEqual(sum(p for _, p, _ in comprobaciones), w, d + ": sus comprobaciones no suman su peso")
+        referencia = AQUI.parent / "aicode" / "skills" / "kernel" / "REFERENCE.md"
+        if not referencia.is_file():
+            self.skipTest("sin ../aicode en esta máquina: no se puede comparar con REFERENCE.md")
+        filas = re.findall(r"^\|\s*(Clarity|Scope|Context|Risk|Validation|Priority)\s*\|\s*(\d+)\s*\|",
+                           referencia.read_text(encoding="utf-8"), re.M)
+        traduccion = {"Clarity": "Claridad", "Scope": "Alcance", "Context": "Contexto", "Risk": "Riesgo",
+                      "Validation": "Validación", "Priority": "Prioridad"}
+        self.assertEqual([(traduccion[d], int(w)) for d, w in filas], pesos,
+                         "la rúbrica de la puerta no es la de REFERENCE.md")
+        self.assertIn("Minimum 80", referencia.read_text(encoding="utf-8"))
+        self.assertEqual(REF_P.UMBRAL, 80)
+
+
+def fugas_mod():
+    import fugas
+    return fugas
+
+
 # ---------------------------------------------------------------- sabotaje
 
 SABOTAJES = [
@@ -895,6 +1031,28 @@ SABOTAJES = [
     ("formato: acepta campos que no son del formato",
      [("        if clave not in OBLIGATORIOS and clave not in OPCIONALES:", "        if False:")],
      ["Formato.test_campo_que_no_es_del_formato"], "formato.py"),
+    ("puerta: no pasa fugas.py sobre la estrella",
+     [('    v["rechazo"] += limpia(carpeta, nombres)\n', "")],
+     ["Puerta.test_con_un_correo_dentro", "Puerta.test_con_un_nombre_de_persona_dentro",
+      "Puerta.test_con_una_ruta_de_la_maquina_de_alguien"], "puerta.py"),
+    ("puerta: no valida el formato",
+     [('    v["rechazo"] += formato.validar(carpeta, ficha)\n', "")],
+     ["Puerta.test_con_un_hash_que_no_cuadra"], "puerta.py"),
+    ("puerta: deja entrar en la grande por debajo de 80",
+     [('    return "grande" if total >= UMBRAL else "pequeña"', '    return "grande"')],
+     ["Puerta.test_kernel_bajo_80_va_a_la_liga_pequena_y_no_se_rechaza"], "puerta.py"),
+    ("puerta: rechaza lo que no llega a 80 en vez de ofrecerle la pequeña",
+     [('    v["liga"] = liga(v["kernel"]["total"])\n',
+       '    v["liga"] = liga(v["kernel"]["total"])\n'
+       '    if v["liga"] != "grande":\n        v["rechazo"].append("no llega a 80")\n')],
+     ["Puerta.test_kernel_bajo_80_va_a_la_liga_pequena_y_no_se_rechaza"], "puerta.py"),
+    ("puerta: no corre la prueba aunque se lo pidan",
+     [("        motivo = ejecutar_prueba(carpeta, ficha)\n", "        motivo = None\n")],
+     ["Puerta.test_con_ejecutar_su_prueba_tiene_que_pasar"], "puerta.py"),
+    ("puerta: deja cambiar los ficheros sin subir la versión",
+     [('    if antes.get("ficheros") != ahora["ficheros"] and ahora["version"] == antes["version"]:',
+       "    if False:")],
+     ["Puerta.test_cambia_ficheros_sin_subir_version"], "puerta.py"),
 ]
 
 
@@ -916,17 +1074,19 @@ def razon(traza):
 
 def poner_bajo_prueba(fichero, modulo):
     """Cambia el módulo que usan las pruebas: el bueno o uno saboteado."""
-    global V, VOID_PY, F
+    global V, VOID_PY, F, P
     if fichero == "void.py":
         V, VOID_PY = modulo, Path(modulo.__file__)
     elif fichero == "formato.py":
         F = modulo
+    elif fichero == "puerta.py":
+        P = modulo
     else:
         raise ValueError(fichero)
 
 
 def buenos():
-    return {"void.py": REF, "formato.py": REF_F}
+    return {"void.py": REF, "formato.py": REF_F, "puerta.py": REF_P}
 
 
 def sabotaje():

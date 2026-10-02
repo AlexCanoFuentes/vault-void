@@ -5,8 +5,9 @@ El canal por el que un arreglo hecho una vez llega a todos los vaults.
 - `base/`: lo que todos los vaults comparten. `base/MANIFIESTO.json` dice la versión de la base
   y la huella (sha256) de cada fichero.
 - `void.py`: el cliente. Cada vault lleva una copia en `herramientas/void.py`.
+- `estrellas/` y `catalogo.json`: el catálogo de estrellas (abajo).
 
-## Qué lleva la base (0.1)
+## Qué lleva la base (0.2)
 
 Solo lo que los vaults ya compartían **tal cual**, sacado de ellos y no reescrito. Es poco a
 propósito: lo que cambia de un vault a otro (el nombre, el idioma, las herramientas de cada uno)
@@ -53,6 +54,36 @@ En una carpeta vacía o en un vault que aún no tiene `void.json`:
 python void.py actualizar --conectar --vault <carpeta del vault>
 ```
 
+## Estrellas: traer una y publicar una
+
+Una **estrella** es una herramienta que alguien hizo en su vault, publicada con **el error que la
+hizo nacer**. Vive en `estrellas/<nivel>/<nombre>/` (oficiales > socio > comunidad) y
+`catalogo.json` la lista con su liga: la **grande** si pasa KERNEL con 80 o más, la **pequeña** si
+no. El formato campo a campo y la rúbrica, en [`estrellas/FORMATO.md`](estrellas/FORMATO.md).
+
+**Traer una**, desde la carpeta del vault (hace falta la base 0.2: antes, `actualizar`):
+
+```
+python herramientas/void.py traer candados
+```
+
+Comprueba la huella de cada fichero contra el catálogo antes de escribir nada, y la deja en **un
+commit** `void: estrella candados 0.1.0`. Para deshacerlo: `git revert HEAD`. No pisa lo tuyo, ni lo
+de la base, ni lo de otra estrella: deja la versión nueva al lado, como `<fichero>.base-nueva`. **No
+ejecuta nada**: al terminar te dice los pasos para ponerla en marcha. En un vault sin `void.json`,
+con `--conectar`. Las de la comunidad, léelas antes de ejecutar nada de ellas.
+
+**Publicar una:**
+
+```
+python3 formato.py --huellas estrellas/<nivel>/<nombre>       # la huella de cada fichero
+python3 puerta.py estrellas/<nivel>/<nombre> --ejecutar       # rechazada, liga pequeña o liga grande
+python3 regenerar_catalogo.py                                 # rehace catalogo.json
+```
+
+Y un pull request: GitHub Actions repite las pruebas, `fugas.py` y la puerta, con su prueba
+ejecutada. Si cambias una estrella que ya está, sube su versión.
+
 ## Sin internet
 
 Codex trabaja sin red. Si `actualizar` dice que no hay conexión, pide permiso de red para ese
@@ -66,4 +97,6 @@ python3 pruebas.py                              # pruebas
 python3 pruebas.py --sabotaje                   # rompe cada candado y comprueba que las pruebas lo cazan
 python3 pruebas.py --vaults <copia1> <copia2>   # 0.1 -> 0.2 -> revert sobre copias de vaults reales
 python3 fugas.py                                # secretos, correos, teléfonos y nombres: tiene que dar 0
+python3 puerta.py --todas                       # todas las estrellas por la puerta
+python3 regenerar_catalogo.py --comprobar       # catalogo.json al día con estrellas/
 ```

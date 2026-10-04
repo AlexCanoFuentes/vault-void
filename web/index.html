@@ -2,102 +2,199 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Vault Void</title>
-<meta name="description" content="Vault Void: donde los vaults se conectan y se actualizan. Tu vault se queda en tu casa; Void reparte instrumentos.">
+<meta name="description" content="Vault Void: donde los vaults se conectan. Tu vault se queda en tu casa; aquí solo viajan las piezas.">
 <meta property="og:title" content="Vault Void">
-<meta property="og:description" content="Donde los vaults se conectan y se actualizan. Tu vault se queda en tu casa.">
+<meta property="og:description" content="Tu vault no sube aquí. Nunca. Aquí solo viajan las piezas.">
 <meta property="og:url" content="https://vaultvoid.app/">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<meta name="theme-color" content="#050506">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Void es el plano publico del ecosistema: oscuro por defecto (es un vacio), con la misma
-   tinta y el mismo rojo que la web de Alex para que se vea la familia. Claro si se pide. */
+/*
+  VOID · primer prototipo [Alex, 4-oct: «al tragarse la landing, a traves de un agujero blanco llegas al
+  Void, que tendra un estilo vacio negro, al que le vamos a ir añadiendo cada seccion con su propio diseño»].
+
+  Un solo mundo, a propósito: Void es un vacío, así que es negro siempre (no hay modo claro).
+  Se llega por un agujero blanco que escupe la retícula de cuaderno que se tragó la landing; la retícula
+  se deshace y queda el vacío. Cada sección de Void es un objeto en ese vacío, con su propio diseño.
+  Hoy hay uno: la primera estrella. El violeta es el mismo reactivo que corre por la landing.
+*/
 :root{
-  --bg:#0E0D0C; --ink:#F2EFE9; --ink-2:#C4BFB7; --muted:#8C877F; --rule:#2A2724; --rojo:#EE7365; --neon:#5FE3B0;
+  --vacio:#050506; --tinta:#EDEAF2; --tinta-2:#A9A3B5; --tenue:#6D6878; --linea:#221F29;
+  --reactivo:#B06BFF; --reactivo-2:#D9B8FF; --rojo:#F0604F;
+  --serif:"Instrument Serif",Georgia,"Times New Roman",serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
 }
-@media (prefers-color-scheme:light){
-  :root:not([data-theme="dark"]){--bg:#FBFAF8;--ink:#141414;--ink-2:#454340;--muted:#75726C;--rule:#E5E1DA;--rojo:#B4241C;--neon:#1F8A63}
-}
-:root[data-theme="light"]{--bg:#FBFAF8;--ink:#141414;--ink-2:#454340;--muted:#75726C;--rule:#E5E1DA;--rojo:#B4241C;--neon:#1F8A63}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:16.5px/1.6 "IBM Plex Sans",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
-.w{max-width:760px;margin:0 auto;padding:0 24px}
-@media(max-width:640px){.w{padding:0 16px}}
-header{padding:clamp(64px,14vh,140px) 0 48px;border-bottom:1px solid var(--rule)}
-.eyebrow{font:500 11px "IBM Plex Mono",monospace;letter-spacing:.22em;text-transform:uppercase;color:var(--neon);margin:0 0 22px}
-.eyebrow::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--neon);
-  box-shadow:0 0 10px var(--neon);margin-right:10px;vertical-align:1px}
-h1{font:400 clamp(46px,9vw,92px)/.98 "Instrument Serif",Georgia,serif;letter-spacing:-.022em;margin:0 0 24px;text-wrap:balance}
-h1 em{color:var(--rojo)}
-.dek{font-size:19px;color:var(--ink-2);max-width:520px;margin:0}
-section{padding:52px 0;border-bottom:1px solid var(--rule)}
-h2{font:400 clamp(30px,4.6vw,42px)/1.06 "Instrument Serif",Georgia,serif;letter-spacing:-.015em;margin:0 0 14px}
-h2 em{color:var(--rojo)}
-p{margin:0 0 14px;color:var(--ink-2);max-width:620px}
-p strong{color:var(--ink)}
-.planos{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--rule);margin-top:22px}
-.planos>div{padding:18px 20px}
-.planos>div+div{border-left:1px solid var(--rule)}
-.planos h3{font:500 11px "IBM Plex Mono",monospace;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
-.planos p{font-size:15.5px;margin:0}
-@media(max-width:640px){.planos{grid-template-columns:1fr}.planos>div+div{border-left:0;border-top:1px solid var(--rule)}}
-pre{font:13px/1.7 "IBM Plex Mono",monospace;background:transparent;border:1px solid var(--rule);padding:14px 16px;overflow-x:auto;color:var(--ink);margin:18px 0}
-pre .c{color:var(--muted)}
-ul{margin:0;padding:0;list-style:none}
-li{padding:12px 0;border-bottom:1px solid var(--rule);display:grid;grid-template-columns:110px 1fr;gap:4px 18px;color:var(--ink-2)}
-li:last-child{border-bottom:0}
-li b{font:500 11px "IBM Plex Mono",monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding-top:4px;font-weight:500}
-li.hoy b{color:var(--neon)}
-@media(max-width:640px){li{grid-template-columns:1fr}}
-a{color:var(--ink);text-decoration-color:var(--rojo);text-underline-offset:3px}
-a:focus-visible{outline:2px solid var(--rojo);outline-offset:3px}
-footer{padding:36px 0 72px;font:12px/1.8 "IBM Plex Mono",monospace;color:var(--muted)}
+html,body{height:100%}
+@media(max-width:699px){:root{--my:30%}}
+body{margin:0;background:var(--vacio);color:var(--tinta);font:15px/1.6 var(--mono);-webkit-font-smoothing:antialiased;overflow:hidden}
+#cielo{position:fixed;inset:0;width:100%;height:100%;display:block}
+.escena{position:fixed;inset:0;padding:env(safe-area-inset-top,0px) 16px env(safe-area-inset-bottom,0px)}
+
+/* el nombre y la única frase: aparecen cuando el agujero blanco se apaga */
+.marca{position:absolute;left:0;right:0;top:var(--my,38%);transform:translateY(-50%);text-align:center;pointer-events:none}
+.marca h1{margin:0;font:400 clamp(52px,11vw,124px)/.95 var(--serif);letter-spacing:-.025em;text-wrap:balance}
+.marca h1 em{font-style:italic;color:transparent;-webkit-text-stroke:1px var(--tinta)}
+.marca p{margin:18px auto 0;max-width:30ch;font:400 clamp(13px,1.6vw,15px)/1.55 var(--mono);color:var(--tinta-2);letter-spacing:.02em}
+.marca p b{color:var(--tinta);font-weight:500}
+.js .marca h1,.js .marca p,.js .pie,.js .estrella{opacity:0;transition:opacity 1.6s ease,transform 1.6s cubic-bezier(.2,.7,.2,1)}
+.js .marca h1{transform:scale(.96)}
+.listo .marca h1{opacity:1;transform:none}
+.listo .marca p{opacity:1;transition-delay:.5s}
+.listo .estrella{opacity:1;transition-delay:1.1s}
+.listo .pie{opacity:1;transition-delay:1.6s}
+
+/* la primera estrella: una luz en el vacío. Se toca y se abre. */
+.estrella{position:absolute;left:var(--ex,68%);top:var(--ey,70%);width:64px;height:64px;margin:-32px 0 0 -32px;border:0;padding:0;
+  background:transparent;cursor:pointer;border-radius:50%;-webkit-tap-highlight-color:transparent}
+.estrella .luz{position:absolute;left:50%;top:50%;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;background:#fff;
+  box-shadow:0 0 0 2px var(--reactivo-2),0 0 18px 4px var(--reactivo),0 0 60px 14px rgba(176,107,255,.35);animation:late 3.2s ease-in-out infinite}
+@keyframes late{50%{box-shadow:0 0 0 2px var(--reactivo-2),0 0 26px 7px var(--reactivo),0 0 90px 22px rgba(176,107,255,.42)}}
+.estrella .rot{position:absolute;left:50%;top:calc(50% + 22px);transform:translateX(-50%);white-space:nowrap;font:500 10.5px var(--mono);
+  letter-spacing:.16em;text-transform:uppercase;color:var(--tinta-2)}
+.estrella:hover .rot,.estrella:focus-visible .rot{color:var(--tinta)}
+.estrella:focus-visible{outline:1px solid var(--reactivo-2);outline-offset:6px}
+
+/* lo que dice la estrella al abrirse: tres líneas llanas y su enlace */
+.ficha{position:absolute;left:var(--fx,50%);top:var(--fy,50%);width:min(340px,calc(100vw - 32px));padding:18px 18px 16px;
+  background:rgba(12,10,16,.82);border:1px solid var(--linea);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  opacity:0;transform:translateY(8px);pointer-events:none;transition:opacity .45s ease,transform .45s cubic-bezier(.2,.7,.2,1)}
+.ficha.abierta{opacity:1;transform:none;pointer-events:auto}
+.ficha .n{margin:0 0 4px;font:500 10px var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--reactivo-2)}
+.ficha h2{margin:0 0 10px;font:400 30px/1.05 var(--serif);letter-spacing:-.01em}
+.ficha p{margin:0 0 9px;color:var(--tinta-2);font-size:13px;line-height:1.6}
+.ficha a{display:inline-block;margin-top:6px;color:var(--tinta);text-decoration:none;font:500 12.5px var(--mono);border-bottom:1px solid var(--reactivo);padding-bottom:2px}
+.ficha a:hover{border-bottom-color:var(--tinta)}
+.ficha .cerrar{position:absolute;right:8px;top:6px;width:32px;height:32px;border:0;background:transparent;color:var(--tenue);font:400 20px var(--mono);cursor:pointer}
+.ficha .cerrar:hover{color:var(--tinta)}
+
+.pie{position:absolute;left:16px;right:16px;bottom:calc(14px + env(safe-area-inset-bottom,0px));display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  font:400 11px var(--mono);letter-spacing:.06em;color:var(--tenue)}
+.ficha.abierta ~ .pie{opacity:0!important;transition-delay:0s!important}   /* la ficha abierta manda; el pie vuelve al cerrarla */
+.pie a{color:var(--tinta-2);text-decoration:none;border-bottom:1px solid var(--linea)}
+.pie a:hover{color:var(--tinta)}
+.saltar{position:absolute;right:16px;top:calc(14px + env(safe-area-inset-top,0px));font:400 11px var(--mono);letter-spacing:.08em;color:var(--tenue);
+  background:none;border:0;cursor:pointer;transition:opacity .6s}
+.listo .saltar{opacity:0;pointer-events:none}
+
+/* sin JS: la página se lee igual, quieta */
+html:not(.js) body{overflow:auto}
+html:not(.js) .escena{position:static;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:48px;padding:48px 16px}
+html:not(.js) .marca,html:not(.js) .estrella,html:not(.js) .pie{position:static;transform:none}
+html:not(.js) .estrella{margin:0}
+html:not(.js) .ficha{position:static;opacity:1;transform:none;pointer-events:auto}
+html:not(.js) #cielo,html:not(.js) .saltar{display:none}
+html:not(.js) .solo-js{display:none}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
+<script>document.documentElement.classList.add("js");</script>
 </head>
 <body>
-<div class="w">
-
-<header>
-  <p class="eyebrow">Vault Void · v0 experimental</p>
-  <h1>Donde los vaults<br>se <em>conectan.</em></h1>
-  <p class="dek">Un vault es tu cerebro en ficheros: lo que decides, lo que descartas y por qué, en un repositorio tuyo que tu agente lee antes de trabajar. Void es el sitio donde los vaults se conectan y se actualizan.</p>
-</header>
-
-<section>
-  <h2>Tu vault no sube aquí. <em>Nunca.</em></h2>
-  <p>Void reparte instrumentos y arreglos. Lo tuyo se queda en tu casa. Si Void desapareciera mañana, tu vault seguiría entero y funcionando.</p>
-  <div class="planos">
-    <div><h3>Void, público</h3><p>Los instrumentos, sus versiones y la huella de cada fichero.</p></div>
-    <div><h3>Tu vault, tuyo</h3><p>Tus decisiones, tu dinero, tus personas. En tu máquina.</p></div>
+<canvas id="cielo" aria-hidden="true"></canvas>
+<main class="escena" id="escena">
+  <div class="marca">
+    <h1>Vault <em>Void</em></h1>
+    <p>Tu vault no sube aquí. <b>Nunca.</b><br>Aquí solo viajan las piezas.</p>
   </div>
-</section>
 
-<section>
-  <h2>Lo que hay hoy</h2>
-  <p>La base común de los vaults (versión 0.1) y el cliente que la actualiza, construidos y probados: 44 pruebas, también con el Python de Windows. Se abren al público con su repositorio. Con ellos, un arreglo hecho una vez llega a todos los vaults con una orden:</p>
-<pre><span class="c"># desde la carpeta de tu vault</span>
-python herramientas/void.py estado
-python herramientas/void.py actualizar</pre>
-  <p><strong>Antes de escribir, comprueba la huella de cada fichero.</strong> Si cambiaste algo de la base, no lo pisa: deja la versión nueva al lado y te lo dice. Cada actualización es un commit propio que se deshace con <code>git revert</code>. Funciona con Claude o con Codex, y en Windows sin nada más que Python y git.</p>
-</section>
+  <button class="estrella" id="estrella" type="button" aria-expanded="false" aria-controls="ficha">
+    <span class="luz" aria-hidden="true"></span><span class="rot">la primera estrella</span>
+  </button>
 
-<section>
-  <h2>Las <em>estrellas</em></h2>
-  <p>Una estrella es una plantilla que alguien publica en Void porque le resolvió algo. Entra con la regla que costó equivocarse, no con una lista de funciones.</p>
-  <ul>
-    <li class="hoy"><b>6 de octubre</b><span><strong>La primera: el kit de candados para agentes.</strong> Claude y Codex en el mismo repositorio sin pisarse, con los mismos candados, y una prueba que demuestra que cada uno salta.</span></li>
-    <li><b>En camino</b><span>El catálogo: solo entra lo que pasa una puntuación estricta. Lo que no la pasa va a una liga pequeña, donde otros pueden ayudar a subirlo.</span></li>
-    <li><b>En camino</b><span>Tu perfil dentro del ecosistema, con tus estrellas.</span></li>
-  </ul>
-</section>
+  <section class="ficha" id="ficha" aria-labelledby="ficha-t">
+    <button class="cerrar solo-js" id="cerrar" type="button" aria-label="Cerrar">×</button>
+    <p class="n">Estrella 01 · gratis</p>
+    <h2 id="ficha-t">Candados para dos IA</h2>
+    <p>Cuando dos asistentes de IA trabajan en el mismo proyecto, se pisan. Esta plantilla les pone los mismos candados a los dos.</p>
+    <p>Trae una prueba que intenta forzar cada candado. Codex le encontró un agujero; ya está cerrado.</p>
+    <a href="https://github.com/AlexCanoFuentes/vault-void/tree/main/estrellas/oficiales/candados" rel="noopener">Ver la plantilla →</a>
+  </section>
 
-<section>
-  <h2>¿Quieres tu vault?</h2>
-  <p>Hoy los monto a mano, uno a uno, para personas concretas. Cuéntame cómo trabajas: <a href="https://alexcanofuentes.com/#vault">alexcanofuentes.com</a>.</p>
-</section>
+  <button class="saltar" id="saltar" type="button">saltar</button>
+  <footer class="pie">
+    <span>Vault Void · experimental · de <a href="https://alexcanofuentes.com" rel="noopener">LexLabs</a></span>
+    <span>Tenerife</span>
+  </footer>
+</main>
 
-<footer>Vault Void · un producto experimental de <a href="https://alexcanofuentes.com/#lexlabs">LexLabs</a> · Tenerife</footer>
+<script>
+(function(){
+  var red=matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var root=document.documentElement, cv=document.getElementById("cielo"), est=document.getElementById("estrella"),
+      ficha=document.getElementById("ficha"), cerrar=document.getElementById("cerrar"), saltar=document.getElementById("saltar");
 
-</div>
+  // ── la estrella: dónde vive y lo que dice al abrirse
+  function coloca(){
+    var w=innerWidth, h=innerHeight, movil=w<700;
+    var ex=movil?.5:.7, ey=movil?.6:.72;
+    root.style.setProperty("--ex",(ex*100)+"%"); root.style.setProperty("--ey",(ey*100)+"%");
+    // en el PC la ficha se abre al lado de la estrella; en el móvil, justo debajo, sin tapar el nombre
+    var fw=Math.min(340,w-32), fx=movil?(w-fw)/2:Math.max(16,Math.min(w-fw-16,ex*w-fw-104)), fy=movil?Math.min(h-306,ey*h+52):Math.max(16,ey*h-150);
+    ficha.style.setProperty("--fx",fx+"px"); ficha.style.setProperty("--fy",fy+"px");
+    return {x:ex*w,y:ey*h};
+  }
+  function abre(v){ficha.classList.toggle("abierta",v); est.setAttribute("aria-expanded",v?"true":"false"); if(v) ficha.querySelector("a").focus({preventScroll:true});}
+  est.addEventListener("click",function(){abre(!ficha.classList.contains("abierta"));});
+  cerrar.addEventListener("click",function(){abre(false); est.focus();});
+  addEventListener("keydown",function(e){if(e.key==="Escape"&&ficha.classList.contains("abierta")){abre(false); est.focus();}});
+
+  // ── el cielo: agujero blanco al llegar, y luego el vacío con su polvo de estrellas
+  var gl=null, U={}, t0=performance.now(), dpr=1, W=0, H=0, raf=0, mx=.5, my=.5, pos=coloca(), salto=0;
+  var FS="precision highp float;uniform vec2 S,E,M;uniform float t,dpr,salto;"+
+    "float h21(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}"+
+    "float cov(float p,float Q){float q=mod(p+.5,Q);float d=min(q,Q-q);return 1.-smoothstep(.5-.7/dpr,.5+.7/dpr,d);}"+
+    "void main(){vec2 f=vec2(gl_FragCoord.x,S.y*dpr-gl_FragCoord.y)/dpr;vec2 c=S*.5+vec2(0.,-S.y*.12);vec2 d=f-c;float r=length(d);"+
+    "float m=min(S.x,S.y);"+
+    // la llegada: 0 → 1 en unos 3 s (o de golpe si se salta)
+    "float a=clamp(max(t/3.2,salto),0.,1.);float e=1.-pow(1.-a,3.);"+
+    "vec3 col=vec3(.0196,.0196,.0235);"+
+    // polvo de estrellas: fijo, con un parpadeo lento y un leve paralaje con el puntero
+    "vec2 g=(f+(M-.5)*14.)/3.;vec2 id=floor(g/8.);vec2 fr=fract(g/8.)-.5;float s=h21(id);"+
+    "float pz=step(.965,s)*smoothstep(.12,0.,length(fr-(vec2(h21(id+1.7),h21(id+3.1))-.5)*.6));"+
+    "col+=vec3(.82,.8,.9)*pz*(.35+.35*sin(t*(.6+s*1.4)+s*40.))*smoothstep(.2,.9,e);"+
+    // la retícula que se tragó la landing sale escupida: lente al revés (empuja hacia fuera) y se deshace
+    "float te=m*.22*(1.-e*.6);vec2 sc=f+d*(te*te)/max(r*r,1.);"+
+    "float g1=max(cov(sc.x,24.),cov(sc.y,24.)),g2=max(cov(sc.x,120.),cov(sc.y,120.));"+
+    "float ret=(g1*.35+g2*.65)*(1.-e)*smoothstep(m*.06,m*.3,r)*(1.-smoothstep(m*.3,m*(.6+1.4*e),r));"+
+    "col+=mix(vec3(.85,.72,1.),vec3(.69,.42,1.),e)*ret*.55;"+
+    // el agujero blanco: un núcleo que deslumbra y se apaga, y ondas que salen hacia fuera
+    "float nucleo=exp(-r/(m*(.02+.22*(1.-e))))*(1.-e*.97);"+
+    "float ondas=pow(.5+.5*sin(r/m*38.-t*7.),6.)*exp(-r/(m*.45))*(1.-e)*.6;"+
+    "col+=vec3(1.)*nucleo*1.6+vec3(.86,.75,1.)*ondas;"+
+    "col+=vec3(1.)*max(0.,1.-t*2.4)*(1.-salto);"+                                              // el destello del paso
+    // la primera estrella: un halo violeta en el polvo, que crece al llegar
+    "float de=length(f-E);col+=vec3(.69,.42,1.)*exp(-de/(m*.05))*.22*smoothstep(.55,1.,e);"+
+    "gl_FragColor=vec4(col,1.);}";
+  function inicia(){
+    try{gl=cv.getContext("webgl",{antialias:false,depth:false,stencil:false,powerPreference:"low-power"});}catch(e){gl=null;}
+    if(!gl) return false;
+    function sh(tp,src){var x=gl.createShader(tp);gl.shaderSource(x,src);gl.compileShader(x);if(!gl.getShaderParameter(x,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(x));return x;}
+    try{var hp=gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER,gl.HIGH_FLOAT);var fs=hp&&hp.precision>0?FS:FS.replace("highp","mediump");
+      var p=gl.createProgram();gl.attachShader(p,sh(gl.VERTEX_SHADER,"attribute vec2 q;void main(){gl_Position=vec4(q,0.,1.);}"));gl.attachShader(p,sh(gl.FRAGMENT_SHADER,fs));gl.linkProgram(p);
+      if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));gl.useProgram(p);
+      var b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+      var aq=gl.getAttribLocation(p,"q");gl.enableVertexAttribArray(aq);gl.vertexAttribPointer(aq,2,gl.FLOAT,false,0,0);
+      ["S","E","M","t","dpr","salto"].forEach(function(n){U[n]=gl.getUniformLocation(p,n);});}catch(e){console.warn(e);gl=null;return false;}
+    return true;
+  }
+  function tam(){W=innerWidth;H=innerHeight;dpr=Math.min(devicePixelRatio||1,(navigator.hardwareConcurrency||4)<=4?1:1.5);
+    cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);if(gl)gl.viewport(0,0,cv.width,cv.height);pos=coloca();}
+  function pinta(now){raf=0; if(document.hidden) return;
+    var t=red?10:(now-t0)/1000;
+    if(gl){gl.uniform2f(U.S,W,H);gl.uniform2f(U.E,pos.x,pos.y);gl.uniform2f(U.M,mx,my);gl.uniform1f(U.t,t);gl.uniform1f(U.dpr,dpr);gl.uniform1f(U.salto,salto);
+      gl.drawArrays(gl.TRIANGLES,0,3);}
+    if((t>2.6||salto)&&!root.classList.contains("listo")) root.classList.add("listo");
+    if(!red) raf=requestAnimationFrame(pinta);}
+  if(!inicia()){cv.style.background="radial-gradient(circle at 50% 38%,#1a1022 0,#050506 60%)"; root.classList.add("listo");}
+  tam(); addEventListener("resize",tam,{passive:true});
+  addEventListener("pointermove",function(e){mx=e.clientX/W;my=e.clientY/H;},{passive:true});
+  document.addEventListener("visibilitychange",function(){if(!document.hidden&&!raf) raf=requestAnimationFrame(pinta);});
+  saltar.addEventListener("click",function(){salto=1;});
+  if(red) root.classList.add("listo");
+  raf=requestAnimationFrame(pinta);
+})();
+</script>
 </body>
 </html>

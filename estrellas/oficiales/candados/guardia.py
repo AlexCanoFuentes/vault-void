@@ -104,8 +104,16 @@ def main():
             if nombre == "Write" and os.path.exists(os.path.join(base, r)):
                 niega("%s solo crece y escribirlo entero lo reemplaza; se anade al final" % r)
             viejo = ti.get("old_string") or ""
-            if viejo and len((ti.get("new_string") or "").splitlines()) < len(viejo.splitlines()):
-                niega("%s solo crece y esta edicion le quita lineas" % r)
+            if viejo and not conserva(viejo, ti.get("new_string") or ""):
+                niega("%s solo crece y esta edicion le quita o le cambia lineas" % r)
+
+
+
+def conserva(viejo, nuevo):
+    """True si todas las lineas de `viejo` siguen en `nuevo`, en su orden. Contar lineas no basta:
+    cambiar una por otra deja la misma cuenta y reescribe la historia (revision de Codex, 3-oct)."""
+    resto = iter(nuevo.splitlines())
+    return all(any(l == m for m in resto) for l in viejo.splitlines())
 
 
 if __name__ == "__main__":

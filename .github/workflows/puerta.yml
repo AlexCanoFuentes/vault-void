@@ -34,12 +34,14 @@ jobs:
           if [ -n "$FUGAS_NOMBRES" ]; then
             printf '%s\n' "$FUGAS_NOMBRES" > .fugas-nombres
             echo "Nombres vigilados: $(grep -c . .fugas-nombres)"
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            # En main no se publica nada sin vigilar nombres (revision de Codex, 3-oct): avisar y
+            # seguir dejaba pasar en verde justo la comprobacion que esta puerta promete.
+            echo "::error::Falta el secreto FUGAS_NOMBRES: un push a main no pasa sin vigilar nombres de personas."
+            exit 1
           else
-            echo "::warning::Sin el secreto FUGAS_NOMBRES: esta pasada no vigila nombres de personas."
+            echo "::warning::Sin el secreto FUGAS_NOMBRES (PR desde un fork): esta pasada no vigila nombres de personas."
           fi
-
-      - name: Pruebas
-        run: python pruebas.py
 
       - name: Fugas (ficheros, historia, mensajes y autores de commit)
         run: python fugas.py
@@ -47,7 +49,30 @@ jobs:
       - name: Catálogo al día
         run: python regenerar_catalogo.py --comprobar
 
-      - name: La puerta, sobre las estrellas que cambian, con su prueba ejecutada
+      # Dos pasadas a proposito (revision de Codex, 3-oct). La lista de nombres vigilados es un
+      # secreto, y --ejecutar corre el codigo de cada estrella: con el fichero al lado, una estrella
+      # podia leerlo y sacarlo por el log o por la red. Primero se juzga CON la lista y SIN ejecutar
+      # nada de fuera; despues se BORRA la lista y solo entonces corre la prueba de cada estrella.
+      - name: La puerta, sobre las estrellas que cambian (con la lista de nombres, sin ejecutar nada)
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ -n "$BASE" ] && [ "$BASE" != "0000000000000000000000000000000000000000" ] \
+             && git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            python puerta.py --cambiadas "$BASE"
+          else
+            python puerta.py --todas
+          fi
+
+      - name: Fuera la lista de nombres antes de ejecutar codigo de las estrellas
+        run: rm -f .fugas-nombres && test ! -e .fugas-nombres
+
+      # Despues del borrado: una de las pruebas trae la estrella oficial a un vault de juguete y
+      # sus hooks de git se ejecutan ahi.
+      - name: Pruebas
+        run: python pruebas.py
+
+      - name: La puerta otra vez, con la prueba de cada estrella ejecutada (ya sin la lista)
         env:
           BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
         run: |

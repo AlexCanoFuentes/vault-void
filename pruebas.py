@@ -1256,7 +1256,8 @@ class TraerElKit(unittest.TestCase):
             antes = foto(v)
             codigo, out, err = correr("traer", "candados", "--conectar", "--vault", v, "--desde", AQUI)
             self.assertEqual(codigo, 0, err)
-            self.assertEqual(commits(v)[0], "void: estrella candados 0.1.0")
+            version = json.loads((AQUI / "estrellas" / "oficiales" / "candados" / "estrella.json").read_text(encoding="utf-8"))["version"]
+            self.assertEqual(commits(v)[0], "void: estrella candados " + version)
             self.assertTrue((v / "guardia.py").is_file() and (v / ".githooks" / "pre-commit").is_file())
             self.assertEqual((v / "README.md").read_bytes(), b"# Juguete\n")
             self.assertIn("python3 instalar.py", out)

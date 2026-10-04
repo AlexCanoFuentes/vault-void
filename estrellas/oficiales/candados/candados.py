@@ -29,16 +29,28 @@ SECRETOS = [(re.compile(p), q) for p, q in SECRETOS]
 
 # Lo que un agente no hace nunca sin que la persona lo ejecute ella misma.
 ESCAPE = "CANDADOS_A_PROPOSITO=1"
+# Opciones globales de git entre `git` y la orden: -C dir, -c clave=valor, --git-dir=...
+G = r"(\s+(-[cC]\s*\S+|--?[A-Za-z][\w-]*(=\S+)?))*"
 PROHIBIDOS = [
     (r"(^|[\s;&|(])--no-verify\b", "--no-verify se salta los candados de git"),
     (re.escape(ESCAPE), "el escape de los candados es para la persona, no para el agente"),
-    (r"\bgit\s+push\b[^;&|]*(\s--force\b|\s--force-with-lease\b|\s-f\b|\s-[a-zA-Z]*f[a-zA-Z]*\b|\s\+\S)", "push forzado: borraria trabajo de otro"),
-    (r"\bgit\s+push\b[^;&|]*(\s--delete\s+\S*\s*(main|master)\b|\s:(main|master)\b)", "borrar la rama principal en el remoto"),
-    (r"\bgit\s+reset\s+[^;&|]*--hard\b", "reset --hard borra trabajo sin dejar rastro"),
-    (r"\bgit\s+clean\b[^;&|]*\s-[a-zA-Z]*f", "git clean borra ficheros que pueden ser de otro"),
+    # Las opciones globales (`git -C dir`, `git -c clave=valor`) van entre `git` y la orden: sin
+    # contarlas, `git -C . push -f` pasaba. Y `-c core.hooksPath=` apaga los hooks de git para esa
+    # orden: era una linea entre el agente y un push forzado. Lo cazo una revision de Codex (3-oct).
+    (r"\bgit\b[^;&|\n]*\s-c\s*['\"]?core\.hookspath", "cambiar core.hooksPath apaga los candados de git"),
+    (r"GIT_CONFIG_(KEY_\d+|PARAMETERS)\b[^;&|\n]*hookspath", "cambiar core.hooksPath por el entorno apaga los candados de git"),
+    (r"\bgit" + G + r"\s+config\b([^;&|\n]*\s--(unset|unset-all|remove-section)\b[^;&|\n]*core\.hookspath"
+     r"|[^;&|\n]*core\.hookspath\s+(?!\.githooks\s*($|[;&|]))[^\s-])", "solo vale `git config core.hooksPath .githooks`"),
+    (r"\bchmod\b[^;&|\n]*\.githooks", "git ignora un hook que no es ejecutable"),
+    (r"\bgit" + G + r"\s+commit\b[^;&|\n]*\s-[a-zA-Z]*n[a-zA-Z]*\b", "`git commit -n` es --no-verify"),
+    (r"\bgit" + G + r"\s+push\b[^;&|]*(\s--force\b|\s--force-with-lease\b|\s-f\b|\s-[a-zA-Z]*f[a-zA-Z]*\b|\s\+\S|\s--mirror\b)", "push forzado: borraria trabajo de otro"),
+    (r"\bgit" + G + r"\s+push\b[^;&|]*(\s(--delete|-d)\s+\S*\s*(main|master)\b|\s:(refs/heads/)?(main|master)\b)", "borrar la rama principal en el remoto"),
+    (r"\bgit" + G + r"\s+reset\s+[^;&|]*--hard\b", "reset --hard borra trabajo sin dejar rastro"),
+    (r"\bgit" + G + r"\s+clean\b[^;&|]*\s-[a-zA-Z]*f", "git clean borra ficheros que pueden ser de otro"),
+    (r"\bgh\s+api\b[^;&|\n]*git/refs[^;&|\n]*force", "forzar una rama por la API de GitHub no pasa por ningun hook"),
     (r"(^|[\s;&|(])rm\s+(-[a-zA-Z]*[rR][a-zA-Z]*|--recursive)\b", "borrado recursivo"),
 ]
-PROHIBIDOS = [(re.compile(p), q) for p, q in PROHIBIDOS]
+PROHIBIDOS = [(re.compile(p, re.I if "hookspath" in p else 0), q) for p, q in PROHIBIDOS]
 
 
 def raiz():

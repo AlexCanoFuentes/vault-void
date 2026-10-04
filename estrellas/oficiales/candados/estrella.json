@@ -2,7 +2,7 @@
   "formato": 1,
   "nombre": "candados",
   "titulo": "Candados para agentes",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "nivel": "oficiales",
   "autor": "AlexCanoFuentes",
   "regla": "Ningún agente fuerza, borra ni se salta los candados: si de verdad hace falta, lo hace la persona desde su terminal.",
@@ -62,9 +62,9 @@
       "python",
       "probar.py"
     ],
-    "comprobaciones": 33,
-    "rojos": 21,
-    "sabotaje": "Repite los 17 rojos de la guardia contra una guardia vacía y comprueba que dejan de cazar. Los 4 rojos de git cuentan solo si el mensaje dice CANDADO, pero no tienen sabotaje propio."
+    "comprobaciones": 44,
+    "rojos": 29,
+    "sabotaje": "Repite los 25 rojos de la guardia contra una guardia vacía y comprueba que dejan de cazar. Los 4 rojos de git cuentan solo si el mensaje dice CANDADO, pero no tienen sabotaje propio."
   },
   "vive_en": "candados.py:32",
   "uso": {
@@ -87,10 +87,10 @@
     "CLAUDE.md": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49",
     "README.md": "87a2f2bd8a054b4aaa6e822df12da320bc2dec113e60712455e35c4c77aef375",
     "candados.json": "210c5e07dfc9d11b30fc10a588a3a6e07a7cd44f14e1197ec3a2e9b08270f89c",
-    "candados.py": "9658cc956049d179ad7b152384a0865ff4e7a398235b7600418bce6d366ed2cf",
-    "guardia.py": "176a1e99984d381dedcfd2d70b153aba8226d5cddf76f272a038aa652d2be789",
+    "candados.py": "3cfeef5893c7e795973a314f31e510d95180a9e89090fbdb54b1e138947640d4",
+    "guardia.py": "e1474d2e87ad5da5f95e8f9027f4fd5840fcba52a9d4f30e2422a0ce0bd09428",
     "instalar.py": "3407696fe58783cfb2eadf907b3948c5a8bfa7720885a911258ab8d8d6c7217e",
     "mesa.py": "baf7726753df334b92ac48f5849008dfc49475f5d06efa1209e4a6be60313992",
-    "probar.py": "e092d858e4659af2b11bf73701628d5ae1273641cd0cd6a7efad5a6c1c2dbbde"
+    "probar.py": "1de423b8389da1bba47ff7900e73544ce26470da0154a12690f46a07bc649675"
   }
 }

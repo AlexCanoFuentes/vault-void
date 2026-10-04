@@ -56,6 +56,15 @@ ROJOS = [
     ("Codex: token en un parche", parche("*** Add File: notas.md", "+k=" + TOKEN)),
     ("Codex: quitar líneas de lo que solo crece", parche("*** Update File: docs/bitacora.md", "@@", "-a", "+b")),
     ("Codex: borrar lo que solo crece", parche("*** Delete File: docs/decisiones/001.md")),
+    # Las de la revision de Codex del 3-oct, mas las que salieron al comprobarla ejecutando:
+    ("hooksPath apagado + push forzado", bash("git -c core.hooksPath=/dev/null push --force origin main")),
+    ("hooksPath apagado en un commit", bash("git -c 'core.hooksPath=/dev/null' commit -m x")),
+    ("hooksPath por el entorno", bash("GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/x git push")),
+    ("hooksPath cambiado a mano", bash("git config core.hooksPath /dev/null")),
+    ("push forzado con -C", bash("git -C . push -f origin main")),
+    ("commit -n (es --no-verify)", bash("git commit -nm x")),
+    ("chmod de .githooks", bash("chmod -x .githooks/pre-push")),
+    ("Claude: cambiar una línea de lo que solo crece", {"tool_name": "Edit", "tool_input": {"file_path": "docs/bitacora.md", "old_string": "a\nb", "new_string": "a\nc"}}),
 ]
 VERDES = [
     ("un comando normal", bash("git status")),
@@ -65,6 +74,9 @@ VERDES = [
     ("Claude: añadir a lo que solo crece", {"tool_name": "Edit", "tool_input": {"file_path": "docs/bitacora.md", "old_string": "a", "new_string": "a\nb"}}),
     ("Codex: añadir a lo que solo crece", parche("*** Update File: docs/bitacora.md", "@@", "+una línea nueva")),
     ("Codex: un fichero nuevo normal", parche("*** Add File: notas.md", "+hola")),
+    ("git config core.hooksPath .githooks", bash("git config core.hooksPath .githooks")),
+    ("leer core.hooksPath", bash("git config --get core.hooksPath")),
+    ("git -C otra-carpeta log", bash("git -C ../otro log -3")),
     ("entrada rota: falla abierta", None),
 ]
 

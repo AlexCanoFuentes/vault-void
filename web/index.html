@@ -12,81 +12,107 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 /*
-  VOID · primer prototipo [Alex, 4-oct: «al tragarse la landing, a traves de un agujero blanco llegas al
-  Void, que tendra un estilo vacio negro, al que le vamos a ir añadiendo cada seccion con su propio diseño»].
+  VOID · fase 1, la constelación [Alex, 4-oct: «al tragarse la landing, a traves de un agujero blanco llegas
+  al Void, que tendra un estilo vacio negro, al que le vamos a ir añadiendo cada seccion con su propio diseño»
+  · 5-oct: «vamos directos»].
 
   Un solo mundo, a propósito: Void es un vacío, así que es negro siempre (no hay modo claro).
-  Se llega por un agujero blanco que escupe la retícula de cuaderno que se tragó la landing; la retícula
-  se deshace y queda el vacío. Cada sección de Void es un objeto en ese vacío, con su propio diseño.
-  Hoy hay uno: la primera estrella. El violeta es el mismo reactivo que corre por la landing.
+  Se llega por un agujero blanco que escupe la retícula que se tragó la landing. Cada capa de Void es un
+  objeto en el vacío (el mapa vive en el «Plano unificado del vault»). Hoy hay tres:
+    · la constelación: el catálogo, leído en vivo del repo público. Cada estrella, una luz.
+      Color = nivel (oficial violeta, socio ámbar, comunidad blanco). Tamaño = vaults que la usan.
+    · el anillo: la puerta. La liga grande vive dentro; la pequeña orbita fuera.
+    · el telescopio: buscas por lo que se te ha roto, no por el nombre, y se encienden las que lo resuelven.
+  El violeta es el mismo reactivo que corre por la landing.
 */
 :root{
   --vacio:#050506; --tinta:#EDEAF2; --tinta-2:#A9A3B5; --tenue:#6D6878; --linea:#221F29;
-  --reactivo:#B06BFF; --reactivo-2:#D9B8FF; --rojo:#F0604F;
+  --reactivo:#B06BFF; --reactivo-2:#D9B8FF; --ambar:#FFB43A; --rojo:#F0604F;
   --serif:"Instrument Serif",Georgia,"Times New Roman",serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
 html,body{height:100%}
-@media(max-width:699px){:root{--my:30%}}
+@media(max-width:699px){:root{--my:20%}}
 body{margin:0;background:var(--vacio);color:var(--tinta);font:15px/1.6 var(--mono);-webkit-font-smoothing:antialiased;overflow:hidden}
 #cielo{position:fixed;inset:0;width:100%;height:100%;display:block}
 .escena{position:fixed;inset:0;padding:env(safe-area-inset-top,0px) 16px env(safe-area-inset-bottom,0px)}
 
-/* el nombre y la única frase: aparecen cuando el agujero blanco se apaga */
-.marca{position:absolute;left:0;right:0;top:var(--my,38%);transform:translateY(-50%);text-align:center;pointer-events:none}
-.marca h1{margin:0;font:400 clamp(52px,11vw,124px)/.95 var(--serif);letter-spacing:-.025em;text-wrap:balance}
+.marca{position:absolute;left:0;right:0;top:var(--my,24%);transform:translateY(-50%);text-align:center;pointer-events:none}
+.marca h1{margin:0;font:400 clamp(48px,9vw,112px)/.95 var(--serif);letter-spacing:-.025em;text-wrap:balance}
 .marca h1 em{font-style:italic;color:transparent;-webkit-text-stroke:1px var(--tinta)}
-.marca p{margin:18px auto 0;max-width:30ch;font:400 clamp(13px,1.6vw,15px)/1.55 var(--mono);color:var(--tinta-2);letter-spacing:.02em}
+.marca p{margin:16px auto 0;max-width:32ch;font:400 clamp(13px,1.5vw,14.5px)/1.55 var(--mono);color:var(--tinta-2);letter-spacing:.02em}
 .marca p b{color:var(--tinta);font-weight:500}
-.js .marca h1,.js .marca p,.js .pie,.js .estrella{opacity:0;transition:opacity 1.6s ease,transform 1.6s cubic-bezier(.2,.7,.2,1)}
+.js .marca h1,.js .marca p,.js .pie,.js .telescopio,.js .astro{opacity:0;transition:opacity 1.6s ease,transform 1.6s cubic-bezier(.2,.7,.2,1)}
 .js .marca h1{transform:scale(.96)}
 .listo .marca h1{opacity:1;transform:none}
-.listo .marca p{opacity:1;transition-delay:.5s}
-.listo .estrella{opacity:1;transition-delay:1.1s}
-.listo .pie{opacity:1;transition-delay:1.6s}
+.listo .marca p{opacity:1;transition-delay:.4s}
+.listo .astro{opacity:var(--vis,1);transition-delay:.9s;transition-duration:1.2s}
+.listo .telescopio{opacity:1;transition-delay:1.3s}
+.listo .pie{opacity:1;transition-delay:1.7s}
+.buscando .astro{transition-delay:0s!important;transition-duration:.45s!important}
 
-/* la primera estrella: una luz en el vacío. Se toca y se abre. */
-.estrella{position:absolute;left:var(--ex,68%);top:var(--ey,70%);width:64px;height:64px;margin:-32px 0 0 -32px;border:0;padding:0;
+/* una estrella del catálogo: una luz que se toca */
+.astro{position:absolute;left:var(--x);top:var(--y);width:56px;height:56px;margin:-28px 0 0 -28px;border:0;padding:0;
   background:transparent;cursor:pointer;border-radius:50%;-webkit-tap-highlight-color:transparent}
-.estrella .luz{position:absolute;left:50%;top:50%;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;background:#fff;
-  box-shadow:0 0 0 2px var(--reactivo-2),0 0 18px 4px var(--reactivo),0 0 60px 14px rgba(176,107,255,.35);animation:late 3.2s ease-in-out infinite}
-@keyframes late{50%{box-shadow:0 0 0 2px var(--reactivo-2),0 0 26px 7px var(--reactivo),0 0 90px 22px rgba(176,107,255,.42)}}
-.estrella .rot{position:absolute;left:50%;top:calc(50% + 22px);transform:translateX(-50%);white-space:nowrap;font:500 10.5px var(--mono);
-  letter-spacing:.16em;text-transform:uppercase;color:var(--tinta-2)}
-.estrella:hover .rot,.estrella:focus-visible .rot{color:var(--tinta)}
-.estrella:focus-visible{outline:1px solid var(--reactivo-2);outline-offset:6px}
+.astro .luz{position:absolute;left:50%;top:50%;width:var(--d,9px);height:var(--d,9px);transform:translate(-50%,-50%);border-radius:50%;background:#fff;
+  box-shadow:0 0 0 2px var(--c2),0 0 18px 4px var(--c),0 0 60px 14px var(--c3);animation:late 3.2s ease-in-out infinite}
+@keyframes late{50%{box-shadow:0 0 0 2px var(--c2),0 0 26px 7px var(--c),0 0 90px 22px var(--c3)}}
+.astro .rot{position:absolute;left:50%;top:calc(50% + 20px);transform:translateX(-50%);white-space:nowrap;font:500 10px var(--mono);
+  letter-spacing:.14em;text-transform:uppercase;color:var(--tinta-2);transition:color .3s}
+.astro:hover .rot,.astro:focus-visible .rot,.astro.encendida .rot{color:var(--tinta)}
+.astro:focus-visible{outline:1px solid var(--reactivo-2);outline-offset:6px}
+.astro[data-nivel="oficiales"]{--c:var(--reactivo);--c2:var(--reactivo-2);--c3:rgba(176,107,255,.35)}
+.astro[data-nivel="socio"]{--c:var(--ambar);--c2:#FFD796;--c3:rgba(255,180,58,.3)}
+.astro[data-nivel="comunidad"]{--c:#cfcbd8;--c2:#fff;--c3:rgba(220,215,235,.22)}
 
-/* lo que dice la estrella al abrirse: tres líneas llanas y su enlace */
-.ficha{position:absolute;left:var(--fx,50%);top:var(--fy,50%);width:min(340px,calc(100vw - 32px));padding:18px 18px 16px;
-  background:rgba(12,10,16,.82);border:1px solid var(--linea);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+/* la ficha de una estrella */
+.ficha{position:absolute;left:var(--fx,50%);top:var(--fy,50%);width:min(360px,calc(100vw - 32px));max-height:calc(100% - 32px);overflow:auto;padding:18px 18px 16px;
+  background:rgba(12,10,16,.9);border:1px solid var(--linea);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:5;
   opacity:0;transform:translateY(8px);pointer-events:none;transition:opacity .45s ease,transform .45s cubic-bezier(.2,.7,.2,1)}
 .ficha.abierta{opacity:1;transform:none;pointer-events:auto}
 .ficha .n{margin:0 0 4px;font:500 10px var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--reactivo-2)}
-.ficha h2{margin:0 0 10px;font:400 30px/1.05 var(--serif);letter-spacing:-.01em}
+.ficha h2{margin:0 0 10px;font:400 30px/1.05 var(--serif);letter-spacing:-.01em;padding-right:24px}
 .ficha p{margin:0 0 9px;color:var(--tinta-2);font-size:13px;line-height:1.6}
-.ficha a{display:inline-block;margin-top:6px;color:var(--tinta);text-decoration:none;font:500 12.5px var(--mono);border-bottom:1px solid var(--reactivo);padding-bottom:2px}
+.ficha .dato{display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--linea);padding:8px 0 0;margin:10px 0 0;font-size:11.5px;color:var(--tenue)}
+.ficha .dato b{color:var(--tinta);font-weight:500}
+.ficha .orden{display:flex;align-items:stretch;gap:0;margin:12px 0 4px;border:1px solid var(--linea)}
+.ficha .orden code{flex:1;min-width:0;padding:8px 10px;font:12px var(--mono);color:var(--tinta);white-space:nowrap;overflow-x:auto}
+.ficha .orden button{border:0;border-left:1px solid var(--linea);background:transparent;color:var(--tinta-2);font:500 11px var(--mono);padding:0 12px;cursor:pointer}
+.ficha .orden button:hover{color:var(--tinta)}
+.ficha a{display:inline-block;margin-top:8px;color:var(--tinta);text-decoration:none;font:500 12.5px var(--mono);border-bottom:1px solid var(--reactivo);padding-bottom:2px}
 .ficha a:hover{border-bottom-color:var(--tinta)}
 .ficha .cerrar{position:absolute;right:8px;top:6px;width:32px;height:32px;border:0;background:transparent;color:var(--tenue);font:400 20px var(--mono);cursor:pointer}
 .ficha .cerrar:hover{color:var(--tinta)}
 
+/* el telescopio: se busca por lo que se ha roto */
+.telescopio{position:absolute;left:50%;bottom:calc(52px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(520px,calc(100vw - 32px));z-index:4}
+.telescopio label{display:block;margin:0 0 8px;font:500 10px var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--tenue);text-align:center}
+.telescopio .lente{display:flex;align-items:center;gap:10px;border:1px solid var(--linea);background:rgba(10,9,14,.75);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+  padding:0 14px;border-radius:999px;transition:border-color .3s}
+.telescopio .lente:focus-within{border-color:var(--reactivo)}
+.telescopio .ojo{width:10px;height:10px;border-radius:50%;border:1.5px solid var(--tinta-2);flex:none}
+.telescopio input{flex:1;min-width:0;background:transparent;border:0;outline:0;color:var(--tinta);font:400 14px var(--mono);padding:12px 0}
+.telescopio input::placeholder{color:var(--tenue)}
+.telescopio .eco{margin:8px 0 0;min-height:1.6em;text-align:center;font-size:12px;color:var(--tinta-2)}
+.telescopio .eco a{color:var(--tinta);text-decoration:none;border-bottom:1px solid var(--reactivo)}
+
 .pie{position:absolute;left:16px;right:16px;bottom:calc(14px + env(safe-area-inset-bottom,0px));display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
   font:400 11px var(--mono);letter-spacing:.06em;color:var(--tenue)}
-.ficha.abierta ~ .pie{opacity:0!important;transition-delay:0s!important}   /* la ficha abierta manda; el pie vuelve al cerrarla */
+.ficha.abierta ~ .pie{opacity:0!important;transition-delay:0s!important}
 .pie a{color:var(--tinta-2);text-decoration:none;border-bottom:1px solid var(--linea)}
 .pie a:hover{color:var(--tinta)}
 .saltar{position:absolute;right:16px;top:calc(14px + env(safe-area-inset-top,0px));font:400 11px var(--mono);letter-spacing:.08em;color:var(--tenue);
   background:none;border:0;cursor:pointer;transition:opacity .6s}
 .listo .saltar{opacity:0;pointer-events:none}
+.sinjs{display:none}
 
-/* sin JS: la página se lee igual, quieta */
 html:not(.js) body{overflow:auto}
-html:not(.js) .escena{position:static;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:48px;padding:48px 16px}
-html:not(.js) .marca,html:not(.js) .estrella,html:not(.js) .pie{position:static;transform:none}
-html:not(.js) .estrella{margin:0}
-html:not(.js) .ficha{position:static;opacity:1;transform:none;pointer-events:auto}
-html:not(.js) #cielo,html:not(.js) .saltar{display:none}
-html:not(.js) .solo-js{display:none}
+html:not(.js) .escena{position:static;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:40px;padding:48px 16px}
+html:not(.js) .marca,html:not(.js) .pie{position:static;transform:none}
+html:not(.js) #cielo,html:not(.js) .saltar,html:not(.js) .telescopio,html:not(.js) .ficha{display:none}
+html:not(.js) .sinjs{display:block;max-width:420px;color:var(--tinta-2);font-size:13px}
+html:not(.js) .sinjs a{color:var(--tinta)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 <script>document.documentElement.classList.add("js");</script>
@@ -99,76 +125,158 @@ html:not(.js) .solo-js{display:none}
     <p>Tu vault no sube aquí. <b>Nunca.</b><br>Aquí solo viajan las piezas.</p>
   </div>
 
-  <button class="estrella" id="estrella" type="button" aria-expanded="false" aria-controls="ficha">
-    <span class="luz" aria-hidden="true"></span><span class="rot">la primera estrella</span>
-  </button>
+  <div id="estrellas" aria-label="Las estrellas del catálogo"></div>
 
-  <section class="ficha" id="ficha" aria-labelledby="ficha-t">
-    <button class="cerrar solo-js" id="cerrar" type="button" aria-label="Cerrar">×</button>
-    <p class="n">Estrella 01 · gratis</p>
-    <h2 id="ficha-t">Candados para dos IA</h2>
-    <p>Cuando dos asistentes de IA trabajan en el mismo proyecto, se pisan. Esta plantilla les pone los mismos candados a los dos.</p>
-    <p>Trae una prueba que intenta forzar cada candado. Codex le encontró un agujero; ya está cerrado.</p>
-    <a href="https://github.com/AlexCanoFuentes/vault-void/tree/main/estrellas/oficiales/candados" rel="noopener">Ver la plantilla →</a>
+  <section class="ficha" id="ficha" aria-live="polite" aria-labelledby="ficha-t">
+    <button class="cerrar" id="cerrar" type="button" aria-label="Cerrar">×</button>
+    <p class="n" id="ficha-n"></p>
+    <h2 id="ficha-t"></h2>
+    <p id="ficha-r"></p>
+    <p id="ficha-o"></p>
+    <div class="orden"><code id="ficha-c"></code><button type="button" id="copiar">copiar</button></div>
+    <p class="dato"><span id="ficha-d1"></span><span id="ficha-d2"></span></p>
+    <a id="ficha-a" href="https://github.com/AlexCanoFuentes/vault-void" rel="noopener">Ver la plantilla →</a>
   </section>
+
+  <div class="telescopio" id="telescopio">
+    <label for="busca">el telescopio</label>
+    <div class="lente"><span class="ojo" aria-hidden="true"></span>
+      <input id="busca" type="search" autocomplete="off" spellcheck="false" placeholder="¿Qué se te ha roto?" aria-describedby="eco"></div>
+    <p class="eco" id="eco" aria-live="polite"></p>
+  </div>
+
+  <p class="sinjs">La primera estrella: <a href="https://github.com/AlexCanoFuentes/vault-void/tree/main/estrellas/oficiales/candados">candados para dos IA</a>, para que dos asistentes de IA trabajen en el mismo proyecto sin pisarse.</p>
 
   <button class="saltar" id="saltar" type="button">saltar</button>
   <footer class="pie">
     <span>Vault Void · experimental · de <a href="https://alexcanofuentes.com" rel="noopener">LexLabs</a></span>
-    <span>Tenerife</span>
+    <span><a href="https://github.com/AlexCanoFuentes/vault-void" rel="noopener">el repo</a> · Tenerife</span>
   </footer>
 </main>
 
 <script>
 (function(){
   var red=matchMedia("(prefers-reduced-motion: reduce)").matches;
-  var root=document.documentElement, cv=document.getElementById("cielo"), est=document.getElementById("estrella"),
-      ficha=document.getElementById("ficha"), cerrar=document.getElementById("cerrar"), saltar=document.getElementById("saltar");
+  var root=document.documentElement, cv=document.getElementById("cielo"), capa=document.getElementById("estrellas"),
+      ficha=document.getElementById("ficha"), busca=document.getElementById("busca"), eco=document.getElementById("eco");
+  var REPO="https://github.com/AlexCanoFuentes/vault-void";
+  // Se lee del repo público en vivo: lo que hay en main es lo que se ve. Si GitHub no contesta, esta copia mínima.
+  var CATALOGO="https://raw.githubusercontent.com/AlexCanoFuentes/vault-void/main/catalogo.json";
+  var RESPALDO={estrellas:{candados:{titulo:"Candados para agentes",nivel:"oficiales",liga:"grande",autor:"AlexCanoFuentes",
+    resuelve:{frase:"Claude Code y Codex trabajan en el mismo repositorio con los mismos candados: sin pisarse el trabajo, sin meter claves en un commit y sin reescribir lo que solo crece."},
+    nacio_de:[{que_paso:"Dos agentes de IA en el mismo repositorio, con los candados escritos solo para uno de ellos."}],
+    kernel:{total:85},uso:{vaults:0},ruta:"estrellas/oficiales/candados",buscar:"candados para agentes dos agentes se pisan claude code codex"}}};
+  var NIVEL={oficiales:"oficial",socio:"socio",comunidad:"comunidad"};
+  var lista=[], abierta=null;
 
-  // ── la estrella: dónde vive y lo que dice al abrirse
-  function coloca(){
-    var w=innerWidth, h=innerHeight, movil=w<700;
-    var ex=movil?.5:.7, ey=movil?.6:.72;
-    root.style.setProperty("--ex",(ex*100)+"%"); root.style.setProperty("--ey",(ey*100)+"%");
-    // en el PC la ficha se abre al lado de la estrella; en el móvil, justo debajo, sin tapar el nombre
-    var fw=Math.min(340,w-32), fx=movil?(w-fw)/2:Math.max(16,Math.min(w-fw-16,ex*w-fw-104)), fy=movil?Math.min(h-306,ey*h+52):Math.max(16,ey*h-150);
-    ficha.style.setProperty("--fx",fx+"px"); ficha.style.setProperty("--fy",fy+"px");
-    return {x:ex*w,y:ey*h};
+  function sinTildes(s){return String(s||"").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g,"");}
+  function h(s){var x=2166136261;for(var i=0;i<s.length;i++){x^=s.charCodeAt(i);x=Math.imul(x,16777619);}return (x>>>0)/4294967295;}
+
+  // ── el anillo y dónde vive cada estrella: el sitio sale de su nombre, así no salta entre visitas
+  var A={x:0,y:0,r:0};
+  function geometria(){
+    var w=innerWidth, hh=innerHeight, movil=w<700;
+    A.x=w*.5; A.y=hh*(movil?.47:.55); A.r=Math.min(w*(movil?.4:.26),hh*(movil?.17:.2));
+    lista.forEach(function(e){
+      var a=h(e.id)*Math.PI*2, f=e.liga==="grande"?.32+.5*h(e.id+"r"):1.25+.25*h(e.id+"r");
+      if(lista.length===1) {a=-.35; f=.55;}
+      e.x=A.x+Math.cos(a)*A.r*f*(movil?1:1.5); e.y=A.y+Math.sin(a)*A.r*f;
+      e.el.style.setProperty("--x",e.x+"px"); e.el.style.setProperty("--y",e.y+"px");
+    });
+    if(abierta) coloca(abierta);
   }
-  function abre(v){ficha.classList.toggle("abierta",v); est.setAttribute("aria-expanded",v?"true":"false"); if(v) ficha.querySelector("a").focus({preventScroll:true});}
-  est.addEventListener("click",function(){abre(!ficha.classList.contains("abierta"));});
-  cerrar.addEventListener("click",function(){abre(false); est.focus();});
-  addEventListener("keydown",function(e){if(e.key==="Escape"&&ficha.classList.contains("abierta")){abre(false); est.focus();}});
 
-  // ── el cielo: agujero blanco al llegar, y luego el vacío con su polvo de estrellas
-  var gl=null, U={}, t0=performance.now(), dpr=1, W=0, H=0, raf=0, mx=.5, my=.5, pos=coloca(), salto=0;
-  var FS="precision highp float;uniform vec2 S,E,M;uniform float t,dpr,salto;"+
+  // ── la ficha
+  function coloca(e){
+    var w=innerWidth, hh=innerHeight, movil=w<700, fw=Math.min(360,w-32), fx, fy;
+    var fh=ficha.offsetHeight||420;   // con su altura real: que el enlace del final nunca quede fuera de la pantalla
+    if(movil){fx=(w-fw)/2; fy=Math.max(16,Math.min(hh-fh-16,e.y+40));}
+    else{fx=e.x>w/2?e.x-fw-90:e.x+90; fx=Math.max(16,Math.min(w-fw-16,fx)); fy=Math.max(16,Math.min(hh-fh-16,e.y-150));}
+    ficha.style.setProperty("--fx",fx+"px"); ficha.style.setProperty("--fy",fy+"px");
+  }
+  function abre(e){
+    if(!e){ficha.classList.remove("abierta"); if(abierta) abierta.el.setAttribute("aria-expanded","false"); abierta=null; return;}
+    var d=e.d, k=(d.kernel&&d.kernel.total)!=null?d.kernel.total:"—", usos=(d.uso&&d.uso.vaults)||0;
+    document.getElementById("ficha-n").textContent="Estrella "+NIVEL[d.nivel]+" · gratis";
+    document.getElementById("ficha-t").textContent=d.titulo;
+    document.getElementById("ficha-r").textContent=(d.resuelve&&d.resuelve.frase)||"";
+    var o=(d.nacio_de&&d.nacio_de[0]&&d.nacio_de[0].que_paso)||"";
+    document.getElementById("ficha-o").textContent=o?"Nació de esto: "+o:"";
+    document.getElementById("ficha-c").textContent="python herramientas/void.py traer "+e.id;
+    document.getElementById("ficha-d1").innerHTML="La puerta: <b>"+k+"</b> de 100";
+    document.getElementById("ficha-d2").innerHTML="En <b>"+usos+"</b> vault"+(usos===1?"":"s");
+    document.getElementById("ficha-a").href=REPO+"/tree/main/"+(d.ruta||"");
+    if(abierta&&abierta!==e) abierta.el.setAttribute("aria-expanded","false");
+    abierta=e; e.el.setAttribute("aria-expanded","true"); coloca(e); ficha.classList.add("abierta");
+  }
+  document.getElementById("cerrar").addEventListener("click",function(){var e=abierta; abre(null); if(e) e.el.focus();});
+  addEventListener("keydown",function(ev){if(ev.key==="Escape"&&abierta){var e=abierta; abre(null); e.el.focus();}});
+  document.getElementById("copiar").addEventListener("click",function(){
+    var b=this, t=document.getElementById("ficha-c").textContent;
+    function hecho(){b.textContent="copiada"; setTimeout(function(){b.textContent="copiar";},1600);}
+    if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(hecho,function(){sel();}); else sel();
+    function sel(){var r=document.createRange(); r.selectNodeContents(document.getElementById("ficha-c")); var s=getSelection(); s.removeAllRanges(); s.addRange(r);}
+  });
+
+  // ── el telescopio: se busca por lo que se ha roto. Cada palabra tiene que estar en lo que describe el error.
+  function mira(){
+    var q=sinTildes(busca.value).trim(), pal=q.split(/\s+/).filter(function(p){return p.length>1;});
+    root.classList.toggle("buscando",pal.length>0);
+    var n=0;
+    lista.forEach(function(e){var ok=!pal.length||pal.every(function(p){return e.texto.indexOf(p)>=0;});
+      e.vis=ok?1:.12; e.el.style.setProperty("--vis",e.vis); e.el.classList.toggle("encendida",ok&&pal.length>0); if(ok) n++;});
+    if(!pal.length) eco.textContent="";
+    else if(n) eco.textContent=n===1?"Una estrella lo resuelve. Tócala.":n+" estrellas lo resuelven.";
+    else eco.innerHTML='Ninguna estrella lo resuelve todavía. <a href="https://alexcanofuentes.com" rel="noopener">Cuéntamelo</a> y quizá sea la siguiente.';
+  }
+  busca.addEventListener("input",mira);
+
+  // ── las estrellas, desde el catálogo
+  function monta(cat){
+    capa.innerHTML=""; lista=[];
+    Object.keys(cat.estrellas||{}).forEach(function(id){
+      var d=cat.estrellas[id], b=document.createElement("button"), usos=(d.uso&&d.uso.vaults)||0;
+      b.type="button"; b.className="astro"; b.dataset.nivel=d.nivel||"comunidad"; b.setAttribute("aria-expanded","false"); b.setAttribute("aria-controls","ficha");
+      b.style.setProperty("--d",(9+Math.min(10,Math.sqrt(usos)*2.4)).toFixed(1)+"px");
+      b.innerHTML='<span class="luz" aria-hidden="true"></span><span class="rot"></span>';
+      b.querySelector(".rot").textContent=d.titulo;
+      b.setAttribute("aria-label",d.titulo+", estrella "+NIVEL[d.nivel]);
+      var e={id:id,d:d,el:b,liga:d.liga,vis:1,texto:sinTildes((d.buscar||"")+" "+d.titulo)};
+      b.addEventListener("click",function(){abre(abierta===e?null:e);});
+      capa.appendChild(b); lista.push(e);
+    });
+    geometria(); mira();
+  }
+  monta(RESPALDO);
+  fetch(CATALOGO,{cache:"no-cache"}).then(function(r){return r.ok?r.json():null;}).then(function(c){if(c&&c.estrellas) monta(c);}).catch(function(){});
+
+  // ── el cielo: agujero blanco al llegar, el vacío, el anillo de la puerta y el halo de cada estrella
+  var gl=null, U={}, t0=performance.now(), dpr=1, W=0, H=0, raf=0, mx=.5, my=.5, salto=0, N=16;
+  var FS="precision highp float;uniform vec2 S,M;uniform vec3 Ani;uniform vec3 E[16];uniform vec3 C[16];uniform float t,dpr,salto;"+
     "float h21(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}"+
     "float cov(float p,float Q){float q=mod(p+.5,Q);float d=min(q,Q-q);return 1.-smoothstep(.5-.7/dpr,.5+.7/dpr,d);}"+
-    "void main(){vec2 f=vec2(gl_FragCoord.x,S.y*dpr-gl_FragCoord.y)/dpr;vec2 c=S*.5+vec2(0.,-S.y*.12);vec2 d=f-c;float r=length(d);"+
-    "float m=min(S.x,S.y);"+
-    // la llegada: 0 → 1 en unos 3 s (o de golpe si se salta)
-    "float a=clamp(max(t/3.2,salto),0.,1.);float e=1.-pow(1.-a,3.);"+
+    "void main(){vec2 f=vec2(gl_FragCoord.x,S.y*dpr-gl_FragCoord.y)/dpr;vec2 c=vec2(S.x*.5,S.y*.3);vec2 d=f-c;float r=length(d);"+
+    "float m=min(S.x,S.y);float a=clamp(max(t/3.2,salto),0.,1.);float e=1.-pow(1.-a,3.);"+
     "vec3 col=vec3(.0196,.0196,.0235);"+
-    // polvo de estrellas: fijo, con un parpadeo lento y un leve paralaje con el puntero
     "vec2 g=(f+(M-.5)*14.)/3.;vec2 id=floor(g/8.);vec2 fr=fract(g/8.)-.5;float s=h21(id);"+
     "float pz=step(.965,s)*smoothstep(.12,0.,length(fr-(vec2(h21(id+1.7),h21(id+3.1))-.5)*.6));"+
     "col+=vec3(.82,.8,.9)*pz*(.35+.35*sin(t*(.6+s*1.4)+s*40.))*smoothstep(.2,.9,e);"+
-    // la retícula que se tragó la landing sale escupida: lente al revés (empuja hacia fuera) y se deshace
     "float te=m*.22*(1.-e*.6);vec2 sc=f+d*(te*te)/max(r*r,1.);"+
     "float g1=max(cov(sc.x,24.),cov(sc.y,24.)),g2=max(cov(sc.x,120.),cov(sc.y,120.));"+
     "float ret=(g1*.35+g2*.65)*(1.-e)*smoothstep(m*.06,m*.3,r)*(1.-smoothstep(m*.3,m*(.6+1.4*e),r));"+
     "col+=mix(vec3(.85,.72,1.),vec3(.69,.42,1.),e)*ret*.55;"+
-    // el agujero blanco: un núcleo que deslumbra y se apaga, y ondas que salen hacia fuera
     "float nucleo=exp(-r/(m*(.02+.22*(1.-e))))*(1.-e*.97);"+
     "float ondas=pow(.5+.5*sin(r/m*38.-t*7.),6.)*exp(-r/(m*.45))*(1.-e)*.6;"+
     "col+=vec3(1.)*nucleo*1.6+vec3(.86,.75,1.)*ondas;"+
-    "col+=vec3(1.)*max(0.,1.-t*2.4)*(1.-salto);"+                                              // el destello del paso
-    // la primera estrella: un halo violeta en el polvo, que crece al llegar
-    "float de=length(f-E);col+=vec3(.69,.42,1.)*exp(-de/(m*.05))*.22*smoothstep(.55,1.,e);"+
+    "col+=vec3(1.)*max(0.,1.-t*2.4)*(1.-salto);"+
+    // el anillo de la puerta: una elipse tenue, con un brillo que la recorre despacio
+    "vec2 q=(f-Ani.xy)/vec2(Ani.z*(S.x<700.?1.:1.5),Ani.z);float an=atan(q.y,q.x);"+
+    "float ani=exp(-pow((length(q)-1.)*Ani.z/1.6,2.))*(.10+.18*pow(.5+.5*cos(an-t*.25),8.));col+=vec3(.69,.42,1.)*ani*smoothstep(.6,1.,e);"+
+    // el halo de cada estrella, con su color y su brillo (las que no casan con la búsqueda se apagan)
+    "for(int i=0;i<16;i++){float de=length(f-E[i].xy);col+=C[i]*exp(-de/(m*.045))*.22*E[i].z*smoothstep(.55,1.,e);}"+
     "gl_FragColor=vec4(col,1.);}";
   function inicia(){
-    try{gl=cv.getContext("webgl",{antialias:false,depth:false,stencil:false,powerPreference:"low-power"});}catch(e){gl=null;}
+    try{gl=cv.getContext("webgl",{antialias:false,depth:false,stencil:false,powerPreference:"low-power"});}catch(x){gl=null;}
     if(!gl) return false;
     function sh(tp,src){var x=gl.createShader(tp);gl.shaderSource(x,src);gl.compileShader(x);if(!gl.getShaderParameter(x,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(x));return x;}
     try{var hp=gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER,gl.HIGH_FLOAT);var fs=hp&&hp.precision>0?FS:FS.replace("highp","mediump");
@@ -176,22 +284,27 @@ html:not(.js) .solo-js{display:none}
       if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));gl.useProgram(p);
       var b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
       var aq=gl.getAttribLocation(p,"q");gl.enableVertexAttribArray(aq);gl.vertexAttribPointer(aq,2,gl.FLOAT,false,0,0);
-      ["S","E","M","t","dpr","salto"].forEach(function(n){U[n]=gl.getUniformLocation(p,n);});}catch(e){console.warn(e);gl=null;return false;}
+      ["S","M","Ani","E","C","t","dpr","salto"].forEach(function(n){U[n]=gl.getUniformLocation(p,n);});}catch(x){console.warn(x);gl=null;return false;}
     return true;
   }
+  var COLOR={oficiales:[.69,.42,1.],socio:[1.,.71,.23],comunidad:[.85,.83,.92]}, vis={};
   function tam(){W=innerWidth;H=innerHeight;dpr=Math.min(devicePixelRatio||1,(navigator.hardwareConcurrency||4)<=4?1:1.5);
-    cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);if(gl)gl.viewport(0,0,cv.width,cv.height);pos=coloca();}
+    cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);if(gl)gl.viewport(0,0,cv.width,cv.height);geometria();}
   function pinta(now){raf=0; if(document.hidden) return;
     var t=red?10:(now-t0)/1000;
-    if(gl){gl.uniform2f(U.S,W,H);gl.uniform2f(U.E,pos.x,pos.y);gl.uniform2f(U.M,mx,my);gl.uniform1f(U.t,t);gl.uniform1f(U.dpr,dpr);gl.uniform1f(U.salto,salto);
-      gl.drawArrays(gl.TRIANGLES,0,3);}
+    if(gl){
+      var E=new Float32Array(N*3), C=new Float32Array(N*3);
+      lista.slice(0,N).forEach(function(e,i){vis[e.id]=(vis[e.id]==null?e.vis:vis[e.id]+(e.vis-vis[e.id])*.12);
+        E[i*3]=e.x;E[i*3+1]=e.y;E[i*3+2]=vis[e.id]; var c=COLOR[e.d.nivel]||COLOR.comunidad; C[i*3]=c[0];C[i*3+1]=c[1];C[i*3+2]=c[2];});
+      gl.uniform2f(U.S,W,H);gl.uniform2f(U.M,mx,my);gl.uniform3f(U.Ani,A.x,A.y,A.r);gl.uniform3fv(U.E,E);gl.uniform3fv(U.C,C);
+      gl.uniform1f(U.t,t);gl.uniform1f(U.dpr,dpr);gl.uniform1f(U.salto,salto);gl.drawArrays(gl.TRIANGLES,0,3);}
     if((t>2.6||salto)&&!root.classList.contains("listo")) root.classList.add("listo");
     if(!red) raf=requestAnimationFrame(pinta);}
-  if(!inicia()){cv.style.background="radial-gradient(circle at 50% 38%,#1a1022 0,#050506 60%)"; root.classList.add("listo");}
+  if(!inicia()){cv.style.background="radial-gradient(circle at 50% 30%,#1a1022 0,#050506 60%)"; root.classList.add("listo");}
   tam(); addEventListener("resize",tam,{passive:true});
-  addEventListener("pointermove",function(e){mx=e.clientX/W;my=e.clientY/H;},{passive:true});
+  addEventListener("pointermove",function(ev){mx=ev.clientX/W;my=ev.clientY/H;},{passive:true});
   document.addEventListener("visibilitychange",function(){if(!document.hidden&&!raf) raf=requestAnimationFrame(pinta);});
-  saltar.addEventListener("click",function(){salto=1;});
+  document.getElementById("saltar").addEventListener("click",function(){salto=1;});
   if(red) root.classList.add("listo");
   raf=requestAnimationFrame(pinta);
 })();

@@ -43,6 +43,7 @@
   color-scheme:dark;
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{height:100%}
 @media(max-width:699px){:root{--my:20%}}
 body{margin:0;background:var(--vacio);color:var(--tinta);font:15px/1.6 var(--mono);-webkit-font-smoothing:antialiased;overflow:hidden}
@@ -76,6 +77,18 @@ body{margin:0;background:var(--vacio);color:var(--tinta);font:15px/1.6 var(--mon
 .astro[data-nivel="oficiales"]{--c:var(--reactivo);--c2:var(--reactivo-2);--c3:rgba(176,107,255,.35)}
 .astro[data-nivel="socio"]{--c:var(--ambar);--c2:#FFD796;--c3:rgba(255,180,58,.3)}
 .astro[data-nivel="comunidad"]{--c:#cfcbd8;--c2:#fff;--c3:rgba(220,215,235,.22)}
+
+/* la nebulosa: donde nacen las estrellas. Su gas es un fluido de verdad (webgl-fluid, MIT) */
+.nebulosa{position:absolute;left:var(--nx,20%);top:var(--ny,74%);width:var(--nd,300px);height:var(--nd,300px);transform:translate(-50%,-50%);
+  -webkit-mask-image:radial-gradient(circle,#000 30%,transparent 70%);mask-image:radial-gradient(circle,#000 30%,transparent 70%);z-index:1}
+.nebulosa canvas{width:100%;height:100%;display:block}
+.neb-rot{position:absolute;left:var(--nx,20%);top:calc(var(--ny,74%) + var(--nd,300px)*.28);transform:translateX(-50%);z-index:2;
+  border:0;background:transparent;cursor:pointer;font:500 10px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--tinta-2);padding:8px}
+.neb-rot:hover,.neb-rot:focus-visible{color:var(--tinta)}
+.js .nebulosa,.js .neb-rot{opacity:0;transition:opacity 2s ease}
+.listo .nebulosa{opacity:.95;transition-delay:1.6s}
+.listo .neb-rot{opacity:1;transition-delay:2s}
+.buscando .nebulosa{opacity:.25!important;transition-delay:0s!important}
 
 /* la ficha de una estrella */
 .ficha{position:absolute;left:var(--fx,50%);top:var(--fy,50%);width:min(360px,calc(100vw - 32px));max-height:calc(100% - 32px);overflow:auto;padding:18px 18px 16px;
@@ -137,6 +150,8 @@ html:not(.js) .sinjs a{color:var(--tinta)}
   </div>
 
   <div id="estrellas" aria-label="Las estrellas del catálogo"></div>
+  <div class="nebulosa" id="nebulosa" aria-hidden="true"><canvas id="gas"></canvas></div>
+  <button class="neb-rot" id="neb-rot" type="button" aria-controls="ficha" aria-expanded="false">la nebulosa · el taller</button>
 
   <section class="ficha" id="ficha" aria-live="polite" aria-labelledby="ficha-t">
     <button class="cerrar" id="cerrar" type="button" aria-label="Cerrar">×</button>
@@ -185,7 +200,11 @@ html:not(.js) .sinjs a{color:var(--tinta)}
   // El catálogo guarda la versión técnica; aquí va la que entiende cualquiera. Sin entrada, sale la del catálogo.
   var LLANO={candados:{titulo:"Candados para dos IA",
     frase:"Cuando dos asistentes de IA trabajan en el mismo proyecto, se pisan. Esta plantilla les pone los mismos candados a los dos.",
-    origen:"Las protecciones solo valían para una de las dos IA. La otra podía borrar sin querer el trabajo de la primera, o guardar una contraseña donde no debe."}};
+    origen:"Las protecciones solo valían para una de las dos IA. La otra podía borrar sin querer el trabajo de la primera, o guardar una contraseña donde no debe."},
+    nebulosa:{n:"La nebulosa · gratis",titulo:"Aquí nacen las estrellas",
+      frase:"Trae algo que te haya funcionado en tu vault. La nebulosa le quita lo tuyo (nombres, correos, claves), lo prueba en un vault vacío, le escribe la ficha y le pasa la puerta.",
+      origen:"Al final te dice qué le falta para entrar en el catálogo, en palabras normales.",
+      orden:"python taller.py tu-carpeta",enlace:"/blob/main/taller.py",enlaceTexto:"Ver el taller →",sinDato:true,sinPrefijo:true}};
   var lista=[], abierta=null;
 
   function sinTildes(s){return String(s||"").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g,"");}
@@ -193,6 +212,7 @@ html:not(.js) .sinjs a{color:var(--tinta)}
 
   // ── el anillo y dónde vive cada estrella: el sitio sale de su nombre, así no salta entre visitas
   var A={x:0,y:0,r:0};
+  var NEB={id:"nebulosa",d:{},x:0,y:0,el:null};
   function geometria(){
     var w=innerWidth, hh=innerHeight, movil=w<700;
     A.x=w*.5; A.y=hh*(movil?.47:.55); A.r=Math.min(w*(movil?.4:.26),hh*(movil?.17:.2));
@@ -202,6 +222,9 @@ html:not(.js) .sinjs a{color:var(--tinta)}
       e.x=A.x+Math.cos(a)*A.r*f*(movil?1:1.5); e.y=A.y+Math.sin(a)*A.r*f;
       e.el.style.setProperty("--x",e.x+"px"); e.el.style.setProperty("--y",e.y+"px");
     });
+    var nx=movil?w*.3:w*.2, ny=movil?hh*.735:hh*.74, nd=movil?130:Math.min(340,w*.24);
+    root.style.setProperty("--nx",nx+"px"); root.style.setProperty("--ny",ny+"px"); root.style.setProperty("--nd",nd+"px");
+    NEB.x=nx; NEB.y=ny+(movil?nd*.28:nd*.28);
     if(abierta) coloca(abierta);
   }
 
@@ -215,17 +238,18 @@ html:not(.js) .sinjs a{color:var(--tinta)}
   }
   function abre(e){
     if(!e){ficha.classList.remove("abierta"); if(abierta) abierta.el.setAttribute("aria-expanded","false"); abierta=null; return;}
-    var d=e.d, k=(d.kernel&&d.kernel.total)!=null?d.kernel.total:"—", usos=(d.uso&&d.uso.vaults)||0;
-    document.getElementById("ficha-n").textContent="Estrella "+NIVEL[d.nivel]+" · gratis";
+    var d=e.d, k=(d.kernel&&d.kernel.total)!=null?d.kernel.total:"—", usos=(d.uso&&d.uso.vaults)||0, L0=LLANO[e.id]||{};
+    document.getElementById("ficha-n").textContent=L0.n||("Estrella "+NIVEL[d.nivel]+" · gratis");
     var L=LLANO[e.id]||{};
     document.getElementById("ficha-t").textContent=L.titulo||d.titulo;
     document.getElementById("ficha-r").textContent=L.frase||(d.resuelve&&d.resuelve.frase)||"";
     var o=L.origen||(d.nacio_de&&d.nacio_de[0]&&d.nacio_de[0].que_paso)||"";
-    document.getElementById("ficha-o").textContent=o?"Nació de esto: "+o:"";
-    document.getElementById("ficha-c").textContent="python herramientas/void.py traer "+e.id;
+    document.getElementById("ficha-o").textContent=o?(L.sinPrefijo?o:"Nació de esto: "+o):"";
+    document.getElementById("ficha-c").textContent=L.orden||("python herramientas/void.py traer "+e.id);
+    document.querySelector(".ficha .dato").hidden=!!L.sinDato;
     document.getElementById("ficha-d1").innerHTML="La puerta: <b>"+k+"</b> de 100";
     document.getElementById("ficha-d2").innerHTML="En <b>"+usos+"</b> vault"+(usos===1?"":"s");
-    document.getElementById("ficha-a").href=REPO+"/tree/main/"+(d.ruta||"");
+    var en=document.getElementById("ficha-a"); en.href=REPO+(L.enlace||("/tree/main/"+(d.ruta||""))); en.textContent=L.enlaceTexto||"Ver la plantilla →";
     if(abierta&&abierta!==e) abierta.el.setAttribute("aria-expanded","false");
     abierta=e; e.el.setAttribute("aria-expanded","true"); coloca(e); ficha.classList.add("abierta");
     if(G) G.fromTo(ficha,{clipPath:"inset(0 0 100% 0)"},{clipPath:"inset(0 0 0% 0)",duration:.6,ease:"expo.out",clearProps:"clipPath"});
@@ -272,6 +296,19 @@ html:not(.js) .sinjs a{color:var(--tinta)}
     geometria(); mira();
   }
   monta(RESPALDO);
+  NEB.el=document.getElementById("neb-rot");
+  NEB.el.addEventListener("click",function(){abre(abierta===NEB?null:NEB);});
+  (function(){
+    var cv=document.getElementById("gas"); if(red||!cv) return;
+    function arranca(){ var sc=document.createElement("script"); sc.src="https://cdn.jsdelivr.net/npm/webgl-fluid@0.4.0/dist/webgl-fluid.umd.js";
+      sc.onload=function(){ try{ var r=cv.getBoundingClientRect(); cv.width=Math.round(r.width); cv.height=Math.round(r.height);
+        window.WebGLFluid(cv,{TRIGGER:"hover",IMMEDIATE:true,AUTO:true,INTERVAL:2600,SPLAT_COUNT:3,SIM_RESOLUTION:64,DYE_RESOLUTION:256,CAPTURE_RESOLUTION:128,
+          DENSITY_DISSIPATION:.45,VELOCITY_DISSIPATION:.25,CURL:28,SPLAT_RADIUS:.32,SPLAT_FORCE:2200,PRESSURE:.8,
+          COLORFUL:false,SPLAT_COLOR:{r:.24,g:.11,b:.42},SHADING:true,TRANSPARENT:true,BACK_COLOR:{r:0,g:0,b:0},
+          BLOOM:true,BLOOM_INTENSITY:.6,BLOOM_THRESHOLD:.4,SUNRAYS:false}); }catch(x){console.warn(x);} };
+      document.head.appendChild(sc); }
+    setTimeout(arranca,1800);   // después de la llegada: primero el agujero blanco, luego el gas
+  })();
   fetch(CATALOGO,{cache:"no-cache"}).then(function(r){return r.ok?r.json():null;}).then(function(c){if(c&&c.estrellas) monta(c);}).catch(function(){});
 
   // ── el cielo: agujero blanco al llegar, el vacío, el anillo de la puerta y el halo de cada estrella

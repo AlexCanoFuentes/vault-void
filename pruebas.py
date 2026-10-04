@@ -36,6 +36,7 @@ import void as REF  # noqa: E402  la versión buena, para montar los datos de la
 import regenerar_manifiesto  # noqa: E402
 import formato as REF_F  # noqa: E402
 import puerta as REF_P  # noqa: E402
+import taller as REF_T  # noqa: E402  la nebulosa: el taller de estrellas
 import regenerar_catalogo as REF_C  # noqa: E402
 
 VOID_PY = AQUI / "void.py"   # el fichero bajo prueba (el sabotaje lo cambia por uno roto)
@@ -43,6 +44,7 @@ V = REF                      # el módulo bajo prueba
 F = REF_F                    # formato.py bajo prueba
 P = REF_P                    # puerta.py bajo prueba
 C = REF_C                    # regenerar_catalogo.py bajo prueba
+T = REF_T                    # taller.py bajo prueba
 
 TMP_GLOBAL = None
 
@@ -1267,9 +1269,54 @@ class TraerElKit(unittest.TestCase):
             borrar(str(tmp))
 
 
+class Nebulosa(unittest.TestCase):
+    """El taller: convierte una carpeta en estrella, sin escribir nada fuera de ella."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="nebulosa-prueba-"))
+
+    def tearDown(self):
+        borrar(str(self.tmp))
+
+    def test_la_estrella_oficial_sale_lista(self):
+        c = self.tmp / "candados"
+        shutil.copytree(str(AQUI / "estrellas" / "oficiales" / "candados"), str(c), ignore=shutil.ignore_patterns("__pycache__"))
+        r = T.repasar(c, nivel="oficiales")
+        self.assertTrue(r["lista"], r)
+
+    def test_un_correo_no_sale(self):
+        c = self.tmp / "con-correo"
+        c.mkdir()
+        (c / "motor.py").write_text('print("ok")\n# escribe a alguien' + '@' + 'dominio-real.com\n', encoding="utf-8")
+        r = T.repasar(c, autor="AlexCanoFuentes")
+        self.assertFalse(r["lista"])
+        self.assertIn("quitar lo que la limpieza ha encontrado", r["falta"])
+
+    def test_sin_ficha_deja_un_borrador_y_no_esta_lista(self):
+        c = self.tmp / "sin-ficha"
+        c.mkdir()
+        (c / "motor.py").write_text('print("ok")\n', encoding="utf-8")
+        r = T.repasar(c)
+        self.assertTrue((c / "estrella.json").is_file())
+        self.assertFalse(r["lista"])
+        self.assertIn("rellenar lo que pone PENDIENTE en estrella.json", r["falta"])
+
+    def test_no_escribe_fuera_de_la_carpeta(self):
+        c = self.tmp / "aislada"
+        c.mkdir()
+        (c / "motor.py").write_text('print("ok")\n', encoding="utf-8")
+        antes = sorted(p.relative_to(self.tmp).as_posix() for p in self.tmp.rglob("*"))
+        T.repasar(c)
+        despues = sorted(p.relative_to(self.tmp).as_posix() for p in self.tmp.rglob("*"))
+        self.assertEqual(sorted(set(despues) - set(antes)), ["aislada/estrella.json"])
+
+
 # ---------------------------------------------------------------- sabotaje
 
 SABOTAJES = [
+    ("taller: no mira la limpieza",
+     [("    h = limpieza(carpeta, nombres)\n", "    h = []\n")],
+     ["Nebulosa.test_un_correo_no_sale"], "taller.py"),
     ("hash cambiado en el manifiesto: no comprueba la huella",
      [("if huella(datos) != esperado:", "if False:")],
      ["Actualizar.test_hash_cambiado_en_el_manifiesto", "Actualizar.test_fichero_cambiado_por_el_camino"]),
@@ -1400,7 +1447,7 @@ def razon(traza):
 
 def poner_bajo_prueba(fichero, modulo):
     """Cambia el módulo que usan las pruebas: el bueno o uno saboteado."""
-    global V, VOID_PY, F, P, C
+    global V, VOID_PY, F, P, C, T
     if fichero == "void.py":
         V, VOID_PY = modulo, Path(modulo.__file__)
     elif fichero == "formato.py":
@@ -1409,12 +1456,14 @@ def poner_bajo_prueba(fichero, modulo):
         P = modulo
     elif fichero == "regenerar_catalogo.py":
         C = modulo
+    elif fichero == "taller.py":
+        T = modulo
     else:
         raise ValueError(fichero)
 
 
 def buenos():
-    return {"void.py": REF, "formato.py": REF_F, "puerta.py": REF_P, "regenerar_catalogo.py": REF_C}
+    return {"void.py": REF, "formato.py": REF_F, "puerta.py": REF_P, "regenerar_catalogo.py": REF_C, "taller.py": REF_T}
 
 
 def sabotaje():

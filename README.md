@@ -100,3 +100,15 @@ python3 fugas.py                                # secretos, correos, teléfonos 
 python3 puerta.py --todas                       # todas las estrellas por la puerta
 python3 regenerar_catalogo.py --comprobar       # catalogo.json al día con estrellas/
 ```
+
+## La nebulosa: convertir algo de tu vault en una estrella
+
+Si algo te ha funcionado en tu vault y quieres compartirlo, pásalo por el taller:
+
+```
+python taller.py tu-carpeta
+```
+
+Busca lo tuyo que no puede salir (nombres, correos, teléfonos, claves, rutas de tu máquina), te deja un
+borrador de la ficha si no la tiene, la prueba en un vault vacío, le pasa la puerta y te dice qué le falta
+para entrar en el catálogo. No toca nada fuera de esa carpeta.

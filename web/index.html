@@ -48,6 +48,8 @@ html,body{height:100%}
 @media(max-width:699px){:root{--my:20%}}
 body{margin:0;background:var(--vacio);color:var(--tinta);font:15px/1.6 var(--mono);-webkit-font-smoothing:antialiased;overflow:hidden}
 #cielo{position:fixed;inset:0;width:100%;height:100%;display:block}
+/* el cielo profundo: estrellas a distintas profundidades con el color de su temperatura, y polvo en órbita (gravedad de Newton) */
+#hondo{position:fixed;inset:0;width:100%;height:100%;display:block;pointer-events:none;mix-blend-mode:screen}
 .escena{position:fixed;inset:0;padding:env(safe-area-inset-top,0px) 16px env(safe-area-inset-bottom,0px)}
 
 .marca{position:absolute;left:0;right:0;top:var(--my,24%);transform:translateY(-50%);text-align:center;pointer-events:none}
@@ -143,6 +145,7 @@ html:not(.js) .sinjs a{color:var(--tinta)}
 </head>
 <body>
 <canvas id="cielo" aria-hidden="true"></canvas>
+<canvas id="hondo" aria-hidden="true"></canvas>
 <main class="escena" id="escena">
   <div class="marca">
     <h1>Vault <em>Void</em></h1>
@@ -225,6 +228,7 @@ html:not(.js) .sinjs a{color:var(--tinta)}
     var nx=movil?w*.3:w*.2, ny=movil?hh*.735:hh*.74, nd=movil?130:Math.min(340,w*.24);
     root.style.setProperty("--nx",nx+"px"); root.style.setProperty("--ny",ny+"px"); root.style.setProperty("--nd",nd+"px");
     NEB.x=nx; NEB.y=ny+(movil?nd*.28:nd*.28);
+    if(hondo) hondo.polvoDe(lista);   // el polvo nace en órbita alrededor de donde estén ahora las estrellas
     if(abierta) coloca(abierta);
   }
 
@@ -311,6 +315,62 @@ html:not(.js) .sinjs a{color:var(--tinta)}
   })();
   fetch(CATALOGO,{cache:"no-cache"}).then(function(r){return r.ok?r.json():null;}).then(function(c){if(c&&c.estrellas) monta(c);}).catch(function(){});
 
+  // ── el cielo profundo [Alex, 5-oct: «Cielo profundo de verdad» · «fisica real»]
+  //  · cada estrella tiene una temperatura (más rojizas y frías que azules y calientes, como en la vecindad del Sol)
+  //    y su color es el de un cuerpo negro a esa temperatura; su brillo sigue una ley de potencias de magnitudes
+  //  · están a distintas profundidades: se mueven con paralaje al mover el puntero o el dedo
+  //  · alrededor de cada estrella del catálogo orbita polvo con gravedad de Newton (integración leapfrog)
+  var hondo=(function(){
+    var cv=document.getElementById("hondo"), cx=cv.getContext("2d"), W2=0, H2=0, dp=1, est=[], polvo=[], px2=0, py2=0, tx=0, ty=0, t1=performance.now();
+    function kelvin(T){ // color de un cuerpo negro (aproximación de Tanner Helland a la curva de Planck), 1000-40000 K
+      var t=T/100, r, g, b;
+      r=t<=66?255:329.698727446*Math.pow(t-60,-.1332047592);
+      g=t<=66?99.4708025861*Math.log(t)-161.1195681661:288.1221695283*Math.pow(t-60,-.0755148492);
+      b=t>=66?255:(t<=19?0:138.5177312231*Math.log(t-10)-305.0447927307);
+      return [r,g,b].map(function(x){return Math.max(0,Math.min(255,Math.round(x)));});
+    }
+    function siembra(){
+      var n=Math.round(Math.min(900,W2*H2/1800)); est=[];
+      for(var i=0;i<n;i++){
+        var u=Math.random(), T=u<.76?2600+Math.random()*2600:(u<.96?5200+Math.random()*2800:8000+Math.random()*22000); // M, K-G, F-A-B
+        var mag=Math.pow(Math.random(),3.2), z=.15+Math.random()*.85;
+        est.push({x:Math.random()*W2,y:Math.random()*H2,z:z,c:kelvin(T),a:.18+.82*mag,r:.4+1.5*mag*z,f:Math.random()*6.28,v:.4+Math.random()*1.6});
+      }
+    }
+    function tam(){W2=innerWidth;H2=innerHeight;dp=Math.min(devicePixelRatio||1,2);cv.width=Math.round(W2*dp);cv.height=Math.round(H2*dp);cx.setTransform(dp,0,0,dp,0,0);siembra();}
+    // polvo: partículas de prueba en órbita casi circular alrededor de cada estrella, sintiendo a todas (G·M ajustado a píxeles)
+    function polvoDe(lista){
+      polvo=[]; lista.forEach(function(e){ for(var i=0;i<140;i++){
+        var r=18+Math.pow(Math.random(),.7)*95, a=Math.random()*6.283, GM=2.2e4, v=Math.sqrt(GM/r)*(.92+Math.random()*.12);
+        polvo.push({x:e.x+Math.cos(a)*r,y:e.y+Math.sin(a)*r,vx:-Math.sin(a)*v,vy:Math.cos(a)*v,a:.15+Math.random()*.45}); } });
+    }
+    function paso(dt,lista){
+      var GM=2.2e4, s2=60;
+      for(var k=0;k<polvo.length;k++){ var q=polvo[k], ax=0, ay=0;
+        for(var j=0;j<lista.length;j++){ var dx=lista[j].x-q.x, dy=lista[j].y-q.y, d2=dx*dx+dy*dy+s2, inv=GM/(d2*Math.sqrt(d2)); ax+=dx*inv; ay+=dy*inv; }
+        q.vx+=ax*dt; q.vy+=ay*dt; q.x+=q.vx*dt; q.y+=q.vy*dt; }
+    }
+    function pinta(now,e,lista){
+      var dt=Math.min(.033,(now-t1)/1000); t1=now;
+      px2+=(tx-px2)*.06; py2+=(ty-py2)*.06;
+      cx.clearRect(0,0,W2,H2); if(e<=0) return;
+      cx.globalCompositeOperation="lighter";
+      for(var i=0;i<est.length;i++){ var s=est[i], tw=.75+.25*Math.sin(now/1000*s.v+s.f);
+        var x=s.x+px2*28*s.z, y=s.y+py2*20*s.z; x=((x%W2)+W2)%W2; y=((y%H2)+H2)%H2;
+        cx.fillStyle="rgba("+s.c[0]+","+s.c[1]+","+s.c[2]+","+(s.a*tw*e).toFixed(3)+")";
+        cx.beginPath(); cx.arc(x,y,s.r,0,6.283); cx.fill(); }
+      if(lista.length&&polvo.length){ for(var n=0;n<2;n++) paso(dt/2,lista);
+        cx.fillStyle="rgba(190,150,255,1)";
+        for(var k=0;k<polvo.length;k++){ var q=polvo[k]; cx.globalAlpha=q.a*e*.8; cx.fillRect(q.x,q.y,1.2,1.2); }
+        cx.globalAlpha=1; }
+      cx.globalCompositeOperation="source-over";
+    }
+    addEventListener("pointermove",function(ev){tx=ev.clientX/innerWidth-.5;ty=ev.clientY/innerHeight-.5;},{passive:true});
+    tam(); addEventListener("resize",tam,{passive:true});
+    return {pinta:pinta, polvoDe:polvoDe};
+  })();
+  hondo.polvoDe(lista);
+
   // ── el cielo: agujero blanco al llegar, el vacío, el anillo de la puerta y el halo de cada estrella
   var gl=null, U={}, t0=performance.now(), dpr=1, W=0, H=0, raf=0, mx=.5, my=.5, salto=0, N=16;
   var FS="precision highp float;uniform vec2 S,M;uniform vec3 Ani;uniform vec3 E[16];uniform vec3 C[16];uniform float t,dpr,salto;"+
@@ -319,9 +379,7 @@ html:not(.js) .sinjs a{color:var(--tinta)}
     "void main(){vec2 f=vec2(gl_FragCoord.x,S.y*dpr-gl_FragCoord.y)/dpr;vec2 c=vec2(S.x*.5,S.y*.3);vec2 d=f-c;float r=length(d);"+
     "float m=min(S.x,S.y);float a=clamp(max(t/3.2,salto),0.,1.);float e=1.-pow(1.-a,3.);"+
     "vec3 col=vec3(.0196,.0196,.0235);"+
-    "vec2 g=(f+(M-.5)*14.)/3.;vec2 id=floor(g/8.);vec2 fr=fract(g/8.)-.5;float s=h21(id);"+
-    "float pz=step(.965,s)*smoothstep(.12,0.,length(fr-(vec2(h21(id+1.7),h21(id+3.1))-.5)*.6));"+
-    "col+=vec3(.82,.8,.9)*pz*(.35+.35*sin(t*(.6+s*1.4)+s*40.))*smoothstep(.2,.9,e);"+
+
     "float te=m*.22*(1.-e*.6);vec2 sc=f+d*(te*te)/max(r*r,1.);"+
     "float g1=max(cov(sc.x,24.),cov(sc.y,24.)),g2=max(cov(sc.x,120.),cov(sc.y,120.));"+
     "float ret=(g1*.35+g2*.65)*(1.-e)*smoothstep(m*.06,m*.3,r)*(1.-smoothstep(m*.3,m*(.6+1.4*e),r));"+
@@ -365,6 +423,7 @@ html:not(.js) .sinjs a{color:var(--tinta)}
         E[i*3]=e.x;E[i*3+1]=e.y;E[i*3+2]=vis[e.id]; var c=COLOR[e.d.nivel]||COLOR.comunidad; C[i*3]=c[0];C[i*3+1]=c[1];C[i*3+2]=c[2];});
       gl.uniform2f(U.S,W,H);gl.uniform2f(U.M,mx,my);gl.uniform3f(U.Ani,A.x,A.y,A.r);gl.uniform3fv(U.E,E);gl.uniform3fv(U.C,C);
       gl.uniform1f(U.t,t);gl.uniform1f(U.dpr,dpr);gl.uniform1f(U.salto,salto);gl.drawArrays(gl.TRIANGLES,0,3);}
+    var ee=Math.max(0,Math.min(1,(red?1:Math.max(t/3.2,salto)))); hondo.pinta(now,Math.max(0,(ee-.45)/.55),lista);
     if((t>2.6||salto)&&!root.classList.contains("listo")){ root.classList.add("listo"); llega(); }
     if(!red) raf=requestAnimationFrame(pinta);}
   if(!inicia()){cv.style.background="radial-gradient(circle at 50% 30%,#1a1022 0,#050506 60%)"; root.classList.add("listo"); llega();}

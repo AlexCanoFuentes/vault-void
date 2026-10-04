@@ -165,9 +165,12 @@ html:not(.js) .sinjs a{color:var(--tinta)}
   </footer>
 </main>
 
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/SplitText.min.js"></script>
 <script>
 (function(){
   var red=matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var G=!red&&window.gsap?window.gsap:null; if(G&&window.SplitText) G.registerPlugin(SplitText);
   var root=document.documentElement, cv=document.getElementById("cielo"), capa=document.getElementById("estrellas"),
       ficha=document.getElementById("ficha"), busca=document.getElementById("busca"), eco=document.getElementById("eco");
   var REPO="https://github.com/AlexCanoFuentes/vault-void";
@@ -178,6 +181,11 @@ html:not(.js) .sinjs a{color:var(--tinta)}
     nacio_de:[{que_paso:"Dos agentes de IA en el mismo repositorio, con los candados escritos solo para uno de ellos."}],
     kernel:{total:85},uso:{vaults:0},ruta:"estrellas/oficiales/candados",buscar:"candados para agentes dos agentes se pisan claude code codex"}}};
   var NIVEL={oficiales:"oficial",socio:"socio",comunidad:"comunidad"};
+  // Cómo se cuenta cada estrella a quien no programa [Alex, 5-oct: «usamos siempre lenguaje llano»].
+  // El catálogo guarda la versión técnica; aquí va la que entiende cualquiera. Sin entrada, sale la del catálogo.
+  var LLANO={candados:{titulo:"Candados para dos IA",
+    frase:"Cuando dos asistentes de IA trabajan en el mismo proyecto, se pisan. Esta plantilla les pone los mismos candados a los dos.",
+    origen:"Las protecciones solo valían para una de las dos IA. La otra podía borrar sin querer el trabajo de la primera, o guardar una contraseña donde no debe."}};
   var lista=[], abierta=null;
 
   function sinTildes(s){return String(s||"").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g,"");}
@@ -209,9 +217,10 @@ html:not(.js) .sinjs a{color:var(--tinta)}
     if(!e){ficha.classList.remove("abierta"); if(abierta) abierta.el.setAttribute("aria-expanded","false"); abierta=null; return;}
     var d=e.d, k=(d.kernel&&d.kernel.total)!=null?d.kernel.total:"—", usos=(d.uso&&d.uso.vaults)||0;
     document.getElementById("ficha-n").textContent="Estrella "+NIVEL[d.nivel]+" · gratis";
-    document.getElementById("ficha-t").textContent=d.titulo;
-    document.getElementById("ficha-r").textContent=(d.resuelve&&d.resuelve.frase)||"";
-    var o=(d.nacio_de&&d.nacio_de[0]&&d.nacio_de[0].que_paso)||"";
+    var L=LLANO[e.id]||{};
+    document.getElementById("ficha-t").textContent=L.titulo||d.titulo;
+    document.getElementById("ficha-r").textContent=L.frase||(d.resuelve&&d.resuelve.frase)||"";
+    var o=L.origen||(d.nacio_de&&d.nacio_de[0]&&d.nacio_de[0].que_paso)||"";
     document.getElementById("ficha-o").textContent=o?"Nació de esto: "+o:"";
     document.getElementById("ficha-c").textContent="python herramientas/void.py traer "+e.id;
     document.getElementById("ficha-d1").innerHTML="La puerta: <b>"+k+"</b> de 100";
@@ -219,6 +228,8 @@ html:not(.js) .sinjs a{color:var(--tinta)}
     document.getElementById("ficha-a").href=REPO+"/tree/main/"+(d.ruta||"");
     if(abierta&&abierta!==e) abierta.el.setAttribute("aria-expanded","false");
     abierta=e; e.el.setAttribute("aria-expanded","true"); coloca(e); ficha.classList.add("abierta");
+    if(G) G.fromTo(ficha,{clipPath:"inset(0 0 100% 0)"},{clipPath:"inset(0 0 0% 0)",duration:.6,ease:"expo.out",clearProps:"clipPath"});
+    if(G) G.from(ficha.querySelectorAll(".n,h2,p,.orden,a"),{y:10,opacity:0,duration:.5,ease:"power3.out",stagger:.04,delay:.12});
   }
   document.getElementById("cerrar").addEventListener("click",function(){var e=abierta; abre(null); if(e) e.el.focus();});
   addEventListener("keydown",function(ev){if(ev.key==="Escape"&&abierta){var e=abierta; abre(null); e.el.focus();}});
@@ -235,7 +246,9 @@ html:not(.js) .sinjs a{color:var(--tinta)}
     root.classList.toggle("buscando",pal.length>0);
     var n=0;
     lista.forEach(function(e){var ok=!pal.length||pal.every(function(p){return e.texto.indexOf(p)>=0;});
-      e.vis=ok?1:.12; e.el.style.setProperty("--vis",e.vis); e.el.classList.toggle("encendida",ok&&pal.length>0); if(ok) n++;});
+      var antes=e.el.classList.contains("encendida");
+      e.vis=ok?1:.12; e.el.style.setProperty("--vis",e.vis); e.el.classList.toggle("encendida",ok&&pal.length>0); if(ok) n++;
+      if(G&&ok&&pal.length&&!antes) G.fromTo(e.el.querySelector(".luz"),{scale:2.4},{scale:1,duration:.9,ease:"elastic.out(1,.35)"});});
     if(!pal.length) eco.textContent="";
     else if(n) eco.textContent=n===1?"Una estrella lo resuelve. Tócala.":n+" estrellas lo resuelven.";
     else eco.innerHTML='Ninguna estrella lo resuelve todavía. <a href="https://alexcanofuentes.com" rel="noopener">Cuéntamelo</a> y quizá sea la siguiente.';
@@ -250,7 +263,7 @@ html:not(.js) .sinjs a{color:var(--tinta)}
       b.type="button"; b.className="astro"; b.dataset.nivel=d.nivel||"comunidad"; b.setAttribute("aria-expanded","false"); b.setAttribute("aria-controls","ficha");
       b.style.setProperty("--d",(9+Math.min(10,Math.sqrt(usos)*2.4)).toFixed(1)+"px");
       b.innerHTML='<span class="luz" aria-hidden="true"></span><span class="rot"></span>';
-      b.querySelector(".rot").textContent=d.titulo;
+      b.querySelector(".rot").textContent=(LLANO[id]&&LLANO[id].titulo)||d.titulo;
       b.setAttribute("aria-label",d.titulo+", estrella "+NIVEL[d.nivel]);
       var e={id:id,d:d,el:b,liga:d.liga,vis:1,texto:sinTildes((d.buscar||"")+" "+d.titulo)};
       b.addEventListener("click",function(){abre(abierta===e?null:e);});
@@ -286,6 +299,12 @@ html:not(.js) .sinjs a{color:var(--tinta)}
     // el halo de cada estrella, con su color y su brillo (las que no casan con la búsqueda se apagan)
     "for(int i=0;i<16;i++){float de=length(f-E[i].xy);col+=C[i]*exp(-de/(m*.045))*.22*E[i].z*smoothstep(.55,1.,e);}"+
     "gl_FragColor=vec4(col,1.);}";
+  function llega(){
+    if(!G) return;
+    if(window.SplitText){ var sp=SplitText.create(".marca h1",{type:"chars"});
+      G.from(sp.chars,{opacity:0,filter:"blur(12px)",y:18,duration:1.1,ease:"expo.out",stagger:.045}); }
+    G.from(".astro .luz",{scale:0,duration:1.3,ease:"elastic.out(1,.4)",stagger:.12,delay:.9});
+  }
   function inicia(){
     try{gl=cv.getContext("webgl",{antialias:false,depth:false,stencil:false,powerPreference:"low-power"});}catch(x){gl=null;}
     if(!gl) return false;
@@ -309,9 +328,9 @@ html:not(.js) .sinjs a{color:var(--tinta)}
         E[i*3]=e.x;E[i*3+1]=e.y;E[i*3+2]=vis[e.id]; var c=COLOR[e.d.nivel]||COLOR.comunidad; C[i*3]=c[0];C[i*3+1]=c[1];C[i*3+2]=c[2];});
       gl.uniform2f(U.S,W,H);gl.uniform2f(U.M,mx,my);gl.uniform3f(U.Ani,A.x,A.y,A.r);gl.uniform3fv(U.E,E);gl.uniform3fv(U.C,C);
       gl.uniform1f(U.t,t);gl.uniform1f(U.dpr,dpr);gl.uniform1f(U.salto,salto);gl.drawArrays(gl.TRIANGLES,0,3);}
-    if((t>2.6||salto)&&!root.classList.contains("listo")) root.classList.add("listo");
+    if((t>2.6||salto)&&!root.classList.contains("listo")){ root.classList.add("listo"); llega(); }
     if(!red) raf=requestAnimationFrame(pinta);}
-  if(!inicia()){cv.style.background="radial-gradient(circle at 50% 30%,#1a1022 0,#050506 60%)"; root.classList.add("listo");}
+  if(!inicia()){cv.style.background="radial-gradient(circle at 50% 30%,#1a1022 0,#050506 60%)"; root.classList.add("listo"); llega();}
   tam(); addEventListener("resize",tam,{passive:true});
   addEventListener("pointermove",function(ev){mx=ev.clientX/W;my=ev.clientY/H;},{passive:true});
   document.addEventListener("visibilitychange",function(){if(!document.hidden&&!raf) raf=requestAnimationFrame(pinta);});

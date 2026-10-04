@@ -68,7 +68,7 @@ python herramientas/void.py traer candados
 ```
 
 Comprueba la huella de cada fichero contra el catálogo antes de escribir nada, y la deja en **un
-commit** `void: estrella candados 0.1.0`. Para deshacerlo: `git revert HEAD`. No pisa lo tuyo, ni lo
+commit** `void: estrella candados 0.2.0`. Para deshacerlo: `git revert HEAD`. No pisa lo tuyo, ni lo
 de la base, ni lo de otra estrella: deja la versión nueva al lado, como `<fichero>.base-nueva`. **No
 ejecuta nada**: al terminar te dice los pasos para ponerla en marcha. En un vault sin `void.json`,
 con `--conectar`. Las de la comunidad, léelas antes de ejecutar nada de ellas.

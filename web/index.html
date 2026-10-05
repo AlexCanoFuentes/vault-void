@@ -92,6 +92,19 @@ body{margin:0;background:var(--vacio);color:var(--tinta);font:15px/1.6 var(--mon
 .listo .neb-rot{opacity:1;transition-delay:2s}
 .buscando .nebulosa{opacity:.25!important;transition-delay:0s!important}
 
+/* la antena: el vacío contesta a los asistentes de IA. Emite ondas; al tocarla da la dirección para conectarla */
+.antena{position:absolute;left:var(--ax,82%);top:var(--ay,28%);width:44px;height:44px;margin:-22px 0 0 -22px;border:0;padding:0;background:transparent;
+  cursor:pointer;border-radius:50%;z-index:2;-webkit-tap-highlight-color:transparent}
+.antena .nucleo{position:absolute;left:50%;top:50%;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;background:var(--tinta);box-shadow:0 0 10px var(--tinta)}
+.antena .onda{position:absolute;left:50%;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:1px solid var(--reactivo-2);opacity:0;animation:onda 3.6s cubic-bezier(.2,.6,.3,1) infinite}
+.antena .onda:nth-child(3){animation-delay:1.2s}.antena .onda:nth-child(4){animation-delay:2.4s}
+@keyframes onda{0%{transform:scale(1);opacity:.7}100%{transform:scale(7);opacity:0}}
+.antena .rot{position:absolute;left:50%;top:calc(50% + 22px);transform:translateX(-50%);white-space:nowrap;font:500 10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--tinta-2)}
+.antena:hover .rot,.antena:focus-visible .rot{color:var(--tinta)}
+.js .antena{opacity:0;transition:opacity 1.6s ease}
+.listo .antena{opacity:1;transition-delay:2.2s}
+.buscando .antena{opacity:.25!important;transition-delay:0s!important}
+
 /* la ficha de una estrella */
 .ficha{position:absolute;left:var(--fx,50%);top:var(--fy,50%);width:min(360px,calc(100vw - 32px));max-height:calc(100% - 32px);overflow:auto;padding:18px 18px 16px;
   background:rgba(12,10,16,.9);border:1px solid var(--linea);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:5;
@@ -154,6 +167,9 @@ html:not(.js) .sinjs a{color:var(--tinta)}
 
   <div id="estrellas" aria-label="Las estrellas del catálogo"></div>
   <div class="nebulosa" id="nebulosa" aria-hidden="true"><canvas id="gas"></canvas></div>
+  <button class="antena" id="antena" type="button" aria-controls="ficha" aria-expanded="false" aria-label="La antena: pregúntale a Void desde tu asistente">
+    <span class="nucleo" aria-hidden="true"></span><span class="onda" aria-hidden="true"></span><span class="onda" aria-hidden="true"></span><span class="onda" aria-hidden="true"></span>
+    <span class="rot">la antena</span></button>
   <button class="neb-rot" id="neb-rot" type="button" aria-controls="ficha" aria-expanded="false">la nebulosa · el taller</button>
 
   <section class="ficha" id="ficha" aria-live="polite" aria-labelledby="ficha-t">
@@ -207,7 +223,11 @@ html:not(.js) .sinjs a{color:var(--tinta)}
     nebulosa:{n:"La nebulosa · gratis",titulo:"Aquí nacen las estrellas",
       frase:"Trae algo que te haya funcionado en tu vault. La nebulosa le quita lo tuyo (nombres, correos, claves), lo prueba en un vault vacío, le escribe la ficha y le pasa la puerta.",
       origen:"Al final te dice qué le falta para entrar en el catálogo, en palabras normales.",
-      orden:"python taller.py tu-carpeta",enlace:"/blob/main/taller.py",enlaceTexto:"Ver el taller →",sinDato:true,sinPrefijo:true}};
+      orden:"python taller.py tu-carpeta",enlace:"/blob/main/taller.py",enlaceTexto:"Ver el taller →",sinDato:true,sinPrefijo:true},
+    antena:{n:"La antena · gratis",titulo:"Pregúntale a Void desde tu asistente",
+      frase:"Añade esta dirección como conector en Claude, ChatGPT o el asistente que uses. Podrás preguntarle «¿hay algo para esto?» y te dirá qué estrella lo resuelve y cómo traerla.",
+      origen:"Solo lee: no instala nada y no guarda lo que preguntas.",
+      orden:"https://antena.vaultvoid.app/mcp",enlace:"/tree/main/antena",enlaceTexto:"Ver la antena →",sinDato:true,sinPrefijo:true}};
   var lista=[], abierta=null;
 
   function sinTildes(s){return String(s||"").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g,"");}
@@ -215,7 +235,7 @@ html:not(.js) .sinjs a{color:var(--tinta)}
 
   // ── el anillo y dónde vive cada estrella: el sitio sale de su nombre, así no salta entre visitas
   var A={x:0,y:0,r:0};
-  var NEB={id:"nebulosa",d:{},x:0,y:0,el:null};
+  var NEB={id:"nebulosa",d:{},x:0,y:0,el:null}, ANT={id:"antena",d:{},x:0,y:0,el:null};
   function geometria(){
     var w=innerWidth, hh=innerHeight, movil=w<700;
     A.x=w*.5; A.y=hh*(movil?.47:.55); A.r=Math.min(w*(movil?.4:.26),hh*(movil?.17:.2));
@@ -228,6 +248,8 @@ html:not(.js) .sinjs a{color:var(--tinta)}
     var nx=movil?w*.3:w*.2, ny=movil?hh*.735:hh*.74, nd=movil?130:Math.min(340,w*.24);
     root.style.setProperty("--nx",nx+"px"); root.style.setProperty("--ny",ny+"px"); root.style.setProperty("--nd",nd+"px");
     NEB.x=nx; NEB.y=ny+(movil?nd*.28:nd*.28);
+    var ax=movil?w*.84:w*.82, ay=movil?hh*.075:hh*.3;
+    root.style.setProperty("--ax",ax+"px"); root.style.setProperty("--ay",ay+"px"); ANT.x=ax; ANT.y=ay;
     if(hondo) hondo.polvoDe(lista);   // el polvo nace en órbita alrededor de donde estén ahora las estrellas
     if(abierta) coloca(abierta);
   }
@@ -237,6 +259,7 @@ html:not(.js) .sinjs a{color:var(--tinta)}
     var w=innerWidth, hh=innerHeight, movil=w<700, fw=Math.min(360,w-32), fx, fy;
     var fh=ficha.offsetHeight||420;   // con su altura real: que el enlace del final nunca quede fuera de la pantalla
     if(movil){fx=(w-fw)/2; fy=Math.max(16,Math.min(hh-fh-16,e.y+40));}
+    else if(e.id==="antena"){fx=Math.max(16,Math.min(w-fw-16,e.x-fw/2)); fy=Math.min(hh-fh-16,e.y+46);}   // la antena está arriba: su ficha cuelga debajo
     else{fx=e.x>w/2?e.x-fw-90:e.x+90; fx=Math.max(16,Math.min(w-fw-16,fx)); fy=Math.max(16,Math.min(hh-fh-16,e.y-150));}
     ficha.style.setProperty("--fx",fx+"px"); ficha.style.setProperty("--fy",fy+"px");
   }
@@ -300,6 +323,8 @@ html:not(.js) .sinjs a{color:var(--tinta)}
     geometria(); mira();
   }
   monta(RESPALDO);
+  ANT.el=document.getElementById("antena");
+  ANT.el.addEventListener("click",function(){abre(abierta===ANT?null:ANT);});
   NEB.el=document.getElementById("neb-rot");
   NEB.el.addEventListener("click",function(){abre(abierta===NEB?null:NEB);});
   (function(){

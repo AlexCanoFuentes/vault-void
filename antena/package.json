@@ -1,0 +1,24 @@
+{
+  "name": "vault-void-antena",
+  "version": "0.1.0",
+  "private": true,
+  "description": "La antena de Vault Void: servidor MCP remoto de solo lectura sobre el catálogo de estrellas.",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "dev": "wrangler dev --port 8799",
+    "test": "node pruebas/todo.mjs",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.1.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261002.1",
+    "@modelcontextprotocol/client": "2.1.0",
+    "@types/node": "^22.20.5",
+    "typescript": "^5.9.0",
+    "wrangler": "4.140.0"
+  }
+}

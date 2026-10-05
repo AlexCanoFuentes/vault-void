@@ -1,0 +1,16 @@
+// La antena de Vault Void: el MCP de solo lectura sobre el catálogo. Cloudflare Workers, plan gratuito, cuenta propia de Alex.
+// Probar en local: npm run dev · Pruebas: npm test · Desplegar: npx wrangler deploy (ticket VV-003, KERNEL 84)
+{
+  "name": "vault-void-antena",
+  "main": "src/worker.ts",
+  // Cuenta propia de Alex (la de la zona vaultvoid.app). No es un secreto: es un identificador.
+  "account_id": "6e6d0504dbdbbc87c7609ebf6940429b",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  // Subdominio propio: la web (vault-void-web) tiene vaultvoid.app entero y aquí no se pisa nada.
+  "routes": [{ "pattern": "antena.vaultvoid.app", "custom_domain": true }],
+  // Sin registros a propósito: guardarían los metadatos de cada petición.
+  "observability": { "enabled": false }
+}

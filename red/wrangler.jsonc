@@ -1,0 +1,33 @@
+// La red de Vault Void: alta de cada vault con su llave, perfil público (/@alias) y avisos a las estrellas.
+// Cloudflare Workers + D1, cuenta propia de Alex. Ticket VV-004, piezas P2 y P4.
+// Probar en local: npm test · Desplegar: los pasos de red/README.md (el primero crea la D1 y pega su id aquí abajo).
+{
+  "name": "vault-void-red",
+  "main": "src/worker.ts",
+  // Cuenta propia de Alex (la de la zona vaultvoid.app). No es un secreto: es un identificador.
+  "account_id": "6e6d0504dbdbbc87c7609ebf6940429b",
+  "compatibility_date": "2026-09-01",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [
+    // La API, en su subdominio: la web (vault-void-web) tiene vaultvoid.app entero y aquí no se pisa nada.
+    { "pattern": "red.vaultvoid.app", "custom_domain": true },
+    // Las dos páginas que viven dentro de vaultvoid.app. Una ruta de Worker se ejecuta ANTES que el dominio propio
+    // de la web, así que solo estas dos rutas pasan por aquí y todo lo demás sigue siendo la web estática:
+    // https://developers.cloudflare.com/workers/configuration/routing/custom-domains/
+    { "pattern": "vaultvoid.app/@*", "zone_name": "vaultvoid.app" },
+    { "pattern": "vaultvoid.app/estrella/*", "zone_name": "vaultvoid.app" }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "vault-void-red",
+      // PENDIENTE: el id que da «npx wrangler d1 create vault-void-red» (paso 1 de red/README.md). Mientras diga
+      // esto, no está lista para desplegar.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // Sin registros a propósito: guardarían los metadatos de cada petición.
+  "observability": { "enabled": false }
+}

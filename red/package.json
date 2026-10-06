@@ -1,0 +1,19 @@
+{
+  "name": "vault-void-red",
+  "version": "0.1.0",
+  "private": true,
+  "description": "La red de Vault Void: el alta de cada vault con su llave, su perfil público y los avisos a las estrellas.",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "dev": "wrangler d1 migrations apply DB --local && wrangler dev --port 8790",
+    "test": "node pruebas/todo.mjs",
+    "sabotaje": "node pruebas/todo.mjs --sabotaje",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261002.1",
+    "typescript": "^5.9.0",
+    "wrangler": "4.140.0"
+  }
+}

@@ -95,7 +95,7 @@ footer p{color:var(--tenue)}
 <ol>
 <li><strong>Que estás en la carpeta de un vault:</strong> en la carpeta actual tiene que haber <code>AGENTS.md</code> o <code>CLAUDE.md</code>, y tiene que ser la raíz de un repositorio de git (<code>git rev-parse --show-toplevel</code> da esta misma carpeta). Si no, para y pregúntale a la persona dónde está su vault.</li>
 <li><strong>Que no está conectado ya:</strong> si existe <code>void.json</code>, ya está conectado. No bajes nada: ejecuta <code>herramientas/void.py estado</code> con el Python del punto 5, enséñale el resultado y termina.</li>
-<li><strong>Que no hay otro <code>void.py</code>:</strong> si existe <code>herramientas/void.py</code> y no hay <code>void.json</code>, para y pregúntale a la persona antes de seguir: no lo pises.</li>
+<li><strong>Que no hay otro <code>void.py</code>:</strong> si existe <code>herramientas/void.py</code> y no hay <code>void.json</code> (y no lo has bajado tú en el paso 3 de esta misma conversación), para y pregúntale a la persona antes de seguir: no lo pises.</li>
 <li><strong>Que hay git:</strong> <code>git --version</code>.</li>
 <li><strong>Que hay Python 3.8 o más nuevo</strong>, y con qué nombre:
 <ul>
@@ -139,8 +139,9 @@ footer p{color:var(--tenue)}
 <p>Baja la base común, comprueba la huella de cada fichero antes de escribir nada y deja <strong>un commit</strong> <code>void: base &lt;versión&gt;</code>. Enséñale a la persona lo que diga, tal cual.</p>
 <ul>
 <li>Si dice que hay <strong>cambios sin guardar</strong> en algún fichero, explícaselo y pregúntale si quiere guardarlos en un commit antes; no los guardes tú sin preguntar.</li>
-<li>Si dice que <strong>git no tiene su nombre y correo</strong>, pregúntale cuáles quiere usar.</li>
+<li>Si dice que <strong>git no tiene su nombre y correo</strong>, pregúntale cuáles quiere usar, ponlos solo en este vault con <code>git config user.name "…"</code> y <code>git config user.email "…"</code> y repite este paso.</li>
 <li>Si dice que <strong>no hay conexión</strong>, en Codex pide permiso para salir a internet (arriba).</li>
+<li>Si falla y la persona no quiere seguir, borra el <code>herramientas/void.py</code> que bajaste en el paso 3: aún no está en ningún commit, y así el vault queda como estaba.</li>
 </ul>
 </section>
 

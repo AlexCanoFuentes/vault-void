@@ -33,8 +33,9 @@ Lo que tienes que saber antes de empezar:
    da esta misma carpeta). Si no, para y pregúntale a la persona dónde está su vault.
 2. **Que no está conectado ya:** si existe `void.json`, ya está conectado. No bajes nada: ejecuta
    `herramientas/void.py estado` con el Python del punto 5, enséñale el resultado y termina.
-3. **Que no hay otro `void.py`:** si existe `herramientas/void.py` y no hay `void.json`, para y
-   pregúntale a la persona antes de seguir: no lo pises.
+3. **Que no hay otro `void.py`:** si existe `herramientas/void.py` y no hay `void.json` (y no lo
+   has bajado tú en el paso 3 de esta misma conversación), para y pregúntale a la persona antes de
+   seguir: no lo pises.
 4. **Que hay git:** `git --version`.
 5. **Que hay Python 3.8 o más nuevo**, y con qué nombre:
    - **Mac y Linux:** `python3 --version`.
@@ -99,8 +100,11 @@ Baja la base común, comprueba la huella de cada fichero antes de escribir nada 
 
 - Si dice que hay **cambios sin guardar** en algún fichero, explícaselo y pregúntale si quiere
   guardarlos en un commit antes; no los guardes tú sin preguntar.
-- Si dice que **git no tiene su nombre y correo**, pregúntale cuáles quiere usar.
+- Si dice que **git no tiene su nombre y correo**, pregúntale cuáles quiere usar, ponlos solo en este
+  vault con `git config user.name "…"` y `git config user.email "…"` y repite este paso.
 - Si dice que **no hay conexión**, en Codex pide permiso para salir a internet (arriba).
+- Si falla y la persona no quiere seguir, borra el `herramientas/void.py` que bajaste en el paso 3:
+  aún no está en ningún commit, y así el vault queda como estaba.
 
 ### Paso 5 · Comprueba que ha quedado conectado
 

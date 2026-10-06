@@ -5,8 +5,11 @@
  * Postura:
  *   - SOLO LECTURA. Ninguna herramienta escribe en ningún sitio.
  *   - CERO CREDENCIALES hacia fuera. El catálogo es un fichero público de GitHub.
- *   - UN SOLO HOST de salida, literal en el código, y la petición es siempre la misma: lo que
- *     escribe el usuario no sale del Worker. No hay superficie de SSRF.
+ *   - DOS HOSTS de salida, literales en el código: el catálogo en GitHub y los avisos públicos de
+ *     red.vaultvoid.app. Lo único que sale de lo que escribe el usuario es el nombre de una estrella,
+ *     validado con /^[a-z0-9]+(-[a-z0-9]+)*$/ antes de ponerlo en la ruta. No hay superficie de SSRF.
+ *   - NO MANDA AVISOS: mandarlos pide la llave del vault, y una llave pegada en un chat queda escrita
+ *     en la conversación. La antena los lee; se mandan desde el vault con void.py avisar.
  */
 import { createHash } from "node:crypto";
 

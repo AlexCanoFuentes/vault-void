@@ -16,6 +16,8 @@ const MAX_CUERPO = 64 * 1024;
 export interface Entorno {
   /** Solo para la prueba de sabotaje: apuntar el catálogo a un sitio que no existe. En producción no se define. */
   CATALOGO_URL?: string;
+  /** Solo para las pruebas: otra red de Void (la de verdad es https://red.vaultvoid.app). En producción no se define. */
+  RED_URL?: string;
 }
 
 let entorno: Entorno = {};
@@ -23,7 +25,7 @@ let entorno: Entorno = {};
 const mcp = createMcpHandler(
   ({ requestInfo }) => {
     const ip = requestInfo?.headers.get("cf-connecting-ip") ?? "desconocida";
-    return crearServidor({ catalogo: entorno.CATALOGO_URL || undefined, quien: "ip:" + huellaDeIp(ip) });
+    return crearServidor({ catalogo: entorno.CATALOGO_URL || undefined, red: entorno.RED_URL || undefined, quien: "ip:" + huellaDeIp(ip) });
   },
   {
     legacy: "stateless",

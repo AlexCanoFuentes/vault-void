@@ -481,6 +481,14 @@ def finales_de_git(vault, rutas):
     return salida
 
 
+def sin_seguir(vault, rutas):
+    """Rutas que existen pero git aún no sigue (por ejemplo, el void.py que acaba de bajar el agente)."""
+    if not rutas:
+        return []
+    _, salida = git(vault, "status", "--porcelain", "-z", "--untracked-files=all", "--", *rutas)
+    return [t[3:] for t in salida.split("\0") if t.startswith("?? ")]
+
+
 def sin_guardar(vault, rutas):
     """Rutas con cambios que aún no están en un commit."""
     if not rutas:
@@ -616,8 +624,11 @@ def plan(vault, actual, version, nuevos, marcas_md=True):
     return escrituras, borrados, instalados, avisos, resumen
 
 
-def aplicar(vault, escrituras, borrados, void_json, mensaje):
-    """Escribe, borra y hace el commit. Si algo falla antes del commit, lo deja todo como estaba."""
+def aplicar(vault, escrituras, borrados, void_json, mensaje, iguales=()):
+    """Escribe, borra y hace el commit. Si algo falla antes del commit, lo deja todo como estaba.
+
+    iguales: rutas que ya eran igual que lo que llega. Si git aún no las sigue (el void.py que el
+    agente bajó para conectar), entran en el mismo commit: así git revert HEAD las quita también."""
     escrituras = dict(escrituras)
     escrituras[VOID_JSON] = void_json
     nuevos = [r for r in escrituras if not vault.joinpath(*PurePosixPath(r).parts).is_file()]
@@ -635,6 +646,7 @@ def aplicar(vault, escrituras, borrados, void_json, mensaje):
     rutas = sorted(set(cambian) | set(borrados))
     if not rutas:
         return False
+    sueltos = sorted(set(sin_seguir(vault, [r for r in iguales if ruta_segura(r)])) - set(rutas))
 
     vigiladas = [r for r in rutas if not r.endswith(SUFIJO_NUEVA)]
     sucias = sin_guardar(vault, [r for r in vigiladas
@@ -660,8 +672,8 @@ def aplicar(vault, escrituras, borrados, void_json, mensaje):
             with os.fdopen(fd, "wb") as f:
                 f.write(cambian[ruta])
             os.replace(tmp, str(destino))
-        git(vault, "add", "-A", "--", *rutas)
-        codigo, _ = git(vault, "commit", "-q", "-m", mensaje, "--", *rutas, comprobar=False)
+        git(vault, "add", "-A", "--", *(rutas + sueltos))
+        codigo, _ = git(vault, "commit", "-q", "-m", mensaje, "--", *(rutas + sueltos), comprobar=False)
         if codigo != 0:
             raise Fallo("git no ha podido guardar el commit (¿tiene tu nombre y correo? "
                         "«git config user.name» y «git config user.email»). He dejado todo como estaba.")
@@ -673,9 +685,9 @@ def aplicar(vault, escrituras, borrados, void_json, mensaje):
                     destino.unlink()
             else:
                 destino.write_bytes(previo)
-        codigo, _ = git(vault, "reset", "-q", "--", *rutas, comprobar=False)
+        codigo, _ = git(vault, "reset", "-q", "--", *(rutas + sueltos), comprobar=False)
         if codigo != 0:  # repositorio recién creado, sin ningún commit todavía
-            git(vault, "rm", "-q", "--cached", "--ignore-unmatch", "--", *rutas, comprobar=False)
+            git(vault, "rm", "-q", "--cached", "--ignore-unmatch", "--", *(rutas + sueltos), comprobar=False)
         raise
     return True
 
@@ -770,7 +782,7 @@ def orden_actualizar(vault, desde, conectar):
                                    if desde else "github.com/{} ({})".format(REPO, RAMA),
                                    estrellas=(actual or {}).get("estrellas"))
     mensaje = "void: base {}".format(fuente.version)
-    hecho = aplicar(vault, escrituras, borrados, void_json, mensaje)
+    hecho = aplicar(vault, escrituras, borrados, void_json, mensaje, iguales=resumen["iguales"])
 
     if not hecho:
         print("Ya tienes la base {}. No hay nada que actualizar.".format(fuente.version))
@@ -834,7 +846,7 @@ def orden_traer(vault, nombre, desde, conectar_estrella):
     else:
         void_json = escribir_void_json(None, (actual or {}).get("ficheros", {}), None, estrellas=estrellas)
     mensaje = "void: estrella {} {}".format(nombre, e["version"])
-    hecho = aplicar(vault, escrituras, borrados, void_json, mensaje)
+    hecho = aplicar(vault, escrituras, borrados, void_json, mensaje, iguales=resumen["iguales"])
 
     version_antes = previa.get("version")
     if not hecho:

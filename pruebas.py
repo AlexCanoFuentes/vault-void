@@ -214,6 +214,22 @@ class SinVoidJson(Caso):
         self.assertEqual(json.loads((v / "void.json").read_text(encoding="utf-8"))["base"], "0.1")
         self.assertTrue(limpio(v), "quedaron cambios fuera del commit")
 
+    def test_conectar_se_lleva_lo_recien_bajado_y_revert_lo_quita(self):
+        """vaultvoid.app/entrar: el agente baja void.py a herramientas/ y conecta con él. Ese fichero
+        es igual que el de la base pero git aún no lo sigue: tiene que entrar en el commit de conectar,
+        o queda suelto y git revert HEAD no deja el vault como estaba antes de bajarlo."""
+        v = hacer_vault(self.tmp / "vault")
+        antes = foto(v)
+        (v / "herramientas").mkdir()
+        (v / "herramientas" / "dos.py").write_bytes(BASE_01["herramientas/dos.py"])
+        codigo, out, err = correr("actualizar", "--conectar", "--vault", v, "--desde", self.b01)
+        self.assertEqual(codigo, 0, err)
+        if not limpio(v):
+            self.fail("lo recién bajado, igual que la base, quedó fuera del commit de conectar")
+        git(v, "revert", "--no-edit", "HEAD")
+        if foto(v) != antes:
+            self.fail("git revert HEAD no deja el vault como estaba antes de bajar void.py")
+
     def test_conectar_no_pisa_lo_que_ya_hay(self):
         v = hacer_vault(self.tmp / "vault", {"AGENTS.md": b"# Mis reglas\n", "uno.txt": b"mio\n"})
         codigo, out, err = correr("actualizar", "--conectar", "--vault", v, "--desde", self.b01)
@@ -1343,12 +1359,17 @@ SABOTAJES = [
      [("resultado = antes + con_finales(propio, crlf) + despues", "resultado = con_finales(base, crlf)")],
      ["Actualizar.test_marcas_lo_de_fuera_es_tuyo"]),
     ("commit: escribe pero no guarda",
-     [('codigo, _ = git(vault, "commit", "-q", "-m", mensaje, "--", *rutas, comprobar=False)', "codigo = 0")],
+     [('codigo, _ = git(vault, "commit", "-q", "-m", mensaje, "--", *(rutas + sueltos), comprobar=False)',
+       "codigo = 0")],
      ["Actualizar.test_01_a_02_un_commit_y_revert_byte_a_byte", "Traer.test_traer_un_commit_y_revert_byte_a_byte"]),
     ("finales de git: escribe \\n donde git sacaría \\r\\n",
      [("        crlf = usa_crlf(previo) if previo is not None else finales.get(ruta)\n",
        "        crlf = usa_crlf(previo) if previo is not None else None\n")],
      ["Actualizar.test_windows_con_autocrlf_revert_byte_a_byte"]),
+    ("conectar: deja fuera del commit el void.py recién bajado",
+     [('    sueltos = sorted(set(sin_seguir(vault, [r for r in iguales if ruta_segura(r)])) - set(rutas))\n',
+       "    sueltos = []\n")],
+     ["SinVoidJson.test_conectar_se_lleva_lo_recien_bajado_y_revert_lo_quita"]),
     ("cambios sin guardar: se los lleva en el commit",
      [("    if sucias:\n", "    if False:\n")],
      ["Actualizar.test_cambios_sin_guardar"]),

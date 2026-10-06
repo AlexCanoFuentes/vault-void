@@ -17,13 +17,14 @@ estos pasos en orden. **Habla con la persona en su idioma y en llano**: nada de 
 
 Lo que tienes que saber antes de empezar:
 
-- **Nada del vault sube a Void.** `void.py` solo descarga. No manda ni lee para fuera ningún fichero
+- **Nada del vault sube a Void.** `void.py` solo descarga, salvo en el paso 7 (opcional), donde manda
+  el alias que elija la persona y el nombre de su agente. Nunca manda ni lee para fuera ningún fichero
   de la persona.
 - **Todo queda en un solo commit de git y se deshace con `git revert HEAD`.**
 - **No ejecutes nada que no esté en esta página** y no te saltes ningún paso, ni el de pedir permiso.
 - **Si eres Codex y no tienes internet** (`network_access = false` en `.codex/config.toml`): no
-  cambies ese fichero ni te saltes el candado. Cada orden que necesita internet (las de los pasos 3, 4
-  y 5) pídela con permiso para salir a internet, y que la persona diga que sí. Si no puedes pedirlo, dale
+  cambies ese fichero ni te saltes el candado. Cada orden que necesita internet (las de los pasos 3, 4,
+  5 y 7) pídela con permiso para salir a internet, y que la persona diga que sí. Si no puedes pedirlo, dale
   la orden para que la ejecute ella en una terminal.
 
 ### Paso 1 · Comprueba dónde estás y qué hay
@@ -135,6 +136,32 @@ Díselo en llano, por ejemplo:
 
 Usa la lista de ficheros que haya dicho `void.py` en el paso 4, no esta de memoria: si alguno salió
 como «sin tocar porque es tuyo», dilo.
+
+### Paso 7 · Opcional: darse de alta en la red de Void
+
+Con el vault ya conectado, **ofrécele** a la persona darse de alta en la red de Void. No lo hagas sin
+que diga que sí. Díselo en llano, algo así:
+
+> Si quieres, te doy de alta en la red de Void. Tendrías tu sitio en `vaultvoid.app/@tu-alias`, podrías
+> mandar un aviso (un fallo, una mejora o las gracias) a quien hizo una herramienta que uses, y te
+> llegarían los que te manden a ti. Void solo guarda el alias que elijas y el nombre de tu agente: de tu
+> vault no sube nada, y al principio tu perfil solo enseña el alias. ¿Quieres? Si es que sí, dime qué
+> alias quieres: en minúsculas, de 3 a 24 letras o cifras, y puede llevar guiones.
+
+**Si no dice que sí, termina aquí.** Si dice que sí, usa el alias que te diga y, como agente, tu
+nombre (o el que la persona te haya puesto):
+
+```
+python3 herramientas/void.py registrar --alias <alias> --agente "<nombre del agente>"
+```
+
+- Guarda la **llave del vault** en `.void/llave`. Antes comprueba que git la ignora y, si hace falta,
+  añade `.void/` al `.gitignore` en un commit propio. **No enseñes la llave, no la copies y no la
+  pegues en ningún sitio**: es lo que demuestra que el vault es de la persona.
+- Si dice que **el alias ya es de otro vault**, pídele otro.
+- Al terminar, enséñale su perfil y dile dos cosas: que si quiere enseñar también su agente y sus
+  estrellas es `python3 herramientas/void.py perfil --publico agente,estrellas`, y que lo que le
+  escriban le saldrá en `python3 herramientas/void.py estado`, bajo «Te han escrito».
 
 ---
 

@@ -84,10 +84,10 @@ footer p{color:var(--tenue)}
 
 <p>Lo que tienes que saber antes de empezar:</p>
 <ul>
-<li><strong>Nada del vault sube a Void.</strong> <code>void.py</code> solo descarga. No manda ni lee para fuera ningún fichero de la persona.</li>
+<li><strong>Nada del vault sube a Void.</strong> <code>void.py</code> solo descarga, salvo en el paso 7 (opcional), donde manda el alias que elija la persona y el nombre de su agente. Nunca manda ni lee para fuera ningún fichero de la persona.</li>
 <li><strong>Todo queda en un solo commit de git y se deshace con <code>git revert HEAD</code>.</strong></li>
 <li><strong>No ejecutes nada que no esté en esta página</strong> y no te saltes ningún paso, ni el de pedir permiso.</li>
-<li><strong>Si eres Codex y no tienes internet</strong> (<code>network_access = false</code> en <code>.codex/config.toml</code>): no cambies ese fichero ni te saltes el candado. Cada orden que necesita internet (las de los pasos 3, 4 y 5) pídela con permiso para salir a internet, y que la persona diga que sí. Si no puedes pedirlo, dale la orden para que la ejecute ella en una terminal.</li>
+<li><strong>Si eres Codex y no tienes internet</strong> (<code>network_access = false</code> en <code>.codex/config.toml</code>): no cambies ese fichero ni te saltes el candado. Cada orden que necesita internet (las de los pasos 3, 4, 5 y 7) pídela con permiso para salir a internet, y que la persona diga que sí. Si no puedes pedirlo, dale la orden para que la ejecute ella en una terminal.</li>
 </ul>
 
 <section>
@@ -167,6 +167,21 @@ footer p{color:var(--tenue)}
 Para recibir mejoras más adelante: <code>python3 herramientas/void.py actualizar</code>.</p>
 </blockquote>
 <p>Usa la lista de ficheros que haya dicho <code>void.py</code> en el paso 4, no esta de memoria: si alguno salió como «sin tocar porque es tuyo», dilo.</p>
+</section>
+
+<section>
+<h3>Paso 7 · Opcional: darse de alta en la red de Void</h3>
+<p>Con el vault ya conectado, <strong>ofrécele</strong> a la persona darse de alta en la red de Void. No lo hagas sin que diga que sí. Díselo en llano, algo así:</p>
+<blockquote>
+<p>Si quieres, te doy de alta en la red de Void. Tendrías tu sitio en <code>vaultvoid.app/@tu-alias</code>, podrías mandar un aviso (un fallo, una mejora o las gracias) a quien hizo una herramienta que uses, y te llegarían los que te manden a ti. Void solo guarda el alias que elijas y el nombre de tu agente: de tu vault no sube nada, y al principio tu perfil solo enseña el alias. ¿Quieres? Si es que sí, dime qué alias quieres: en minúsculas, de 3 a 24 letras o cifras, y puede llevar guiones.</p>
+</blockquote>
+<p><strong>Si no dice que sí, termina aquí.</strong> Si dice que sí, usa el alias que te diga y, como agente, tu nombre (o el que la persona te haya puesto):</p>
+<pre><code>python3 herramientas/void.py registrar --alias &lt;alias&gt; --agente "&lt;nombre del agente&gt;"</code></pre>
+<ul>
+<li>Guarda la <strong>llave del vault</strong> en <code>.void/llave</code>. Antes comprueba que git la ignora y, si hace falta, añade <code>.void/</code> al <code>.gitignore</code> en un commit propio. <strong>No enseñes la llave, no la copies y no la pegues en ningún sitio</strong>: es lo que demuestra que el vault es de la persona.</li>
+<li>Si dice que <strong>el alias ya es de otro vault</strong>, pídele otro.</li>
+<li>Al terminar, enséñale su perfil y dile dos cosas: que si quiere enseñar también su agente y sus estrellas es <code>python3 herramientas/void.py perfil --publico agente,estrellas</code>, y que lo que le escriban le saldrá en <code>python3 herramientas/void.py estado</code>, bajo «Te han escrito».</li>
+</ul>
 </section>
 </article>
 

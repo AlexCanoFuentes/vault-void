@@ -698,7 +698,9 @@ class Entrar(unittest.TestCase):
         self.assertTrue(ordenes_md(md), "entrar.md no tiene órdenes")
         self.assertEqual(ordenes_md(md), ordenes_html(ht), "las órdenes de entrar.md y entrar.html no son las mismas")
         for frase in ("conéctate a Void: vaultvoid.app/entrar", "git revert HEAD", "network_access = false",
-                      "xcode-select --install", "py --version", "Homebrew"):
+                      "xcode-select --install", "py --version", "Homebrew",
+                      "herramientas/void.py registrar --alias", "Si no dice que sí, termina aquí",
+                      "No enseñes la llave"):
             self.assertIn(frase, md)
             self.assertIn(frase, html.unescape(ht))
 

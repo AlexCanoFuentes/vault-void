@@ -606,7 +606,7 @@ class Repo(unittest.TestCase):
     def test_solo_biblioteca_estandar(self):
         estandar = getattr(sys, "stdlib_module_names", None) or {
             "hashlib", "io", "json", "os", "re", "socket", "ssl", "subprocess", "sys", "tempfile",
-            "urllib", "zipfile", "pathlib"}
+            "time", "urllib", "zipfile", "pathlib"}
         arbol = ast.parse(VOID_PY.read_text(encoding="utf-8"))
         for nodo in ast.walk(arbol):
             nombres = []
@@ -1431,6 +1431,271 @@ class Nebulosa(unittest.TestCase):
         self.assertEqual(sorted(set(despues) - set(antes)), ["aislada/estrella.json"])
 
 
+# ---------------------------------------------------------------- la red: registrar, perfil, avisar
+
+class RedFalsa:
+    """Una red de Void de juguete, en este proceso, que contesta como el Worker de red/ (sus reglas de
+    verdad las prueban red/pruebas/todo.mjs contra el Worker). Aquí se prueba el cliente."""
+
+    def __init__(self):
+        import http.server
+        import threading
+        self.perfiles = {}      # alias -> {"llave", "agente", "publico"}
+        self.avisos = []        # {"estrella", "tipo", "texto", "de", "creado"}
+        self.autoria = {}       # estrella -> alias
+        self.vistas = []        # (método, ruta, llave o None)
+        red = self
+
+        class Manejador(http.server.BaseHTTPRequestHandler):
+            def log_message(self, *a):
+                pass
+
+            def responder(self, codigo, datos):
+                cuerpo = json.dumps(datos).encode("utf-8")
+                self.send_response(codigo)
+                self.send_header("content-type", "application/json")
+                self.send_header("content-length", str(len(cuerpo)))
+                self.end_headers()
+                self.wfile.write(cuerpo)
+
+            def quien(self):
+                cab = self.headers.get("authorization") or ""
+                llave = cab[7:] if cab.startswith("Bearer ") else None
+                red.vistas.append((self.command, self.path, llave))
+                for alias, p in red.perfiles.items():
+                    if llave and p["llave"] == llave:
+                        return alias, llave
+                return None, llave
+
+            def do_GET(self):
+                alias, llave = self.quien()
+                if self.path == "/v1/yo":
+                    if not alias:
+                        return self.responder(401, {"error": "sin llave"})
+                    suyas = [e for e, a in red.autoria.items() if a == alias]
+                    return self.responder(200, {"alias": alias, "estrellas": suyas,
+                                                "avisos": [a for a in red.avisos if a["estrella"] in suyas]})
+                self.responder(404, {"error": "no"})
+
+            def do_POST(self):
+                alias, llave = self.quien()
+                largo = int(self.headers.get("content-length") or 0)
+                b = json.loads(self.rfile.read(largo).decode("utf-8") or "{}")
+                if self.path == "/v1/registrar":
+                    if llave:
+                        if not alias:
+                            return self.responder(401, {"error": "llave falsa"})
+                        if alias != b["alias"]:
+                            return self.responder(409, {"error": "Este vault ya está en la red como @" + alias})
+                        return self.responder(200, {"alias": alias, "nuevo": False})
+                    if b["alias"] in red.perfiles:
+                        return self.responder(409, {"error": "El alias @{} ya es de otro vault.".format(b["alias"])})
+                    nueva = "vv_" + hashlib_sha(b["alias"] + str(len(red.perfiles)))[:43]
+                    red.perfiles[b["alias"]] = {"llave": nueva, "agente": b["agente"], "publico": []}
+                    return self.responder(201, {"alias": b["alias"], "nuevo": True, "llave": nueva})
+                if not alias:
+                    return self.responder(401, {"error": "sin llave"})
+                if self.path == "/v1/perfil":
+                    red.perfiles[alias]["publico"] = b["publico"]
+                    return self.responder(200, {"alias": alias, "publico": b["publico"]})
+                if self.path == "/v1/avisos":
+                    if sum(1 for a in red.avisos if a["de"] == alias) >= 10:
+                        return self.responder(429, {"error": "Ya has mandado 10 avisos en la última hora, que es el tope (10)."})
+                    red.avisos.append({"estrella": b["estrella"], "tipo": b["tipo"], "texto": b["texto"], "de": alias,
+                                       "creado": 1790000000000})
+                    return self.responder(201, {"estrella": b["estrella"], "pagina": "https://vaultvoid.app/estrella/" + b["estrella"]})
+                if self.path == "/v1/llave/cambiar":
+                    nueva = "vv_" + hashlib_sha("otra" + llave)[:43]
+                    red.perfiles[alias]["llave"] = nueva
+                    return self.responder(200, {"alias": alias, "llave": nueva})
+                if self.path == "/v1/baja":
+                    del red.perfiles[alias]
+                    return self.responder(200, {"alias": alias, "baja": True})
+                self.responder(404, {"error": "no"})
+
+        self.servidor = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Manejador)
+        self.url = "http://127.0.0.1:{}".format(self.servidor.server_address[1])
+        self.hilo = threading.Thread(target=self.servidor.serve_forever, daemon=True)
+        self.hilo.start()
+
+    def parar(self):
+        self.servidor.shutdown()
+        self.servidor.server_close()
+
+
+def hashlib_sha(texto):
+    import hashlib
+    return hashlib.sha256(texto.encode("utf-8")).hexdigest()
+
+
+class RedDeVoid(Caso):
+    """void.py registrar / perfil / avisar / llave / baja / estado contra una red de juguete."""
+
+    def setUp(self):
+        super().setUp()
+        self.red = RedFalsa()
+        self.antes_env = os.environ.get("VOID_RED")
+        os.environ["VOID_RED"] = self.red.url
+
+    def tearDown(self):
+        self.red.parar()
+        if self.antes_env is None:
+            os.environ.pop("VOID_RED", None)
+        else:
+            os.environ["VOID_RED"] = self.antes_env
+        super().tearDown()
+
+    def alta(self, v, alias="nube"):
+        codigo, out, err = correr("registrar", "--alias", alias, "--agente", "Brock", "--vault", v)
+        self.assertEqual(codigo, 0, err)
+        return out
+
+    def test_registrar_guarda_la_llave_y_la_deja_fuera_de_git(self):
+        v = self.conectado()
+        out = self.alta(v)
+        llave = (v / ".void" / "llave").read_text(encoding="utf-8").strip()
+        self.assertEqual(llave, self.red.perfiles["nube"]["llave"])
+        self.assertIn("@nube", out)
+        self.assertEqual(commits(v)[0], "void: la llave de la red, fuera de git (.void/ en .gitignore)")
+        self.assertIn(".void/", (v / ".gitignore").read_text(encoding="utf-8"))
+        self.assertTrue(limpio(v), "registrar deja cambios fuera del commit")
+        # Lo que haría cualquiera después: git add -A y un commit. La llave no puede entrar.
+        git(v, "add", "-A")
+        git(v, "commit", "-q", "-m", "todo")
+        _, seguidos = git(v, "ls-files")
+        self.assertNotIn(".void", seguidos, "la llave ha entrado en git con un git add -A")
+        _, historia = git(v, "log", "--all", "-p")
+        self.assertNotIn(llave, historia, "la llave está en la historia de git")
+
+    def test_la_llave_no_entra_aunque_el_gitignore_la_vuelva_a_meter(self):
+        """Un .gitignore que ignora lo de dentro de .void pero vuelve a meter la llave con «!»."""
+        v = self.conectado({"README.md": b"# Mi vault\n", ".gitignore": b".void/*\n!.void/llave\n"})
+        self.alta(v)
+        llave = (v / ".void" / "llave").read_text(encoding="utf-8").strip()
+        git(v, "add", "-A")
+        git(v, "commit", "-q", "-m", "todo")
+        _, seguidos = git(v, "ls-files")
+        self.assertNotIn(".void", seguidos, "la llave ha entrado en git por la regla con «!»")
+        _, historia = git(v, "log", "--all", "-p")
+        self.assertNotIn(llave, historia)
+
+    def test_la_llave_no_entra_si_git_ya_sigue_la_carpeta(self):
+        v = self.conectado()
+        (v / ".void").mkdir()
+        (v / ".void" / "nota.txt").write_text("hola\n", encoding="utf-8")
+        git(v, "add", "-f", ".void/nota.txt")
+        git(v, "commit", "-q", "-m", "una nota en .void")
+        codigo, out, err = correr("registrar", "--alias", "nube", "--agente", "Brock", "--vault", v)
+        self.assertEqual(codigo, 1)
+        self.assertIn("git rm -r --cached .void", err)
+        self.assertFalse((v / ".void" / "llave").exists())
+
+    def test_registrar_dos_veces_no_crea_otro_perfil(self):
+        v = self.conectado()
+        self.alta(v)
+        llave = (v / ".void" / "llave").read_text(encoding="utf-8").strip()
+        log = commits(v)
+        codigo, out, err = correr("registrar", "--alias", "nube", "--agente", "Brock", "--vault", v)
+        self.assertEqual(codigo, 0, err)
+        self.assertIn("no he creado otro perfil", out)
+        self.assertEqual(self.red.vistas[-1][2], llave, "la segunda vez no mandó la llave del vault")
+        self.assertEqual(list(self.red.perfiles), ["nube"])
+        self.assertEqual(commits(v), log, "la segunda vez dejó otro commit")
+        self.assertEqual((v / ".void" / "llave").read_text(encoding="utf-8").strip(), llave, "cambió la llave")
+
+    def test_llave_falsa_da_un_error_de_una_frase(self):
+        v = self.conectado()
+        self.alta(v)
+        (v / ".void" / "llave").write_text("vv_" + "A" * 43 + "\n", encoding="utf-8")
+        codigo, out, err = correr("avisar", "candados", "gracias", "me salvó el lunes", "--vault", v)
+        self.assertEqual(codigo, 1)
+        self.assertIn("ya no vale", err)
+        self.assertNotIn("Traceback", err)
+        self.assertEqual(self.red.avisos, [])
+
+    def test_avisar_llega_al_estado_del_creador(self):
+        creador = self.conectado()
+        self.alta(creador, "nube")
+        self.red.autoria["candados"] = "nube"
+        otro = hacer_vault(self.tmp / "otro")
+        correr("actualizar", "--conectar", "--vault", otro, "--desde", self.b01)
+        self.alta(otro, "cosmo")
+        codigo, out, err = correr("avisar", "candados", "gracias", "Me salvó el lunes", "--vault", otro)
+        self.assertEqual(codigo, 0, err)
+        self.assertIn("vaultvoid.app/estrella/candados", out)
+        codigo, out, err = correr("estado", "--vault", creador, "--desde", self.b01)
+        self.assertEqual(codigo, 0, err)
+        self.assertIn("Te han escrito:", out)
+        self.assertIn("gracias · candados · de @cosmo", out)
+        self.assertIn("Me salvó el lunes", out)
+
+    def test_avisar_mal_escrito_no_sale(self):
+        v = self.conectado()
+        self.alta(v)
+        for args in (("candados", "queja", "hola hola"), ("Candados", "fallo", "hola hola"), ("candados", "fallo", "x")):
+            codigo, out, err = correr("avisar", *args, "--vault", v)
+            self.assertEqual(codigo, 1, args)
+        self.assertEqual(self.red.avisos, [])
+
+    def test_limite_de_avisos(self):
+        v = self.conectado()
+        self.alta(v)
+        for i in range(10):
+            self.assertEqual(correr("avisar", "candados", "mejora", "idea {}".format(i), "--vault", v)[0], 0)
+        codigo, out, err = correr("avisar", "candados", "mejora", "una más", "--vault", v)
+        self.assertEqual(codigo, 1)
+        self.assertIn("tope", err)
+
+    def test_perfil_publico(self):
+        v = self.conectado()
+        self.alta(v)
+        self.assertEqual(correr("perfil", "--publico", "agente,estrellas", "--vault", v)[0], 0)
+        self.assertEqual(self.red.perfiles["nube"]["publico"], ["agente", "estrellas"])
+        self.assertEqual(correr("perfil", "--publico", "nada", "--vault", v)[0], 0)
+        self.assertEqual(self.red.perfiles["nube"]["publico"], [])
+        codigo, out, err = correr("perfil", "--publico", "correo", "--vault", v)
+        self.assertEqual(codigo, 1)
+        self.assertEqual(self.red.perfiles["nube"]["publico"], [])
+
+    def test_cambiar_la_llave_y_baja(self):
+        v = self.conectado()
+        self.alta(v)
+        vieja = (v / ".void" / "llave").read_text(encoding="utf-8").strip()
+        self.assertEqual(correr("llave", "cambiar", "--vault", v)[0], 0)
+        nueva = (v / ".void" / "llave").read_text(encoding="utf-8").strip()
+        self.assertNotEqual(vieja, nueva)
+        self.assertEqual(self.red.perfiles["nube"]["llave"], nueva)
+        self.assertEqual(correr("baja", "--vault", v)[0], 1, "la baja sin --si no pidió confirmación")
+        self.assertIn("nube", self.red.perfiles)
+        self.assertEqual(correr("baja", "--si", "--vault", v)[0], 0)
+        self.assertEqual(self.red.perfiles, {})
+        self.assertFalse((v / ".void" / "llave").exists())
+
+    def test_estado_sin_red_sigue_funcionando(self):
+        v = self.conectado()
+        self.alta(v)
+        self.red.parar()
+        os.environ["VOID_RED"] = "http://127.0.0.1:9"
+        codigo, out, err = correr("estado", "--vault", v, "--desde", self.b01)
+        self.assertEqual(codigo, 0, err)
+        self.assertIn("No he podido mirar la red de Void", out)
+        self.red = RedFalsa()
+
+    def test_la_llave_no_viaja_en_claro(self):
+        v = self.conectado()
+        os.environ["VOID_RED"] = "http://ejemplo.invalid"
+        codigo, out, err = correr("registrar", "--alias", "nube", "--agente", "Brock", "--vault", v)
+        self.assertEqual(codigo, 1)
+        self.assertIn("no mando la llave ahí", err)
+
+    def test_sin_conectar_no_registra(self):
+        v = hacer_vault(self.tmp / "suelto")
+        codigo, out, err = correr("registrar", "--alias", "nube", "--agente", "Brock", "--vault", v)
+        self.assertEqual(codigo, 1)
+        self.assertIn("no está conectada a Void", err)
+        self.assertEqual(self.red.perfiles, {})
+
+
 # ---------------------------------------------------------------- sabotaje
 
 SABOTAJES = [
@@ -1555,6 +1820,31 @@ SABOTAJES = [
        "            if False:"),
       ("            if not dentro(vault, destino.parent):", "            if False:")],
      ["Traer.test_ruta_del_catalogo_que_sale_del_vault"]),
+    ("red: guarda la llave sin sacarla antes de git",
+     [("    llave_fuera_de_git(vault)\n", ""),
+      ('    if not llave_ignorada(vault):\n        raise Fallo("git vería', '    if False:\n        raise Fallo("git vería')],
+     ["RedDeVoid.test_registrar_guarda_la_llave_y_la_deja_fuera_de_git",
+      "RedDeVoid.test_la_llave_no_entra_aunque_el_gitignore_la_vuelva_a_meter"]),
+    ("red: guarda la llave aunque git ya siga la carpeta .void",
+     [("    if seguidos.strip():\n        raise Fallo(\"git ya sigue", "    if False:\n        raise Fallo(\"git ya sigue"),
+      ("    if codigo != 0 or seguidos.strip():\n        return False", "    if codigo != 0:\n        return False")],
+     ["RedDeVoid.test_la_llave_no_entra_si_git_ya_sigue_la_carpeta"]),
+    ("red: registrar otra vez no manda la llave (y pediría otro perfil)",
+     [('    llave = leer_llave(vault)\n    codigo, r = pedir_red("POST", "/v1/registrar"',
+       '    llave = None\n    codigo, r = pedir_red("POST", "/v1/registrar"')],
+     ["RedDeVoid.test_registrar_dos_veces_no_crea_otro_perfil"]),
+    ("red: una llave que no vale no se explica",
+     [("    if codigo == 401:\n        raise Fallo(MSG_LLAVE_NO_VALE if llave else MSG_SIN_LLAVE)\n", "")],
+     ["RedDeVoid.test_llave_falsa_da_un_error_de_una_frase"]),
+    ("red: estado no dice lo que te han escrito",
+     [("    estado_red(vault)\n    return 0", "    return 0")],
+     ["RedDeVoid.test_avisar_llega_al_estado_del_creador"]),
+    ("red: manda la llave a una dirección sin https",
+     [('    if otra.startswith("https://") or re.fullmatch(', '    if True or re.fullmatch(')],
+     ["RedDeVoid.test_la_llave_no_viaja_en_claro"]),
+    ("red: estado se cae si la red no contesta",
+     [('    except Fallo as e:\n        print("No he podido mirar la red', '    except ZeroDivisionError as e:\n        print("No he podido mirar la red')],
+     ["RedDeVoid.test_estado_sin_red_sigue_funcionando"]),
 ]
 
 

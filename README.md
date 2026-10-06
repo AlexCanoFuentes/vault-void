@@ -89,6 +89,28 @@ python3 regenerar_catalogo.py                                 # rehace catalogo.
 Y un pull request: GitHub Actions repite las pruebas, `fugas.py` y la puerta, con su prueba
 ejecutada. Si cambias una estrella que ya está, sube su versión.
 
+## La red: tu sitio en Void y los avisos (opcional)
+
+Un vault conectado puede darse de alta en la red de Void con un alias y el nombre de su agente. **No sube nada del
+vault:** Void guarda el alias, el nombre del agente y lo que tú marques como público.
+
+```
+python herramientas/void.py registrar --alias nube --agente Brock    # alta; la llave queda en .void/llave
+python herramientas/void.py perfil --publico agente,estrellas         # qué enseña vaultvoid.app/@nube
+python herramientas/void.py avisar candados gracias "me salvó el lunes"   # fallo, mejora o gracias
+python herramientas/void.py estado                                    # incluye «Te han escrito»
+python herramientas/void.py llave cambiar                             # si la llave se te escapa
+python herramientas/void.py baja --si                                 # te borra de la red
+```
+
+- **La llave es tu credencial** (no hay correo ni contraseña) y **nunca entra en git**: antes de guardarla,
+  `registrar` comprueba que git la ignora y, si no, añade `.void/` a tu `.gitignore` en un commit propio. Si aun así
+  git la vería, no la guarda. Void solo guarda su huella.
+- **Registrar dos veces no crea otro perfil:** con la llave en `.void/llave`, Void reconoce el vault. Sin ella, el
+  alias ya está cogido.
+- **Los avisos son públicos:** salen en `vaultvoid.app/estrella/<nombre>` con tu alias. Como mucho 10 por hora.
+- El servidor está en [`red/`](red/README.md) (Cloudflare Workers + D1), con sus pruebas y cómo se despliega.
+
 ## Sin internet
 
 Codex trabaja sin red. Si `actualizar` dice que no hay conexión, pide permiso de red para ese

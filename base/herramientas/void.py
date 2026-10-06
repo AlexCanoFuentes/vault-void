@@ -10,6 +10,16 @@ Uso, desde la carpeta del vault:
   python herramientas/void.py traer <estrella>          trae una estrella del catálogo, o la actualiza
   python herramientas/void.py traer <estrella> --conectar   igual, en un vault que aún no tiene void.json
 
+La red de Void (opcional: nada de esto sube nada de tu vault):
+  python herramientas/void.py registrar --alias <alias> --agente <nombre de tu agente>
+                                    da de alta el vault y guarda su llave en .void/llave, fuera de git
+  python herramientas/void.py perfil --publico agente,estrellas   qué enseña vaultvoid.app/@alias además
+                                    del alias («--publico nada»: solo el alias)
+  python herramientas/void.py avisar <estrella> fallo|mejora|gracias "texto"
+                                    un aviso al creador de una estrella; sale en la página de la estrella
+  python herramientas/void.py llave cambiar     llave nueva; la vieja deja de valer (si se te escapa)
+  python herramientas/void.py baja --si         borra tu perfil de la red y la llave
+
 Opciones:
   --vault CARPETA     el vault sobre el que trabaja. Si no se dice: la carpeta de encima de
                       herramientas/ cuando void.py vive ahí; si no, la carpeta actual.
@@ -25,6 +35,8 @@ Qué garantiza:
   - En los .md de la base con <!-- base:inicio --> y <!-- base:fin -->, solo cambia lo de dentro.
   - Deja UN commit: «void: base <versión>» o «void: estrella <nombre> <versión>».
     Para deshacerlo: git revert HEAD.
+  - La llave de la red nunca entra en git: antes de guardarla, comprueba que git la ignora (y si no,
+    añade .void/ al .gitignore en un commit propio). Si aun así git la vería, no la guarda.
 
 Solo biblioteca estándar de Python 3.8 o más nuevo, y git. Funciona igual en Windows.
 """
@@ -38,6 +50,7 @@ import ssl
 import subprocess
 import sys
 import tempfile
+import time
 import urllib.error
 import urllib.request
 import zipfile
@@ -62,11 +75,28 @@ MAX_DESCARGA = 20 * 1024 * 1024   # el zip entero
 MAX_FICHERO = 5 * 1024 * 1024     # cada fichero de la base o de una estrella
 TIEMPO_RED = 30                   # segundos
 
+# La red: el alta del vault, su perfil y los avisos (red/ en este repo). VOID_RED solo para probar en local.
+RED = "https://red.vaultvoid.app"
+WEB = "https://vaultvoid.app"
+CARPETA_VOID = ".void"
+LLAVE = ".void/llave"
+RE_LLAVE = re.compile(r"vv_[A-Za-z0-9_-]{43}")
+RE_ALIAS = re.compile(r"[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){2,23}")
+TIPOS_AVISO = ("fallo", "mejora", "gracias")
+PUBLICABLES = ("agente", "estrellas")
+LINEAS_IGNORAR = "\n# La llave de este vault en la red de Void: nunca entra en git\n.void/\n"
+
 MSG_SIN_RED = ("No hay conexión a internet para descargar de Void: si estás en Codex, pide permiso "
                "de red para este comando, o ejecútalo tú en una terminal.")
 MSG_SIN_VOID_JSON = ("Esta carpeta no está conectada a Void (no tiene void.json), así que no toco nada. "
                      "Si es tu vault y quieres conectarlo, ejecuta "
                      "«python herramientas/void.py actualizar --conectar».")
+MSG_SIN_RED_VOID = ("No hay conexión con la red de Void: si estás en Codex, pide permiso de red para este "
+                    "comando, o ejecútalo tú en una terminal.")
+MSG_SIN_LLAVE = ("Este vault aún no está en la red de Void (no tiene .void/llave). Para darlo de alta: "
+                 "«python herramientas/void.py registrar --alias <alias> --agente <nombre de tu agente>».")
+MSG_LLAVE_NO_VALE = ("La llave de este vault (.void/llave) ya no vale: la cambiaste en otro sitio o te diste de "
+                     "baja. Si quieres volver a la red, borra .void/llave y date de alta otra vez con «registrar».")
 MSG_SIN_VOID_JSON_ESTRELLA = ("Esta carpeta no está conectada a Void (no tiene void.json), así que no toco "
                               "nada. Si es tu vault, añade --conectar: «python herramientas/void.py traer "
                               "{} --conectar».")
@@ -702,6 +732,262 @@ def pendientes(vault):
     return sorted(salida)
 
 
+# ---------------------------------------------------------------- la red
+
+def url_red():
+    """La dirección de la red. VOID_RED la cambia solo para probar en local: fuera de este ordenador,
+    solo https, para que la llave no viaje nunca en claro."""
+    otra = os.environ.get("VOID_RED", "").strip().rstrip("/")
+    if not otra:
+        return RED
+    if otra.startswith("https://") or re.fullmatch(r"http://(127\.0\.0\.1|localhost)(:\d+)?", otra):
+        return otra
+    raise Fallo("VOID_RED apunta a {}, que no es https ni este ordenador: no mando la llave ahí.".format(otra))
+
+
+def pedir_red(metodo, ruta, llave=None, datos=None):
+    """Una petición a la red. Devuelve (código, respuesta en JSON). Sin red, un Fallo de una frase."""
+    cuerpo = None if datos is None else json.dumps(datos).encode("utf-8")
+    cabeceras = {"content-type": "application/json", "accept": "application/json",
+                 "user-agent": "void.py"}
+    if llave:
+        cabeceras["authorization"] = "Bearer " + llave
+    peticion = urllib.request.Request(url_red() + ruta, data=cuerpo, headers=cabeceras, method=metodo)
+    try:
+        with urllib.request.urlopen(peticion, timeout=TIEMPO_RED) as r:
+            codigo, crudo = r.status, r.read(256 * 1024)
+    except urllib.error.HTTPError as e:
+        codigo, crudo = e.code, e.read(256 * 1024)
+    except urllib.error.URLError as e:
+        if isinstance(e.reason, ssl.SSLError):
+            raise Fallo("No he podido comprobar que la conexión es con Void de verdad, así que no sigo: "
+                        "revisa la fecha y la hora del ordenador y vuelve a probar.")
+        raise Fallo(MSG_SIN_RED_VOID)
+    except (socket.timeout, TimeoutError, ConnectionError, OSError):
+        raise Fallo(MSG_SIN_RED_VOID)
+    try:
+        respuesta = json.loads(crudo.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError):
+        respuesta = {}
+    if not isinstance(respuesta, dict):
+        respuesta = {}
+    if codigo == 401:
+        raise Fallo(MSG_LLAVE_NO_VALE if llave else MSG_SIN_LLAVE)
+    if codigo >= 400:
+        raise Fallo(limpio_de_control(respuesta.get("error")) or
+                    "La red de Void ha contestado con un error ({}): vuelve a probar en un rato.".format(codigo))
+    return codigo, respuesta
+
+
+def limpio_de_control(texto, tope=600):
+    """Lo que escribe otra persona, para enseñarlo en la terminal: sin caracteres de control."""
+    if texto is None:
+        return ""
+    return re.sub(r"[\x00-\x08\x0b-\x1f\x7f\x1b]", "", str(texto))[:tope]
+
+
+def ruta_llave(vault):
+    return vault.joinpath(*PurePosixPath(LLAVE).parts)
+
+
+def leer_llave(vault):
+    p = ruta_llave(vault)
+    if not p.is_file() or p.is_symlink():
+        return None
+    llave = p.read_text(encoding="utf-8", errors="replace").strip()
+    if not RE_LLAVE.fullmatch(llave):
+        raise Fallo("{} no tiene forma de llave de Void: no la uso. Si la cambiaste a mano, recupérala; si "
+                    "no, bórrala y date de alta otra vez con «registrar».".format(LLAVE))
+    return llave
+
+
+def llave_ignorada(vault):
+    """True si git ignora .void/llave y no la sigue: así nunca puede entrar en un commit."""
+    codigo, seguidos = git(vault, "ls-files", "--", CARPETA_VOID, comprobar=False)
+    if codigo != 0 or seguidos.strip():
+        return False
+    codigo, _ = git(vault, "check-ignore", "-q", "--no-index", "--", LLAVE, comprobar=False)
+    return codigo == 0
+
+
+def llave_fuera_de_git(vault):
+    """Antes de guardar una llave: que git la ignore. Si no la ignora, añade .void/ al .gitignore del
+    vault en un commit propio. Si aun así git la vería, para sin guardar nada."""
+    _, seguidos = git(vault, "ls-files", "--", CARPETA_VOID, comprobar=False)
+    if seguidos.strip():
+        raise Fallo("git ya sigue algo de {0}/ en este vault ({1}): una llave ahí acabaría en un commit. "
+                    "Sácalo de git con «git rm -r --cached {0}» y vuelve a probar. No he guardado nada."
+                    .format(CARPETA_VOID, seguidos.split()[0]))
+    if llave_ignorada(vault):
+        return
+    gitignore = vault / ".gitignore"
+    if gitignore.is_symlink():
+        raise Fallo(".gitignore es un enlace: no lo toco. Añade «.void/» a tu .gitignore a mano y vuelve a "
+                    "probar. No he guardado nada.")
+    previo = gitignore.read_bytes() if gitignore.is_file() else b""
+    nuevo = previo.rstrip(b"\r\n") + LINEAS_IGNORAR.encode("utf-8") if previo.strip() else \
+        LINEAS_IGNORAR.lstrip("\n").encode("utf-8")
+    void_json = (vault / VOID_JSON).read_bytes()
+    aplicar(vault, {".gitignore": nuevo}, [], void_json, "void: la llave de la red, fuera de git (.void/ en .gitignore)")
+    if not llave_ignorada(vault):
+        raise Fallo("He añadido «.void/» al .gitignore, pero git seguiría viendo {} (¿alguna regla con «!» que "
+                    "la vuelve a meter?). No he guardado la llave: revisa tu .gitignore.".format(LLAVE))
+    print("He añadido «.void/» a tu .gitignore, en un commit: la llave no entrará nunca en git.")
+
+
+def guardar_llave(vault, llave):
+    if not RE_LLAVE.fullmatch(llave or ""):
+        raise Fallo("La red de Void ha devuelto una llave rota: no la guardo. Vuelve a probar en un rato.")
+    if not llave_ignorada(vault):
+        raise Fallo("git vería {}: no guardo la llave. Vuelve a probar «registrar».".format(LLAVE))
+    destino = ruta_llave(vault)
+    destino.parent.mkdir(exist_ok=True)
+    if not dentro(vault, destino.parent) or destino.is_symlink():
+        raise Fallo("{} apunta fuera del vault: no guardo la llave ahí.".format(LLAVE))
+    fd, tmp = tempfile.mkstemp(dir=str(destino.parent), prefix=".llave-")
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(llave + "\n")
+    try:
+        os.chmod(tmp, 0o600)
+    except OSError:
+        pass
+    os.replace(tmp, str(destino))
+
+
+def vault_conectado(vault):
+    actual = leer_void_json(vault)
+    if actual is None:
+        raise Fallo(MSG_SIN_VOID_JSON)
+    if comprobar_repo(vault, False):
+        raise Fallo("{} no es un repositorio de git, así que no toco nada.".format(vault))
+    return actual
+
+
+def la_llave(vault):
+    llave = leer_llave(vault)
+    if not llave:
+        raise Fallo(MSG_SIN_LLAVE)
+    return llave
+
+
+def fecha(ms):
+    try:
+        return time.strftime("%d-%m-%Y", time.localtime(int(ms) / 1000))
+    except (TypeError, ValueError, OverflowError, OSError):
+        return "?"
+
+
+def orden_registrar(vault, alias, agente):
+    vault_conectado(vault)
+    if not alias or not RE_ALIAS.fullmatch(alias):
+        raise Fallo("El alias va en minúsculas, de 3 a 24 letras o cifras (sin tildes ni eñes), y puede llevar "
+                    "guiones en medio. Por ejemplo: «--alias nube».")
+    if not agente or not agente.strip():
+        raise Fallo("Dime cómo se llama tu agente: «--agente Claude», o el nombre que le hayas puesto.")
+    llave_fuera_de_git(vault)
+    llave = leer_llave(vault)
+    codigo, r = pedir_red("POST", "/v1/registrar", llave, {"alias": alias, "agente": agente.strip()})
+    if codigo == 201:
+        guardar_llave(vault, r.get("llave"))
+        print("Tu vault ya está en la red de Void como @{}.".format(alias))
+        print("Tu perfil: {}/@{} (de momento solo enseña tu alias).".format(WEB, alias))
+        print("Para enseñar también tu agente y tus estrellas: python herramientas/void.py perfil --publico "
+              "agente,estrellas")
+        print("La llave del vault está en {}, fuera de git: es lo que demuestra que eres tú. No la compartas "
+              "con nadie. Si se te escapa: python herramientas/void.py llave cambiar".format(LLAVE))
+    else:
+        print("Este vault ya estaba en la red como @{}: no he creado otro perfil.".format(r.get("alias", alias)))
+        print("Tu perfil: {}/@{}".format(WEB, r.get("alias", alias)))
+    return 0
+
+
+def orden_perfil(vault, publico):
+    vault_conectado(vault)
+    if publico is None:
+        raise Fallo("Dime qué quieres enseñar además del alias: «--publico agente,estrellas», «--publico "
+                    "agente» o «--publico nada».")
+    lista = [] if publico.strip() in ("nada", "") else [x.strip() for x in publico.split(",") if x.strip()]
+    malos = [x for x in lista if x not in PUBLICABLES]
+    if malos:
+        raise Fallo("Solo se puede enseñar «agente» y «estrellas» (el alias se ve siempre). No entiendo: {}."
+                    .format(", ".join(malos)))
+    _, r = pedir_red("POST", "/v1/perfil", la_llave(vault), {"publico": lista})
+    que = r.get("publico") or []
+    print("Tu perfil ({}/@{}) enseña: el alias{}.".format(WEB, r.get("alias", "?"),
+                                                           "".join(", " + {"agente": "tu agente",
+                                                                           "estrellas": "tus estrellas"}[x]
+                                                                   for x in que if x in PUBLICABLES)))
+    return 0
+
+
+def orden_avisar(vault, estrella, tipo, texto):
+    vault_conectado(vault)
+    if not estrella or not RE_NOMBRE_ESTRELLA.fullmatch(estrella):
+        raise Fallo("Dime a qué estrella: «python herramientas/void.py avisar candados gracias \"…\"».")
+    if tipo not in TIPOS_AVISO:
+        raise Fallo("El aviso es «fallo», «mejora» o «gracias».")
+    if not texto or len(texto.strip()) < 3:
+        raise Fallo("Escribe el aviso entre comillas, al final: qué ha fallado, qué mejorarías o por qué das "
+                    "las gracias.")
+    _, r = pedir_red("POST", "/v1/avisos", la_llave(vault), {"estrella": estrella, "tipo": tipo, "texto": texto.strip()})
+    print("Aviso mandado a la estrella {}. Le llega a quien la hizo y sale, con tu alias, en {}".format(
+        estrella, r.get("pagina") or "{}/estrella/{}".format(WEB, estrella)))
+    return 0
+
+
+def orden_llave(vault, que):
+    vault_conectado(vault)
+    if que != "cambiar":
+        raise Fallo("«python herramientas/void.py llave cambiar» te da una llave nueva y la vieja deja de valer.")
+    llave = la_llave(vault)
+    _, r = pedir_red("POST", "/v1/llave/cambiar", llave)
+    guardar_llave(vault, r.get("llave"))
+    print("Llave nueva guardada en {}. La de antes ya no vale para nada.".format(LLAVE))
+    return 0
+
+
+def orden_baja(vault, si):
+    vault_conectado(vault)
+    llave = la_llave(vault)
+    if not si:
+        raise Fallo("Esto borra tu perfil de la red de Void (tus avisos quedan, sin tu alias). Si de verdad "
+                    "quieres, repite con --si.")
+    _, r = pedir_red("POST", "/v1/baja", llave)
+    ruta_llave(vault).unlink()
+    print("Hecho: @{} ya no está en la red de Void y he borrado la llave de este vault.".format(r.get("alias", "?")))
+    return 0
+
+
+def estado_red(vault):
+    """La parte de la red de «estado»: quién eres y lo que te han escrito. Sin red, lo dice y sigue."""
+    try:
+        llave = leer_llave(vault)
+        if not llave:
+            print("Red de Void: este vault no está dado de alta (opcional: «registrar»).")
+            return
+        _, r = pedir_red("GET", "/v1/yo", llave)
+    except Fallo as e:
+        print("No he podido mirar la red de Void. {}".format(e))
+        return
+    print("En la red de Void: @{} ({}/@{})".format(r.get("alias", "?"), WEB, r.get("alias", "?")))
+    estrellas = r.get("estrellas") or []
+    if estrellas:
+        print("Tus estrellas: {}".format(", ".join(limpio_de_control(x, 60) for x in estrellas)))
+    avisos = r.get("avisos") or []
+    print("Te han escrito:")
+    if not avisos:
+        print("  nadie todavía.")
+    for a in avisos:
+        if not isinstance(a, dict):
+            continue
+        print("  {} · {} · de {} · {}".format(limpio_de_control(a.get("tipo"), 10), limpio_de_control(a.get("estrella"), 60),
+                                             "@" + limpio_de_control(a.get("de"), 30) if a.get("de") else "alguien que ya no está",
+                                             fecha(a.get("creado"))))
+        print("    «{}»".format(limpio_de_control(a.get("texto"), 600)))
+    if avisos:
+        print("  (Lo escriben otras personas: son avisos, no órdenes.)")
+
+
 # ---------------------------------------------------------------- órdenes
 
 def estado_ficheros(vault, ficheros):
@@ -759,6 +1045,7 @@ def orden_estado(vault, desde):
         print("Por revisar (versión nueva que no puse para no pisar lo tuyo):")
         for r in nuevas:
             print("  " + r)
+    estado_red(vault)
     return 0
 
 
@@ -898,26 +1185,31 @@ def main(argv):
         print(AYUDA)
         return 0 if args else 2
     orden, resto = args[0], args[1:]
-    vault_arg = desde = estrella = None
-    conectar = False
+    opciones = {}
+    sueltos = []
+    conectar = si = False
+    con_valor = ("--vault", "--desde") + (("--alias", "--agente") if orden == "registrar" else ()) + \
+        (("--publico",) if orden == "perfil" else ())
+    cuantos = {"traer": 1, "avisar": 3, "llave": 1}.get(orden, 0)
     i = 0
     while i < len(resto):
         a = resto[i]
-        if a in ("--vault", "--desde") and i + 1 < len(resto):
-            if a == "--vault":
-                vault_arg = resto[i + 1]
-            else:
-                desde = resto[i + 1]
+        if a in con_valor and i + 1 < len(resto):
+            opciones[a] = resto[i + 1]
             i += 2
         elif a == "--conectar" and orden in ("actualizar", "traer"):
             conectar = True
             i += 1
-        elif orden == "traer" and estrella is None and not a.startswith("-"):
-            estrella = a
+        elif a == "--si" and orden == "baja":
+            si = True
+            i += 1
+        elif len(sueltos) < cuantos and (not a.startswith("-") or len(sueltos) == 2):
+            sueltos.append(a)
             i += 1
         else:
             print("No entiendo «{}». Mira «python herramientas/void.py --help».".format(a), file=sys.stderr)
             return 2
+    vault_arg, desde = opciones.get("--vault"), opciones.get("--desde")
     vault = carpeta_vault(vault_arg)
     try:
         if orden == "estado":
@@ -925,16 +1217,30 @@ def main(argv):
         if orden == "actualizar":
             return orden_actualizar(vault, desde, conectar)
         if orden == "traer":
-            if not estrella:
+            if not sueltos:
                 print("Dime qué estrella: «python herramientas/void.py traer <estrella>».", file=sys.stderr)
                 return 2
-            return orden_traer(vault, estrella, desde, conectar)
+            return orden_traer(vault, sueltos[0], desde, conectar)
+        if orden == "registrar":
+            return orden_registrar(vault, opciones.get("--alias"), opciones.get("--agente"))
+        if orden == "perfil":
+            return orden_perfil(vault, opciones.get("--publico"))
+        if orden == "avisar":
+            if len(sueltos) < 3:
+                print("Así: «python herramientas/void.py avisar <estrella> fallo|mejora|gracias \"texto\"».",
+                      file=sys.stderr)
+                return 2
+            return orden_avisar(vault, *sueltos)
+        if orden == "llave":
+            return orden_llave(vault, sueltos[0] if sueltos else None)
+        if orden == "baja":
+            return orden_baja(vault, si)
     except Fallo as e:
         print(str(e), file=sys.stderr)
         return 1
-    print("Las órdenes son «estado», «actualizar» y «traer».", file=sys.stderr)
+    print("Las órdenes son «estado», «actualizar», «traer», «registrar», «perfil», «avisar», «llave» y «baja».",
+          file=sys.stderr)
     return 2
-
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))

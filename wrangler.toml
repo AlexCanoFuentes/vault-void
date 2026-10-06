@@ -2,6 +2,7 @@
 # Desplegar SOLO con el si de Alex: npx -y wrangler@4 deploy  (desde esta carpeta)
 name = "vault-void-web"
 compatibility_date = "2026-10-01"
+account_id = "6e6d0504dbdbbc87c7609ebf6940429b"  # la cuenta de Alex; sin esto wrangler pregunta entre las tres
 
 [assets]
 directory = "./web"

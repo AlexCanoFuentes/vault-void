@@ -36,7 +36,7 @@ async function levantar(dir, puerto, vars = []) {
   execFileSync(WRANGLER, ["d1", "migrations", "apply", "DB", "--local", "--persist-to", persist], { cwd: dir, stdio: "pipe" });
   const todas = [`CATALOGO_URL:http://127.0.0.1:${PUERTO_CATALOGO}/catalogo.json`, ...vars];
   const p = spawn(WRANGLER, ["dev", "--port", String(puerto), "--ip", "127.0.0.1", "--persist-to", persist,
-    ...todas.flatMap((v) => ["--var", v])], { cwd: dir, stdio: ["ignore", "pipe", "pipe"] });
+    ...todas.flatMap((v) => ["--var", v])], { cwd: dir, stdio: ["ignore", "pipe", "pipe"], detached: true });
   await new Promise((ok, no) => {
     const t = setTimeout(() => no(new Error("wrangler dev no arrancó en 90 s")), 90_000);
     const mira = (d) => { if (/Ready on/.test(String(d))) { clearTimeout(t); ok(); } };
@@ -50,7 +50,8 @@ async function levantar(dir, puerto, vars = []) {
         { cwd: dir, stdio: ["ignore", "pipe", "pipe"] }).toString();
       return JSON.parse(salida)[0].results;
     },
-    parar() { p.kill(); rmSync(persist, { recursive: true, force: true }); },
+    // Su propio grupo de procesos: se mata entero (wrangler y workerd), o workerd se queda con el puerto.
+    parar() { try { process.kill(-p.pid, "SIGKILL"); } catch { /* ya no estaba */ } rmSync(persist, { recursive: true, force: true }); },
   };
 }
 

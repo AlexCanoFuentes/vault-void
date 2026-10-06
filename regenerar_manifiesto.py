@@ -9,8 +9,14 @@ Uso:
 
 Antes de calcular, copia void.py a base/herramientas/void.py: así cada vault lleva el mismo
 cliente que este repo.
+
+También escribe la huella de void.py en la página que lee el agente para conectar un vault
+(vaultvoid.app/entrar: web/entrar.md y web/entrar.html, que se escriben a mano salvo la huella) y
+copia entrar.md a entrar.txt. Con --comprobar, falla si la huella de la página no cuadra con void.py:
+el agente compara lo que baja de GitHub con esa huella, y una página desfasada lo pararía.
 """
 import json
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -22,6 +28,46 @@ import void  # noqa: E402
 BASE = AQUI / "base"
 CLIENTE_EN_BASE = ("herramientas", "void.py")
 IGNORAR_DIRS = {"__pycache__"}
+
+WEB = AQUI / "web"
+ENTRAR = ("entrar.md", "entrar.html")   # a mano, salvo la huella, que la pone este script
+ENTRAR_TXT = ("entrar.md", "entrar.txt")   # entrar.txt es una copia de entrar.md
+RE_HUELLA = re.compile(r"(?<![0-9a-f])[0-9a-f]{64}(?![0-9a-f])")
+
+
+def huella_cliente(raiz=AQUI):
+    """La huella de void.py tal como lo sirve GitHub (con \n; void.huella no cuenta los \r\n)."""
+    return void.huella((Path(raiz) / "void.py").read_bytes())
+
+
+def entrar_con_huella(web, h):
+    """{nombre: bytes} de la página de entrar con la huella h puesta. No escribe nada."""
+    salida = {}
+    for nombre in ENTRAR:
+        texto = (Path(web) / nombre).read_text(encoding="utf-8")
+        salida[nombre] = RE_HUELLA.sub(h, texto).encode("utf-8")
+    salida[ENTRAR_TXT[1]] = salida[ENTRAR_TXT[0]]
+    return salida
+
+
+def problemas_entrar(web, h):
+    """Lo que no cuadra entre la página de entrar y void.py. Vacía si está al día."""
+    problemas = []
+    for nombre in ENTRAR + ENTRAR_TXT[1:]:
+        p = Path(web) / nombre
+        if not p.is_file():
+            problemas.append("falta web/{}".format(nombre))
+            continue
+        vistas = RE_HUELLA.findall(p.read_text(encoding="utf-8"))
+        if len(vistas) < 2:
+            problemas.append("web/{} no publica la huella de void.py (dos veces: a la vista y en la orden)"
+                             .format(nombre))
+        elif any(x != h for x in vistas):
+            problemas.append("la huella de void.py en web/{} no cuadra con void.py".format(nombre))
+    md, txt = (Path(web) / n for n in ENTRAR_TXT)
+    if md.is_file() and txt.is_file() and void.huella(md.read_bytes()) != void.huella(txt.read_bytes()):
+        problemas.append("web/entrar.txt no es una copia de web/entrar.md")
+    return problemas
 
 
 def ficheros_de(base):
@@ -77,6 +123,7 @@ def main(argv):
         p = BASE / void.MANIFIESTO
         if not p.is_file() or void.huella(p.read_bytes()) != void.huella(contenido(BASE, version)):
             problemas.append("base/MANIFIESTO.json no está al día con los ficheros de base/")
+        problemas += problemas_entrar(WEB, huella_cliente())
         for pr in problemas:
             print(pr + ": corre python3 regenerar_manifiesto.py", file=sys.stderr)
         if not problemas:
@@ -86,7 +133,11 @@ def main(argv):
     cliente.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(str(AQUI / "void.py"), str(cliente))
     (BASE / void.MANIFIESTO).write_bytes(contenido(BASE, version))
+    h = huella_cliente()
+    for nombre, datos in entrar_con_huella(WEB, h).items():
+        (WEB / nombre).write_bytes(datos)
     print("Manifiesto rehecho: base {}, {} ficheros.".format(version, len(ficheros_de(BASE))))
+    print("Huella de void.py en web/entrar: {}".format(h))
     return 0
 
 

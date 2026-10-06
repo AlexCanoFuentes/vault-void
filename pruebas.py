@@ -14,6 +14,7 @@ Por qué existe el sabotaje: una prueba que nunca viste fallar no demuestra nada
 Las carpetas de --vaults nunca se tocan: se copian a una carpeta temporal.
 """
 import ast
+import html
 import importlib.util
 import io
 import json
@@ -45,6 +46,7 @@ F = REF_F                    # formato.py bajo prueba
 P = REF_P                    # puerta.py bajo prueba
 C = REF_C                    # regenerar_catalogo.py bajo prueba
 T = REF_T                    # taller.py bajo prueba
+M = regenerar_manifiesto     # regenerar_manifiesto.py bajo prueba (la huella de vaultvoid.app/entrar)
 
 TMP_GLOBAL = None
 
@@ -627,6 +629,108 @@ class Repo(unittest.TestCase):
             self.assertFalse(REF.ruta_segura(mala), mala)
         for buena in ("AGENTS.md", ".codex/config.toml", "herramientas/void.py", ".gitignore"):
             self.assertTrue(REF.ruta_segura(buena), buena)
+
+
+# ---------------------------------------------------------------- vaultvoid.app/entrar
+
+WEB = AQUI / "web"
+
+
+def ordenes_md(texto):
+    return re.findall(r"^```\n(.*?)\n```$", texto, re.S | re.M)
+
+
+def ordenes_html(texto):
+    return [html.unescape(o) for o in re.findall(r"<pre><code>(.*?)</code></pre>", texto, re.S)]
+
+
+class Entrar(unittest.TestCase):
+    """La página que lee el agente para conectar un vault: la huella que publica tiene que ser la de
+    void.py, y la orden que la comprueba tiene que guardar solo lo que cuadra."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="void-entrar-"))
+
+    def tearDown(self):
+        borrar(str(self.tmp))
+
+    def copia_web(self):
+        web = self.tmp / "web"
+        web.mkdir()
+        for n in ("entrar.md", "entrar.html", "entrar.txt"):
+            shutil.copyfile(str(WEB / n), str(web / n))
+        return web
+
+    def test_la_pagina_publica_la_huella_de_void_py(self):
+        h = REF.huella(VOID_PY.read_bytes())
+        self.assertEqual(M.problemas_entrar(WEB, h), [], "corre python3 regenerar_manifiesto.py")
+
+    def test_huella_que_no_cuadra_sale_en_rojo(self):
+        h = REF.huella(VOID_PY.read_bytes())
+        otra = ("0" if h[0] != "0" else "1") + h[1:]
+        for nombre in ("entrar.md", "entrar.html", "entrar.txt"):
+            web = self.copia_web()
+            p = web / nombre
+            p.write_text(p.read_text(encoding="utf-8").replace(h, otra, 1), encoding="utf-8")
+            problemas = M.problemas_entrar(web, h)
+            if not any("no cuadra" in x and nombre in x for x in problemas):
+                self.fail("la huella de {} no cuadra con void.py y no salta (vio {})".format(nombre, problemas))
+            borrar(str(web))
+
+    def test_void_py_cambia_y_la_pagina_no(self):
+        web = self.copia_web()
+        h = REF.huella(VOID_PY.read_bytes() + b"# un cambio\n")
+        if not any("no cuadra" in x for x in M.problemas_entrar(web, h)):
+            self.fail("void.py cambió y la página sigue publicando la huella vieja sin que salte")
+
+    def test_la_huella_es_la_del_void_py_que_sirve_github(self):
+        """GitHub sirve el fichero tal como está en git: sin \r\n, su sha256 es el de la página."""
+        r = subprocess.run(["git", "-C", str(AQUI), "show", "HEAD:void.py"], stdout=subprocess.PIPE,
+                           stderr=subprocess.PIPE)
+        if r.returncode != 0:
+            self.skipTest("sin git en este sistema")
+        self.assertNotIn(b"\r", r.stdout, "void.py en git lleva \\r: su sha256 no sería la huella publicada")
+
+    def test_md_html_y_txt_dicen_lo_mismo(self):
+        md = (WEB / "entrar.md").read_text(encoding="utf-8")
+        ht = (WEB / "entrar.html").read_text(encoding="utf-8")
+        self.assertEqual((WEB / "entrar.txt").read_bytes(), (WEB / "entrar.md").read_bytes())
+        self.assertTrue(ordenes_md(md), "entrar.md no tiene órdenes")
+        self.assertEqual(ordenes_md(md), ordenes_html(ht), "las órdenes de entrar.md y entrar.html no son las mismas")
+        for frase in ("conéctate a Void: vaultvoid.app/entrar", "git revert HEAD", "network_access = false",
+                      "xcode-select --install", "py --version", "Homebrew"):
+            self.assertIn(frase, md)
+            self.assertIn(frase, html.unescape(ht))
+
+    def test_el_html_se_lee_sin_javascript(self):
+        ht = (WEB / "entrar.html").read_text(encoding="utf-8").lower()
+        self.assertNotIn("<script", ht, "entrar.html depende de JavaScript: un agente no lo ejecuta")
+
+    def bajar(self, servido):
+        """Ejecuta la orden del paso 3 tal cual, pero bajando de un fichero local en vez de GitHub."""
+        orden = ordenes_md((WEB / "entrar.md").read_text(encoding="utf-8"))[0]
+        codigo = re.fullmatch(r'python3 -c "(.*)"', orden).group(1)
+        url = "https://raw.githubusercontent.com/AlexCanoFuentes/vault-void/main/void.py"
+        self.assertIn(url, codigo)
+        fuente = self.tmp / "servido.py"
+        fuente.write_bytes(servido)
+        vault = self.tmp / "vault"
+        vault.mkdir()
+        r = subprocess.run([sys.executable, "-c", codigo.replace(url, fuente.as_uri())], cwd=str(vault),
+                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        return r.returncode, r.stdout.decode("utf-8", "replace"), vault / "herramientas" / "void.py"
+
+    def test_la_orden_de_bajar_guarda_si_cuadra(self):
+        codigo, salida, destino = self.bajar(VOID_PY.read_bytes())
+        self.assertEqual(codigo, 0, salida)
+        self.assertIn("Huella OK", salida)
+        self.assertEqual(destino.read_bytes(), VOID_PY.read_bytes())
+
+    def test_la_orden_de_bajar_no_guarda_si_no_cuadra(self):
+        codigo, salida, destino = self.bajar(VOID_PY.read_bytes() + b"import os\n")
+        self.assertEqual(codigo, 1, "la orden no falló con un void.py cambiado por el camino")
+        self.assertIn("NO CUADRA", salida)
+        self.assertFalse(destino.exists(), "guardó un void.py cuya huella no cuadraba")
 
 
 # ---------------------------------------------------------------- escáner de fugas
@@ -1366,6 +1470,10 @@ SABOTAJES = [
      [("        crlf = usa_crlf(previo) if previo is not None else finales.get(ruta)\n",
        "        crlf = usa_crlf(previo) if previo is not None else None\n")],
      ["Actualizar.test_windows_con_autocrlf_revert_byte_a_byte"]),
+    ("entrar: la página publica una huella que no es la de void.py",
+     [("        elif any(x != h for x in vistas):", "        elif False:")],
+     ["Entrar.test_huella_que_no_cuadra_sale_en_rojo", "Entrar.test_void_py_cambia_y_la_pagina_no"],
+     "regenerar_manifiesto.py"),
     ("conectar: deja fuera del commit el void.py recién bajado",
      [('    sueltos = sorted(set(sin_seguir(vault, [r for r in iguales if ruta_segura(r)])) - set(rutas))\n',
        "    sueltos = []\n")],
@@ -1468,7 +1576,7 @@ def razon(traza):
 
 def poner_bajo_prueba(fichero, modulo):
     """Cambia el módulo que usan las pruebas: el bueno o uno saboteado."""
-    global V, VOID_PY, F, P, C, T
+    global V, VOID_PY, F, P, C, T, M
     if fichero == "void.py":
         V, VOID_PY = modulo, Path(modulo.__file__)
     elif fichero == "formato.py":
@@ -1479,12 +1587,15 @@ def poner_bajo_prueba(fichero, modulo):
         C = modulo
     elif fichero == "taller.py":
         T = modulo
+    elif fichero == "regenerar_manifiesto.py":
+        M = modulo
     else:
         raise ValueError(fichero)
 
 
 def buenos():
-    return {"void.py": REF, "formato.py": REF_F, "puerta.py": REF_P, "regenerar_catalogo.py": REF_C, "taller.py": REF_T}
+    return {"void.py": REF, "formato.py": REF_F, "puerta.py": REF_P, "regenerar_catalogo.py": REF_C, "taller.py": REF_T,
+            "regenerar_manifiesto.py": regenerar_manifiesto}
 
 
 def sabotaje():

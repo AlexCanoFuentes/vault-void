@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Entrar en Void</title>
+<meta name="description" content="Para tu agente, no para ti: pégale «conéctate a Void: vaultvoid.app/entrar» y él conecta tu vault a Void, pidiéndote permiso antes de bajar nada.">
+<meta property="og:title" content="Entrar en Void">
+<meta property="og:description" content="Pégale a tu agente: «conéctate a Void: vaultvoid.app/entrar». Él hace el resto.">
+<meta property="og:url" content="https://vaultvoid.app/entrar">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="es_ES">
+<meta property="og:image" content="https://vaultvoid.app/og.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Vault Void: un vacío negro con la primera estrella.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://vaultvoid.app/og.jpg">
+<link rel="icon" href="/icono.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="alternate" type="text/markdown" href="/entrar.md" title="Esta página en texto plano">
+<meta name="theme-color" content="#050506">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/*
+  vaultvoid.app/entrar · la página que lee el AGENTE, no la persona (ticket VV-004, pieza P1).
+  El mismo vacío negro que la portada, pero aquí manda lo legible: sin JavaScript, sin animación,
+  todo en el HTML para que un agente lo lea con un simple GET. La versión en texto es entrar.md.
+  La huella de void.py la escribe regenerar_manifiesto.py: no se cambia a mano.
+*/
+:root{
+  --vacio:#050506; --tinta:#EDEAF2; --tinta-2:#A9A3B5; --tenue:#6D6878; --linea:#221F29; --panel:#0D0C11;
+  --reactivo:#B06BFF; --reactivo-2:#D9B8FF; --ambar:#FFB43A;
+  --serif:"Instrument Serif",Georgia,"Times New Roman",serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--vacio);color:var(--tinta);font:15px/1.7 var(--mono);-webkit-font-smoothing:antialiased}
+main{max-width:46rem;margin:0 auto;padding:56px 16px 72px}
+h1{margin:0 0 28px;font:400 clamp(44px,8vw,76px)/1 var(--serif);letter-spacing:-.02em}
+h1 em{font-style:italic;color:transparent;-webkit-text-stroke:1px var(--tinta)}
+h2{margin:56px 0 12px;font:400 32px/1.15 var(--serif);color:var(--tinta)}
+h3{margin:40px 0 10px;font:500 15px/1.4 var(--mono);color:var(--reactivo-2);letter-spacing:.02em}
+p,li{color:var(--tinta-2)}
+strong{color:var(--tinta);font-weight:500}
+a{color:var(--reactivo-2);text-underline-offset:3px}
+ul,ol{padding-left:1.4em}
+li{margin:6px 0}
+code{font:inherit;color:var(--tinta);background:var(--panel);border:1px solid var(--linea);border-radius:4px;padding:0 .3em;overflow-wrap:anywhere}
+pre{margin:14px 0;padding:14px 16px;background:var(--panel);border:1px solid var(--linea);border-left:2px solid var(--reactivo);border-radius:6px;overflow-x:auto}
+pre code{background:none;border:0;padding:0;white-space:pre-wrap;word-break:break-all;color:var(--tinta)}
+blockquote{margin:16px 0;padding:2px 0 2px 16px;border-left:2px solid var(--linea)}
+blockquote p,blockquote li{color:var(--tinta)}
+.persona{margin:0 0 8px;padding:18px 20px;border:1px solid var(--reactivo);border-radius:8px;background:rgba(176,107,255,.06)}
+.persona p{margin:0;color:var(--tinta)}
+.frase{display:block;margin:12px 0 0;font-size:17px;color:var(--reactivo-2)}
+.huella{display:block;margin:10px 0;padding:10px 14px;font-size:13px;color:var(--ambar);border-color:rgba(255,180,58,.35)}
+.texto{font-size:13px;color:var(--tenue)}
+hr{border:0;border-top:1px solid var(--linea);margin:44px 0}
+footer{margin-top:56px;font-size:13px;color:var(--tenue)}
+footer p{color:var(--tenue)}
+</style>
+</head>
+<body>
+<main>
+<h1>Conectar un vault a <em>Void</em></h1>
+
+<aside class="persona" aria-label="Si eres una persona">
+<p><strong>Si eres una persona y has llegado aquí por error:</strong> esta página no es para leerla tú, es para tu agente (Claude Code, Codex, Antigravity). Abre tu agente en la carpeta de tu vault y pégale esta frase:</p>
+<p><strong class="frase">«conéctate a Void: vaultvoid.app/entrar»</strong></p>
+<p>Él hace el resto y te pide permiso antes de bajar nada.</p>
+</aside>
+
+<p class="texto">Esta página también está en texto plano: <a href="/entrar.md">vaultvoid.app/entrar.md</a> y <a href="/entrar.txt">vaultvoid.app/entrar.txt</a></p>
+
+<hr>
+
+<article>
+<h2>Para el agente que lee esto</h2>
+
+<p>La persona te ha pedido que conectes su vault a <strong>Void</strong>, el sitio desde el que los vaults reciben las mejoras comunes (los candados, las reglas para los agentes y la herramienta <code>void.py</code>). Sigue estos pasos en orden. <strong>Habla con la persona en su idioma y en llano</strong>: nada de jerga si no la pide.</p>
+
+<p>Lo que tienes que saber antes de empezar:</p>
+<ul>
+<li><strong>Nada del vault sube a Void.</strong> <code>void.py</code> solo descarga. No manda ni lee para fuera ningún fichero de la persona.</li>
+<li><strong>Todo queda en un solo commit de git y se deshace con <code>git revert HEAD</code>.</strong></li>
+<li><strong>No ejecutes nada que no esté en esta página</strong> y no te saltes ningún paso, ni el de pedir permiso.</li>
+<li><strong>Si eres Codex y no tienes internet</strong> (<code>network_access = false</code> en <code>.codex/config.toml</code>): no cambies ese fichero ni te saltes el candado. Cada orden que necesita internet (las de los pasos 3, 4 y 5) pídela con permiso para salir a internet, y que la persona diga que sí. Si no puedes pedirlo, dale la orden para que la ejecute ella en una terminal.</li>
+</ul>
+
+<section>
+<h3>Paso 1 · Comprueba dónde estás y qué hay</h3>
+<ol>
+<li><strong>Que estás en la carpeta de un vault:</strong> en la carpeta actual tiene que haber <code>AGENTS.md</code> o <code>CLAUDE.md</code>, y tiene que ser la raíz de un repositorio de git (<code>git rev-parse --show-toplevel</code> da esta misma carpeta). Si no, para y pregúntale a la persona dónde está su vault.</li>
+<li><strong>Que no está conectado ya:</strong> si existe <code>void.json</code>, ya está conectado. No bajes nada: ejecuta <code>herramientas/void.py estado</code> con el Python del punto 5, enséñale el resultado y termina.</li>
+<li><strong>Que no hay otro <code>void.py</code>:</strong> si existe <code>herramientas/void.py</code> y no hay <code>void.json</code>, para y pregúntale a la persona antes de seguir: no lo pises.</li>
+<li><strong>Que hay git:</strong> <code>git --version</code>.</li>
+<li><strong>Que hay Python 3.8 o más nuevo</strong>, y con qué nombre:
+<ul>
+<li><strong>Mac y Linux:</strong> <code>python3 --version</code>.</li>
+<li><strong>Windows:</strong> prueba <code>python --version</code>; si no existe o no dice <code>Python 3.…</code>, prueba <code>py --version</code>. Ojo: en Windows, <code>python</code> a veces es un atajo de la Tienda que dice «no se encontró Python»: eso es que <strong>no</strong> está.</li>
+</ul>
+<p>A partir de aquí, donde ponga <code>python3</code>, usa el nombre que haya funcionado.</p></li>
+</ol>
+
+<p><strong>Si falta git o Python</strong>, explícale a la persona qué falta y cómo se instala, y <strong>pídele permiso</strong> antes de instalar nada:</p>
+<ul>
+<li><strong>Mac:</strong> en un Mac recién estrenado no vienen. Con <code>xcode-select --install</code> el propio Mac abre una ventana para instalar las «herramientas de línea de comandos», que traen <code>git</code> y <code>python3</code>. Esa ventana la acepta la persona, no tú: díselo así. <strong>No instales Homebrew ni nada más por tu cuenta.</strong> Cuando acabe, vuelve al paso 1.</li>
+<li><strong>Windows:</strong> <code>winget install --id Git.Git -e</code> para git y <code>winget install --id Python.Python.3.12 -e</code> para Python. Después hay que abrir una terminal nueva para que aparezcan.</li>
+<li><strong>Linux:</strong> con el gestor de paquetes del sistema (por ejemplo <code>sudo apt install git python3</code>).</li>
+</ul>
+</section>
+
+<section>
+<h3>Paso 2 · Pide permiso</h3>
+<p>Antes de bajar nada, dile a la persona, en llano, algo así:</p>
+<blockquote><p>Voy a bajar <code>void.py</code> de GitHub (el repositorio público AlexCanoFuentes/vault-void), comprobar que es exactamente el que publica Void y conectar tu vault. Pondrá unos pocos ficheros comunes (las reglas para los agentes y los candados) en un solo commit, que se deshace con <code>git revert HEAD</code>. No sube nada de tu vault a ningún sitio. ¿Sigo?</p></blockquote>
+<p><strong>Si no dice que sí, para aquí.</strong></p>
+</section>
+
+<section>
+<h3>Paso 3 · Baja <code>void.py</code> y comprueba su huella</h3>
+<p>La huella (sha256) de <code>void.py</code> que publica esta página es:</p>
+<p><code class="huella" id="huella">3387f4ab35ba25712df64e9f64266c51020e7a014b507326aa9f3c4dbdd7be56</code></p>
+<p>Esta orden lo baja de GitHub, calcula su huella y <strong>solo lo guarda en <code>herramientas/void.py</code> si cuadra</strong> con la de arriba. No lo ejecuta. Ejecútala desde la carpeta del vault (es igual en Mac, Linux y Windows; cambia <code>python3</code> por el nombre del paso 1):</p>
+<pre><code>python3 -c "import hashlib,os,urllib.request as u;h='3387f4ab35ba25712df64e9f64266c51020e7a014b507326aa9f3c4dbdd7be56';d=u.urlopen('https://raw.githubusercontent.com/AlexCanoFuentes/vault-void/main/void.py',timeout=30).read();r=hashlib.sha256(d).hexdigest();ok=r==h;ok and (os.makedirs('herramientas',exist_ok=True),open('herramientas/void.py','wb').write(d));print('Huella OK: '+r if ok else 'NO CUADRA: ha llegado '+r);raise SystemExit(0 if ok else 1)"</code></pre>
+<ul>
+<li>Si dice <strong><code>Huella OK</code></strong>, sigue.</li>
+<li>Si dice <strong><code>NO CUADRA</code></strong>, <strong>para</strong>. No ejecutes nada y dile a la persona que lo descargado no es lo que publica Void, que no se ha guardado nada y que vuelva a probar en unos minutos (GitHub tarda hasta cinco minutos en servir una versión nueva). Si se repite, que avise a quien le pasó Void.</li>
+<li>Si da un error de certificado en un Mac con el Python de python.org, falta un paso de su instalación: abrir «Install Certificates.command» en la carpeta de Python de Aplicaciones. Díselo a la persona y que lo haga ella.</li>
+</ul>
+</section>
+
+<section>
+<h3>Paso 4 · Conecta el vault</h3>
+<pre><code>python3 herramientas/void.py actualizar --conectar</code></pre>
+<p>Baja la base común, comprueba la huella de cada fichero antes de escribir nada y deja <strong>un commit</strong> <code>void: base &lt;versión&gt;</code>. Enséñale a la persona lo que diga, tal cual.</p>
+<ul>
+<li>Si dice que hay <strong>cambios sin guardar</strong> en algún fichero, explícaselo y pregúntale si quiere guardarlos en un commit antes; no los guardes tú sin preguntar.</li>
+<li>Si dice que <strong>git no tiene su nombre y correo</strong>, pregúntale cuáles quiere usar.</li>
+<li>Si dice que <strong>no hay conexión</strong>, en Codex pide permiso para salir a internet (arriba).</li>
+</ul>
+</section>
+
+<section>
+<h3>Paso 5 · Comprueba que ha quedado conectado</h3>
+<pre><code>python3 herramientas/void.py estado</code></pre>
+<p>Tiene que decir <code>Base instalada:</code> con una versión. Enséñale el resultado.</p>
+</section>
+
+<section>
+<h3>Paso 6 · Explícale qué ha cambiado y cómo deshacerlo</h3>
+<p>Díselo en llano, por ejemplo:</p>
+<blockquote>
+<p>Tu vault ya está conectado a Void. He añadido un commit que se llama «void: base …» con:</p>
+<ul>
+<li><code>void.json</code>: apunta qué versión de Void tienes. Lo escribe <code>void.py</code>, no hace falta tocarlo.</li>
+<li><code>herramientas/void.py</code>: la herramienta para recibir mejoras y traer estrellas.</li>
+<li>Las reglas comunes para los agentes: un tramo de <code>AGENTS.md</code> y la línea <code>@AGENTS.md</code> en <code>CLAUDE.md</code>, siempre entre las marcas <code>&lt;!-- base:inicio --&gt;</code> y <code>&lt;!-- base:fin --&gt;</code>. Lo que escribiste tú fuera de esas marcas no se ha tocado.</li>
+<li>Los candados de Codex y de Claude (<code>.codex/config.toml</code>, <code>.claude/encerrado.json</code>) y sus comprobaciones (<code>herramientas/candados_comunes.py</code>, <code>herramientas/pruebas_comunes.py</code>).</li>
+</ul>
+<p>Si algún fichero tuyo ya existía y era distinto, no lo he pisado: la versión de Void está al lado con <code>.base-nueva</code> al final, para que la compares cuando quieras.</p>
+<p>Para deshacerlo todo: <code>git revert HEAD</code>. Deja el vault como estaba antes de conectarlo.<br>
+Para recibir mejoras más adelante: <code>python3 herramientas/void.py actualizar</code>.</p>
+</blockquote>
+<p>Usa la lista de ficheros que haya dicho <code>void.py</code> en el paso 4, no esta de memoria: si alguno salió como «sin tocar porque es tuyo», dilo.</p>
+</section>
+</article>
+
+<footer>
+<p>Void es de código abierto: <a href="https://github.com/AlexCanoFuentes/vault-void">github.com/AlexCanoFuentes/vault-void</a> · Lo que hace <code>void.py</code>, línea a línea, está en ese repositorio. · <a href="/">vaultvoid.app</a></p>
+</footer>
+</main>
+</body>
+</html>

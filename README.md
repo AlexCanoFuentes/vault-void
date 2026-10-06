@@ -48,7 +48,12 @@ nuevo, y `git`.
 
 ## Conectar un vault por primera vez
 
-En una carpeta vacía o en un vault que aún no tiene `void.json`:
+Lo más fácil: abre tu agente (Claude Code, Codex, Antigravity) en la carpeta de tu vault y pégale
+**«conéctate a Void: vaultvoid.app/entrar»**. Esa página es para el agente: comprueba que hay git y
+Python, te pide permiso, baja `void.py`, comprueba su huella, conecta el vault y te explica cómo
+deshacerlo. Su texto está en `web/entrar.md` (y en `web/entrar.html` y `web/entrar.txt`).
+
+A mano, en una carpeta vacía o en un vault que aún no tiene `void.json`:
 
 ```
 python void.py actualizar --conectar --vault <carpeta del vault>
@@ -92,7 +97,8 @@ comando o ejecútalo tú en una terminal.
 ## Para quien mantiene la base
 
 ```
-python3 regenerar_manifiesto.py --version 0.2   # copia void.py a la base y rehace el manifiesto
+python3 regenerar_manifiesto.py --version 0.2   # copia void.py a la base, rehace el manifiesto y pone
+                                                # la huella de void.py en web/entrar.*
 python3 pruebas.py                              # pruebas
 python3 pruebas.py --sabotaje                   # rompe cada candado y comprueba que las pruebas lo cazan
 python3 pruebas.py --vaults <copia1> <copia2>   # 0.1 -> 0.2 -> revert sobre copias de vaults reales

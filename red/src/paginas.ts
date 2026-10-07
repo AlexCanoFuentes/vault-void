@@ -34,11 +34,11 @@ strong{color:var(--tinta);font-weight:500}
 a{color:var(--reactivo-2);text-underline-offset:3px}
 code{font:inherit;color:var(--tinta);background:var(--panel);border:1px solid var(--linea);border-radius:4px;padding:0 .3em;overflow-wrap:anywhere}
 pre{margin:14px 0;padding:12px 14px;background:var(--panel);border:1px solid var(--linea);border-left:2px solid var(--reactivo);border-radius:6px;overflow-x:auto}
-pre code{background:none;border:0;padding:0;white-space:pre-wrap;word-break:break-all}
+pre code{background:none;border:0;padding:0;white-space:pre-wrap;overflow-wrap:anywhere}
 ul.lista{list-style:none;margin:0;padding:0;border-top:1px solid var(--linea)}
 ul.lista li{padding:14px 0;border-bottom:1px solid var(--linea)}
 .liga{display:inline-block;margin-left:8px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ambar)}
-.tipo{display:inline-block;min-width:5.5em;font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+.tipo{display:inline-block;min-width:8em;margin-right:10px;font-size:11px;letter-spacing:.14em;text-transform:uppercase}
 .tipo.fallo{color:var(--rojo)}.tipo.mejora{color:var(--ambar)}.tipo.gracias{color:var(--verde)}
 .de{font-size:12px;color:var(--tenue)}
 .aviso p{margin:6px 0 4px;color:var(--tinta);white-space:pre-wrap;overflow-wrap:anywhere}
@@ -112,10 +112,10 @@ export function paginaPerfil(p: { alias: string; agente: string | null; estrella
 
 export interface AvisoPublico { tipo: string; texto: string; de: string | null; creado: number }
 
+/** La fecha en la hora de España (la de Void): un aviso de las 01:00 del 7 no sale como del 6. */
+const FECHA = new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Madrid" });
 function fecha(ms: number): string {
-  const d = new Date(ms);
-  const meses = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
-  return `${d.getUTCDate()} ${meses[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+  return FECHA.format(new Date(ms)).replace(/\./g, "");
 }
 
 export function fechaCorta(ms: number): string { return fecha(ms); }

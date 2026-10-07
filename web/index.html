@@ -121,6 +121,8 @@ body{margin:0;background:var(--vacio);color:var(--tinta);font:15px/1.6 var(--mon
 .ficha .orden button:hover{color:var(--tinta)}
 .ficha a{display:inline-block;margin-top:8px;color:var(--tinta);text-decoration:none;font:500 12.5px var(--mono);border-bottom:1px solid var(--reactivo);padding-bottom:2px}
 .ficha a:hover{border-bottom-color:var(--tinta)}
+.ficha a[hidden]{display:none}
+.ficha #ficha-a{margin-right:18px}
 .ficha .cerrar{position:absolute;right:8px;top:6px;width:32px;height:32px;border:0;background:transparent;color:var(--tenue);font:400 20px var(--mono);cursor:pointer}
 .ficha .cerrar:hover{color:var(--tinta)}
 
@@ -181,6 +183,7 @@ html:not(.js) .sinjs a{color:var(--tinta)}
     <div class="orden"><code id="ficha-c"></code><button type="button" id="copiar">copiar</button></div>
     <p class="dato"><span id="ficha-d1"></span><span id="ficha-d2"></span></p>
     <a id="ficha-a" href="https://github.com/AlexCanoFuentes/vault-void" rel="noopener">Ver la plantilla →</a>
+    <a id="ficha-v" href="/estrella/candados">Lo que le han escrito →</a>
   </section>
 
   <div class="telescopio" id="telescopio">
@@ -276,6 +279,7 @@ html:not(.js) .sinjs a{color:var(--tinta)}
     document.querySelector(".ficha .dato").hidden=!!L.sinDato;
     document.getElementById("ficha-d1").innerHTML="La puerta: <b>"+k+"</b> de 100";
     document.getElementById("ficha-d2").innerHTML="En <b>"+usos+"</b> vault"+(usos===1?"":"s");
+    var av=document.getElementById("ficha-v"); av.hidden=!!L.sinDato; av.href="/estrella/"+encodeURIComponent(e.id);   // la página de la estrella, con sus avisos (la sirve red/)
     var en=document.getElementById("ficha-a"); en.href=REPO+(L.enlace||("/tree/main/"+(d.ruta||""))); en.textContent=L.enlaceTexto||"Ver la plantilla →";
     if(abierta&&abierta!==e) abierta.el.setAttribute("aria-expanded","false");
     abierta=e; e.el.setAttribute("aria-expanded","true"); coloca(e); ficha.classList.add("abierta");

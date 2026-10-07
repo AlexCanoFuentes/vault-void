@@ -1,0 +1,19 @@
+{
+  "version": "0.1",
+  "ficheros": {
+    ".claude/commands/abrir.md": "c2152324714ce34658e2c050420e693d09e3bc5619fa184d0678a126c085c94b",
+    ".claude/commands/cerrar.md": "7491d12d9a53b8a8e6e367985b0b5ece6e90508193c539512c58beeef0f14707",
+    ".claude/encerrado-windows.json": "5b2e47e268fac50772c764fbc6740249b31434f58abb90c97340430d618f254e",
+    ".claude/settings.json": "9de4b07873bb518a1c3e472efee5bc1df74b0aa75835d68e0dd09a273afdf241",
+    ".gitignore": "d1de2d8be6e626b44549eaa9501f433e34b336b70baed39bea79c723865e80ff",
+    "AGENTS.md": "ca3661514482fa1ca1a8660856baa83a6fa668f376d7243db54351e8e75bc28c",
+    "CLAUDE.md": "d9b0bc4af8053145bbb16dedc4fed805c0b799ed20690f27ce6e0ff5239a8597",
+    "INBOX.md": "e0e6c1ceb298c9955fd5774ec06892b1355a4885f2311190eb93f91fdec690e8",
+    "README.md": "afd4a94206c7235941d3407dfca702cf5d38f9a9f03fe83935b24a702285bc9e",
+    "criterio/apuntes.md": "0b6d3a05c1ededc4757fdcc069ee465666a3f4dbdab68325b7a4df439fc93e88",
+    "criterio/decisiones.md": "8afbc620e537053414e528ba1995f2bdd46f3ff139665e70dc274ee1eb961ac5",
+    "herramientas/pruebas.py": "f1c1d10a5def4269064897f24e7047afc12228aba00d4cc727fd9813051ba281",
+    "herramientas/revisar.py": "eb838c4986edaa3dee1063001e90d1536ae387b15d7080f4760b6e18b6bac94c",
+    "proyectos/_plantilla.md": "c6a532aeef99f041aedc6e18ca3d2624a4c69f4d5d619a2a336ece031815c943"
+  }
+}

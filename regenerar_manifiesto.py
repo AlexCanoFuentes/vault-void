@@ -5,6 +5,7 @@
 Uso:
   python3 regenerar_manifiesto.py                  mantiene la versión que ya tenía
   python3 regenerar_manifiesto.py --version 0.2    con versión nueva
+  python3 regenerar_manifiesto.py --plantilla 0.2  con versión nueva de la plantilla
   python3 regenerar_manifiesto.py --comprobar      no escribe; falla si el manifiesto no está al día
 
 Antes de calcular, copia void.py a base/herramientas/void.py: así cada vault lleva el mismo
@@ -14,20 +15,32 @@ También escribe la huella de void.py en la página que lee el agente para conec
 (vaultvoid.app/entrar: web/entrar.md y web/entrar.html, que se escriben a mano salvo la huella) y
 copia entrar.md a entrar.txt. Con --comprobar, falla si la huella de la página no cuadra con void.py:
 el agente compara lo que baja de GitHub con esa huella, y una página desfasada lo pararía.
+
+Y rehace plantilla/MANIFIESTO.json, la huella de cada fichero de la plantilla con la que empieza
+un vault nuevo (vaultvoid.app/empezar). Antes pasa el escáner de fugas por la plantilla, con los
+nombres de .fugas-nombres y las palabras de .fugas-plantilla (las dos fuera de git): si sale
+algo, no escribe nada. La plantilla es pública y la copia todo el que empieza un vault.
 """
 import json
 import re
 import shutil
 import sys
+import tempfile
 from pathlib import Path
 
 AQUI = Path(__file__).resolve().parent
 sys.path.insert(0, str(AQUI))
 import void  # noqa: E402
+import fugas  # noqa: E402
 
 BASE = AQUI / "base"
 CLIENTE_EN_BASE = ("herramientas", "void.py")
 IGNORAR_DIRS = {"__pycache__"}
+
+PLANTILLA = AQUI / "plantilla"
+# Palabras de los vaults de los que salió la plantilla (ciudades, oficios, proyectos, herramientas
+# de cada uno), como sha256 y fuera de git, igual que .fugas-nombres: escritas aquí, se publicarían.
+PALABRAS_PLANTILLA = AQUI / ".fugas-plantilla"
 
 WEB = AQUI / "web"
 ENTRAR = ("entrar.md", "entrar.html")   # a mano, salvo la huella, que la pone este script
@@ -68,6 +81,33 @@ def problemas_entrar(web, h):
     if md.is_file() and txt.is_file() and void.huella(md.read_bytes()) != void.huella(txt.read_bytes()):
         problemas.append("web/entrar.txt no es una copia de web/entrar.md")
     return problemas
+
+
+def palabras_plantilla(fichero=None):
+    """Las huellas de .fugas-plantilla: una por línea. Vacío si no está (en GitHub Actions)."""
+    f = Path(fichero or PALABRAS_PLANTILLA)
+    if not f.is_file():
+        return set()
+    return {l.split()[0] for l in f.read_text(encoding="utf-8").splitlines() if l.split()}
+
+
+def problemas_plantilla(carpeta=None, nombres=None):
+    """Lo que no puede salir en la plantilla: secretos, correos, teléfonos y nombres de personas
+    (fugas.py), y las palabras de .fugas-plantilla. Vacía si está limpia. Se escanea una copia sin
+    git: así mira solo la plantilla, no la historia del repo entero."""
+    carpeta = Path(carpeta or PLANTILLA)
+    if not carpeta.is_dir():
+        return ["falta la carpeta plantilla/"]
+    nombres = palabras_plantilla() if nombres is None else set(nombres)
+    tmp = Path(tempfile.mkdtemp(prefix="void-plantilla-"))
+    try:
+        copia = tmp / "plantilla"
+        shutil.copytree(str(carpeta), str(copia), ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+        hallazgos = fugas.escanear(copia, nombres)
+    finally:
+        shutil.rmtree(str(tmp), ignore_errors=True)
+    return ["la plantilla trae {} en {}:{} ({})".format(tipo, donde, n, trozo)
+            for donde, n, tipo, trozo in hallazgos]
 
 
 def ficheros_de(base):
@@ -114,6 +154,23 @@ def main(argv):
         print("No hay versión: pásala con --version 0.1", file=sys.stderr)
         return 2
 
+    version_plantilla = None
+    if "--plantilla" in argv:
+        i = argv.index("--plantilla")
+        if i + 1 >= len(argv):
+            print("Falta la versión de la plantilla: --plantilla 0.2", file=sys.stderr)
+            return 2
+        version_plantilla = argv[i + 1]
+    version_plantilla = version_plantilla or version_actual(PLANTILLA) or "0.1"
+
+    sucia = problemas_plantilla()
+    if sucia:
+        for pr in sucia:
+            print(pr, file=sys.stderr)
+        print("La plantilla es pública: sácalo de plantilla/ y vuelve a probar. No he escrito nada.",
+              file=sys.stderr)
+        return 1
+
     cliente = BASE.joinpath(*CLIENTE_EN_BASE)
     if comprobar:
         # Se compara con huella: en un clon de Windows, git pone \r\n y no es un cambio.
@@ -123,21 +180,28 @@ def main(argv):
         p = BASE / void.MANIFIESTO
         if not p.is_file() or void.huella(p.read_bytes()) != void.huella(contenido(BASE, version)):
             problemas.append("base/MANIFIESTO.json no está al día con los ficheros de base/")
+        p = PLANTILLA / void.MANIFIESTO
+        if not p.is_file() or void.huella(p.read_bytes()) != void.huella(contenido(PLANTILLA, version_plantilla)):
+            problemas.append("plantilla/MANIFIESTO.json no está al día con los ficheros de plantilla/")
         problemas += problemas_entrar(WEB, huella_cliente())
         for pr in problemas:
             print(pr + ": corre python3 regenerar_manifiesto.py", file=sys.stderr)
         if not problemas:
-            print("Manifiesto al día (base {}, {} ficheros).".format(version, len(ficheros_de(BASE))))
+            print("Manifiesto al día (base {}, {} ficheros; plantilla {}, {} ficheros).".format(
+                version, len(ficheros_de(BASE)), version_plantilla, len(ficheros_de(PLANTILLA))))
         return 1 if problemas else 0
 
     cliente.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(str(AQUI / "void.py"), str(cliente))
     (BASE / void.MANIFIESTO).write_bytes(contenido(BASE, version))
+    (PLANTILLA / void.MANIFIESTO).write_bytes(contenido(PLANTILLA, version_plantilla))
     h = huella_cliente()
     for nombre, datos in entrar_con_huella(WEB, h).items():
         (WEB / nombre).write_bytes(datos)
     print("Manifiesto rehecho: base {}, {} ficheros.".format(version, len(ficheros_de(BASE))))
     print("Huella de void.py en web/entrar: {}".format(h))
+    print("Manifiesto de la plantilla rehecho: plantilla {}, {} ficheros.".format(
+        version_plantilla, len(ficheros_de(PLANTILLA))))
     return 0
 
 

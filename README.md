@@ -26,6 +26,29 @@ se queda en cada vault.
 Al conectar un vault que ya tiene `AGENTS.md` o `CLAUDE.md`, si el tramo de la base está tal cual,
 `void.py` le pone las marcas alrededor y no cambia nada más.
 
+## La plantilla de un vault nuevo (0.1)
+
+`plantilla/` es con lo que empieza un vault en una carpeta vacía (vaultvoid.app/empezar, abajo).
+Es lo que tenían en común los tres primeros vaults, montados a mano el 1-oct, **sin nada de
+ninguno**: ni nombres, ni oficios, ni ciudades, ni proyectos. Lo de cada persona lo pone ella al
+contestar las siete preguntas.
+
+| Fichero | De dónde sale |
+|---|---|
+| `README.md` | La forma de los tres: «Hoy» (12 líneas, se reescribe al cerrar), cómo se usa, mapa y qué no entra, con huecos `[sin contestar]` |
+| `AGENTS.md`, `CLAUDE.md` | Las reglas que repetían los tres, con `{{nombre}}` donde iba el de cada uno, y el tramo de la base tal cual |
+| `INBOX.md`, `criterio/decisiones.md` | Iguales en los tres, salvo una palabra |
+| `criterio/apuntes.md` | La cabecera de los tres y las siete preguntas como huecos, con la redacción en que coincidían dos de los tres |
+| `proyectos/_plantilla.md` | El molde por proyecto de dos de ellos (alias, fecha, estado) con los campos de objetivo y fecha límite del tercero |
+| `.claude/commands/abrir.md`, `cerrar.md` | Los pasos de los tres; preguntar los huecos, de dos de ellos |
+| `.claude/settings.json`, `encerrado-windows.json` | Los candados más completos de los tres, tal cual |
+| `.gitignore`, `herramientas/revisar.py`, `pruebas.py` | `revisar` y sus pruebas con sabotaje de uno de ellos, con las extensiones de imagen, vídeo y audio de otro; sin el programa propio de nadie |
+
+`plantilla/MANIFIESTO.json` lleva la huella de cada fichero. Lo rehace `regenerar_manifiesto.py`,
+que antes pasa `fugas.py` por la plantilla con los nombres de `.fugas-nombres` y las palabras de
+`.fugas-plantilla` (ciudades, oficios y proyectos de esos vaults, como sha256 y fuera de git):
+si sale algo, no escribe nada.
+
 ## Uso, desde la carpeta del vault
 
 ```

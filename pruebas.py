@@ -735,6 +735,95 @@ class Entrar(unittest.TestCase):
         self.assertFalse(destino.exists(), "guardó un void.py cuya huella no cuadraba")
 
 
+# ---------------------------------------------------------------- la plantilla de un vault nuevo
+
+PLANTILLA = AQUI / "plantilla"
+
+
+def ficheros_planos(carpeta):
+    return sorted(p.relative_to(carpeta).as_posix() for p in Path(carpeta).rglob("*")
+                  if p.is_file() and "__pycache__" not in p.parts and p.name != REF.MANIFIESTO)
+
+
+class Plantilla(unittest.TestCase):
+    """La plantilla con la que empieza un vault (vaultvoid.app/empezar): es pública, así que no
+    puede llevar nada de las personas de cuyos vaults salió."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="void-plantilla-prueba-"))
+
+    def tearDown(self):
+        borrar(str(self.tmp))
+
+    def copia(self, nombre):
+        destino = self.tmp / nombre
+        shutil.copytree(str(AQUI / nombre), str(destino), ignore=shutil.ignore_patterns("__pycache__"))
+        return destino
+
+    def plantar(self, carpeta):
+        """Un nombre de los vaults dentro del README. Se monta al vuelo: escrito tal cual, el escáner
+        cazaría este fichero."""
+        readme = carpeta / "README.md"
+        readme.write_text(readme.read_text(encoding="utf-8") + "\nCon " + _rev("raM") + " a las cinco.\n",
+                          encoding="utf-8")
+        return {self_h(_rev("raM").lower())}
+
+    def test_la_plantilla_no_trae_nada_de_nadie(self):
+        self.assertEqual(M.problemas_plantilla(PLANTILLA), [])
+
+    def test_un_nombre_real_dentro_sale_en_rojo(self):
+        copia = self.copia("plantilla")
+        nombres = self.plantar(copia)
+        problemas = M.problemas_plantilla(copia, nombres)
+        if not any("nombre" in x and "README.md" in x for x in problemas):
+            self.fail("la plantilla lleva un nombre real y no salta (vio {})".format(problemas))
+
+    def test_con_un_nombre_dentro_no_se_escribe_nada(self):
+        """regenerar_manifiesto.py no publica una plantilla con un nombre: no escribe ni la base."""
+        copias = {n: self.copia(n) for n in ("plantilla", "base", "web")}
+        nombres = self.plantar(copias["plantilla"])
+        lista = self.tmp / "palabras"
+        lista.write_text("".join(x + "\n" for x in nombres), encoding="utf-8")
+        antes = {n: foto(c) for n, c in copias.items()}
+        out = io.StringIO()
+        with mock.patch.object(M, "PLANTILLA", copias["plantilla"]), mock.patch.object(M, "BASE", copias["base"]), \
+                mock.patch.object(M, "WEB", copias["web"]), mock.patch.object(M, "PALABRAS_PLANTILLA", lista), \
+                redirect_stdout(out), redirect_stderr(out):
+            try:
+                codigo = M.main([])
+            except Exception as e:  # un fallo a medias también es escribir sin mirar
+                codigo = "excepción: {}".format(e)
+        self.assertEqual(codigo, 1, "regenerar_manifiesto.py no paró con un nombre en la plantilla: " + out.getvalue())
+        self.assertEqual({n: foto(c) for n, c in copias.items()}, antes, "escribió algo con un nombre en la plantilla")
+
+    def test_lleva_el_tramo_de_la_base_tal_cual(self):
+        """Si no, al conectar el vault nuevo, void.py dejaría un AGENTS.md.base-nueva al lado."""
+        for nombre in ("AGENTS.md", "CLAUDE.md"):
+            base = REF.partir_marcas((AQUI / "base" / nombre).read_bytes())
+            suyo = REF.partir_marcas((PLANTILLA / nombre).read_bytes())
+            self.assertIsNotNone(suyo, nombre + " de la plantilla no tiene las marcas de la base")
+            self.assertEqual(REF.huella(suyo[1]), REF.huella(base[1]), nombre)
+
+    def test_no_pisa_la_base(self):
+        """La plantilla no trae lo que trae la base: los candados y void.py llegan al conectar."""
+        comunes = set(ficheros_planos(PLANTILLA)) & set(ficheros_planos(AQUI / "base"))
+        self.assertEqual(comunes, {"AGENTS.md", "CLAUDE.md"})
+
+    def test_cada_fichero_esta_en_el_manifiesto(self):
+        _, ficheros = REF.validar_manifiesto((PLANTILLA / REF.MANIFIESTO).read_bytes())
+        self.assertEqual(sorted(ficheros), ficheros_planos(PLANTILLA))
+
+    def test_las_siete_preguntas_como_huecos(self):
+        texto = (PLANTILLA / "criterio" / "apuntes.md").read_text(encoding="utf-8")
+        self.assertEqual(texto.count("*Pregunta:*"), 7)
+        self.assertEqual(texto.count("- **[sin contestar]**"), 7)
+
+
+def self_h(texto):
+    import fugas
+    return fugas.h(texto)
+
+
 # ---------------------------------------------------------------- escáner de fugas
 
 def _rev(s):
@@ -1741,6 +1830,13 @@ SABOTAJES = [
      [("        elif any(x != h for x in vistas):", "        elif False:")],
      ["Entrar.test_huella_que_no_cuadra_sale_en_rojo", "Entrar.test_void_py_cambia_y_la_pagina_no"],
      "regenerar_manifiesto.py"),
+    ("plantilla: no le pasa fugas.py",
+     [("        hallazgos = fugas.escanear(copia, nombres)\n", "        hallazgos = []\n")],
+     ["Plantilla.test_un_nombre_real_dentro_sale_en_rojo", "Plantilla.test_con_un_nombre_dentro_no_se_escribe_nada"],
+     "regenerar_manifiesto.py"),
+    ("plantilla: escribe el manifiesto aunque lleve un nombre",
+     [("    if sucia:\n        for pr in sucia:", "    if False:\n        for pr in sucia:")],
+     ["Plantilla.test_con_un_nombre_dentro_no_se_escribe_nada"], "regenerar_manifiesto.py"),
     ("conectar: deja fuera del commit el void.py recién bajado",
      [('    sueltos = sorted(set(sin_seguir(vault, [r for r in iguales if ruta_segura(r)])) - set(rutas))\n',
        "    sueltos = []\n")],

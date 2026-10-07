@@ -24,7 +24,7 @@
       "database_name": "vault-void-red",
       // PENDIENTE: el id que da «npx wrangler d1 create vault-void-red» (paso 1 de red/README.md). Mientras diga
       // esto, no está lista para desplegar.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "b9bc77d7-f076-466f-9512-0cc87451cf97",
       "migrations_dir": "migrations"
     }
   ],

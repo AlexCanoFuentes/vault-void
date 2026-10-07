@@ -134,7 +134,7 @@ footer p{color:var(--tenue)}
 
 <section>
 <h3>Paso 4 · Pon la plantilla</h3>
-<pre><code>python3 herramientas/void.py empezar --huella a71d96214afdea600957afd86f0ead2270405ac2c431932d9ad8e30b520f931e</code></pre>
+<pre><code>python3 herramientas/void.py empezar --huella 55eca2e17f5044afc1c39e159d7a32efe240719e82f82149c38382f9e41b8b39</code></pre>
 <p>Baja la plantilla del vault, comprueba que es la que publica esta página (la huella de detrás de <code>--huella</code>) y que cada fichero cuadra con ella <strong>antes de escribir nada</strong>, y la deja en <strong>un commit</strong> <code>vault: plantilla &lt;versión&gt; de Void</code>. Enséñale a la persona lo que diga, tal cual.</p>
 <ul>
 <li>Si dice que <strong>la huella no cuadra</strong>, <strong>para</strong>: no ha escrito nada. Dile que vuelva a probar en unos minutos y, si se repite, que avise a quien le pasó Void.</li>
@@ -152,6 +152,32 @@ footer p{color:var(--tenue)}
 <li>Si dice que <strong>no hay conexión</strong>, en Codex pide permiso para salir a internet (arriba).</li>
 <li>Tiene que decir <code>Ficheros: … nuevos, 3 sin cambios.</code>: <code>AGENTS.md</code> y <code>CLAUDE.md</code> ya traían el tramo de la base y <code>void.py</code> es el que bajaste. Si dice «sin tocar porque es tuyo», para y enséñaselo.</li>
 </ul>
+</section>
+
+<section>
+<h3>Paso 6 · Las siete preguntas, una a una</h3>
+<p>Están en <code>criterio/apuntes.md</code>, en orden. Antes de la primera, dile a la persona algo así:</p>
+<blockquote>
+<p>Ahora te hago siete preguntas, de una en una. Contesta como quieras: largo, corto o pegando un audio transcrito. Copio tus palabras tal cual, sin corregirlas. Si alguna no la quieres contestar o no lo sabes, dilo y pasamos a la siguiente: se queda «sin contestar» y la puedes contestar otro día.</p>
+</blockquote>
+<ol>
+<li><strong>Una pregunta cada vez, tal como está escrita</strong>, y espera la respuesta antes de la siguiente. No le sugieras respuestas ni le pongas ejemplos que la empujen.</li>
+<li><strong>Cópiala literal</strong> en su hueco: cambia el paréntesis de <code>*Tu respuesta:*</code> por lo que haya dicho, sin corregir faltas ni resumir. Si es larga, sigue en las líneas de debajo con dos espacios delante. Cambia <code>[sin contestar]</code> por el tipo que le propongas (Principio, Regla, Elegí, Descarté) y díselo.</li>
+<li><strong>Si no la contesta</strong>, deja el hueco y el <code>[sin contestar]</code> como están. No la deduzcas de las otras respuestas.</li>
+<li><strong>Su nombre</strong> sale de la respuesta 1: pregúntale cómo quiere que la llame el vault y ponlo donde dice <code>{{nombre}}</code>, en todos los ficheros salvo <code>proyectos/_plantilla.md</code>. Donde dice <code>{{fecha}}</code>, la de hoy (<code>AAAA-MM-DD</code>).</li>
+</ol>
+<p>Cuando acabe, con <strong>sus palabras</strong> y nada más:</p>
+<ul>
+<li><strong>El README.</strong> La cita de arriba, con la respuesta 7, y cada línea de «Hoy», con la respuesta que dice su número. Sus palabras van <strong>entre «» y tal cual</strong> (puedes recortar con «…»), con el número detrás: <code>«hago cerámica en un taller pequeño» (respuesta 1)</code>. Si esa respuesta está sin contestar, la línea se queda <code>[sin contestar]</code>. En «Siguiente paso», lo que haya dicho ella; si no lo dijo, «elegir la herramienta» (paso 7).</li>
+<li><strong>El primer proyecto.</strong> Pregúntale si el proyecto que más pesa en sus respuestas (suele salir de la 4 y la 5) es el primero y con qué nombre corto. Copia <code>proyectos/_plantilla.md</code> como <code>proyectos/&lt;nombre corto&gt;.md</code> y rellena cada campo igual: sus palabras entre «» con su número, y <strong>lo que no dijo, <code>[sin contestar]</code></strong>. En el README, «Proyectos: 1».</li>
+<li><strong>En «Qué hizo el vault con esto»</strong> de cada respuesta, una línea con lo que cambiaste por ella. Cualquier otro cambio que se te ocurra por una respuesta, propónlo y no lo hagas sin su sí.</li>
+</ul>
+<p>Comprueba y guarda:</p>
+<pre><code>python3 herramientas/revisar.py
+python3 herramientas/pruebas.py</code></pre>
+<p>Los dos tienen que salir en verde. <code>revisar</code> caza lo que el vault dice de la persona sin que ella lo dijera: una línea que cita una respuesta sin contestar, o unas comillas que no están tal cual en su respuesta. Si sale algo, corrígelo con sus palabras o deja la línea en <code>[sin contestar]</code>; no lo apagues. Enséñale el README y el proyecto y guarda en <strong>un commit</strong>:</p>
+<pre><code>git add -A
+git commit -m "vault: tus siete respuestas"</code></pre>
 </section>
 </article>
 

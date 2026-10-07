@@ -56,6 +56,71 @@ class Montaje(Base):
         texto = (RAIZ / "criterio" / "apuntes.md").read_text(encoding="utf-8")
         self.assertEqual(texto.count("*Pregunta:*"), 7)
 
+    def test_el_vault_no_dice_de_ti_lo_que_no_dijiste(self):
+        self.assertEqual(revisar.inventado(RAIZ), [])
+
+
+class NoInventa(Base):
+    """El agente rellena el README y el primer proyecto con tus siete respuestas. Lo que no
+    contestaste queda [sin contestar] y lo que cita va entre «», tal cual lo dijiste."""
+
+    def montar(self, contestadas, readme, proyecto=None):
+        """Unos apuntes de prueba con las respuestas que se digan y las demás sin contestar. No
+        se usan los de este vault: en cuanto contestas, ya no tienen los huecos."""
+        (self.dir / "criterio").mkdir()
+        texto = "# Apuntes de criterio\n\n## Las siete preguntas\n"
+        for i in range(1, 8):
+            texto += ("\n- **[sin contestar]** · tema {}\n  *Pregunta:* ¿pregunta {}?\n  *Tu respuesta:* {}\n"
+                      "  *Qué hizo el vault con esto:* nada todavía.\n").format(
+                i, i, contestadas.get(i, "(la escribes aquí, o el agente te la pregunta y la copia tal cual)"))
+        (self.dir / "criterio" / "apuntes.md").write_text(texto, encoding="utf-8")
+        (self.dir / "README.md").write_text(readme, encoding="utf-8")
+        if proyecto is not None:
+            (self.dir / "proyectos").mkdir()
+            (self.dir / "proyectos" / "taller.md").write_text(proyecto, encoding="utf-8")
+        return revisar.inventado(self.dir)
+
+    def test_lee_las_siete_respuestas(self):
+        self.montar({1: "Soy Ana y hago cerámica\n  en un taller pequeño.", 5: "Vender en dos ferias."}, "")
+        self.assertEqual(revisar.respuestas(self.dir),
+                         ["Soy Ana y hago cerámica en un taller pequeño.", None, None, None, "Vender en dos ferias.",
+                          None, None])
+
+    def test_lo_contestado_citado_tal_cual_pasa(self):
+        self.assertEqual(self.montar(
+            {1: "Soy Ana y hago cerámica en un taller pequeño, sobre todo tazas.", 2: "Con IA, nada."},
+            "- **Quién soy:** «hago cerámica en un taller pequeño» (respuesta 1).\n"
+            "- **Con qué trabajo:** «Con IA, nada» (respuestas 2 y 3).\n"
+            "- **Lo que pesa:** [sin contestar] (respuesta 4).\n",
+            "- qué es: «Soy Ana y … sobre todo tazas» (respuesta 1)\n- objetivo: [sin contestar] (respuesta 5)\n"), [])
+
+    def test_caza_lo_que_no_se_contesto(self):
+        problemas = self.montar({1: "Soy Ana."}, "- **Lo que pesa:** no llega a todo (respuesta 4).\n")
+        self.assertEqual(len(problemas), 1)
+        self.assertIn("README.md:1", problemas[0])
+        self.assertIn("sin contestar", problemas[0])
+
+    def test_caza_lo_inventado_en_un_proyecto(self):
+        problemas = self.montar({1: "Soy Ana."}, "", "- objetivo: «vender 200 tazas» (respuesta 5)\n")
+        self.assertEqual(len(problemas), 1)
+        self.assertIn("proyectos/taller.md:1", problemas[0])
+
+    def test_caza_una_cita_que_no_es_literal(self):
+        problemas = self.montar({1: "Soy Ana y hago cerámica."}, "- **Quién soy:** «Ana, ceramista» (respuesta 1).\n")
+        self.assertEqual(len(problemas), 1)
+        self.assertIn("no está tal cual", problemas[0])
+
+    def test_caza_una_respuesta_contada_sin_sus_palabras(self):
+        problemas = self.montar({1: "Soy Ana y hago cerámica."}, "- **Quién soy:** ceramista de éxito (respuesta 1).\n")
+        self.assertEqual(len(problemas), 1)
+        self.assertIn("sin tus palabras", problemas[0])
+
+    def test_lo_inventado_hace_fallar_revisar(self):
+        self.montar({}, "- **Hacia dónde voy:** «abrir una tienda» (respuesta 5).\n")
+        lineas, codigo = revisar.revisar_todo(self.dir)
+        self.assertEqual(codigo, 1)
+        self.assertTrue(any("no dijiste" in x for x in lineas), lineas)
+
 
 # ---------------------------------------------------------------- revisar
 
@@ -260,6 +325,10 @@ SABOTAJES = [
      lambda: setattr(revisar, "leer_codex", _codex_abierto)),
     ("CLAUDE.md deja de importar AGENTS.md (Claude sin las reglas del vault)",
      lambda: setattr(revisar, "leer_texto", _claude_sin_import(revisar.leer_texto))),
+    ("el vault da por contestadas las preguntas que no contestaste",
+     lambda: setattr(revisar, "HUECO_RESPUESTA", "(ninguna respuesta se ve como hueco)")),
+    ("una cita que no es tal cual pasa por buena",
+     lambda: setattr(revisar, "cita_literal", lambda cita, texto: True)),
 ]
 
 

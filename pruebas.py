@@ -20,6 +20,7 @@ import io
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -818,6 +819,15 @@ class Plantilla(unittest.TestCase):
         self.assertEqual(texto.count("*Pregunta:*"), 7)
         self.assertEqual(texto.count("- **[sin contestar]**"), 7)
 
+    def test_revisar_lee_los_siete_huecos_como_sin_contestar(self):
+        """Si revisar.py no reconoce el hueco de la plantilla, el vault recién montado diría que
+        el README cita respuestas sin las palabras de la persona."""
+        spec = importlib.util.spec_from_file_location("revisar_plantilla", str(PLANTILLA / "herramientas" / "revisar.py"))
+        rev = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(rev)
+        self.assertEqual(rev.respuestas(PLANTILLA), [None] * 7)
+        self.assertEqual(rev.inventado(PLANTILLA), [])
+
 
 # ---------------------------------------------------------------- vaultvoid.app/empezar
 
@@ -984,23 +994,99 @@ class Empezar(unittest.TestCase):
         self.assertEqual(len(commits(v)), 2)
         self.assertTrue(limpio(v), "dejó algo fuera de los commits")
 
-        # Lo que hace el agente con la primera respuesta: el nombre donde dice {{nombre}}.
-        for p in v.rglob("*.md"):
-            if ".git" in p.parts or p.name == "_plantilla.md":
-                continue
-            p.write_text(p.read_text(encoding="utf-8").replace("{{nombre}}", "Ana").replace("{{fecha}}", "2026-10-08"),
-                         encoding="utf-8")
-        git(v, "add", "-A")
-        git(v, "commit", "-q", "-m", "vault: tu nombre")
+        # Paso 6, como lo haría el agente con una persona inventada: la 3 no la contesta.
+        contestar_como_ana(v)
+        for orden in ordenes:
+            if orden.startswith("git add -A\ngit commit"):
+                for linea in orden.splitlines():
+                    self.assertEqual(subprocess.run(shlex.split(linea), cwd=str(v)).returncode, 0, linea)
+        self.assertEqual(commits(v)[0], "vault: tus siete respuestas")
+        self.assertEqual(len(commits(v)), 3, "un commit por paso: plantilla, base y respuestas")
         for programa in ("pruebas.py", "pruebas_comunes.py", "revisar.py"):
             r = subprocess.run([sys.executable, str(v / "herramientas" / programa)], cwd=str(v),
                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             self.assertEqual(r.returncode, 0, programa + ": " + r.stdout.decode("utf-8", "replace")[-800:])
+        apuntes = (v / "criterio" / "apuntes.md").read_text(encoding="utf-8")
+        self.assertEqual(apuntes.count("- **[sin contestar]**"), 1, "la 3 no se contestó y tiene que seguir así")
+        self.assertIn("«Con IA casi nada» (respuestas 2 y 3)", (v / "README.md").read_text(encoding="utf-8"))
+
+        # Si el agente pone de su cosecha, revisar sale en rojo.
+        readme = v / "README.md"
+        readme.write_text(readme.read_text(encoding="utf-8").replace(
+            "- **Lo que pesa:** «Se me escapan los encargos» (respuesta 4).",
+            "- **Lo que pesa:** «no le da la vida» (respuesta 4)."), encoding="utf-8")
+        r = subprocess.run([sys.executable, str(v / "herramientas" / "revisar.py")], cwd=str(v),
+                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        self.assertEqual(r.returncode, 1, "revisar no vio una cita inventada")
+        self.assertIn("no está tal cual en tu respuesta 4", r.stdout.decode("utf-8", "replace"))
+
+
+RESPUESTAS_ANA = {
+    "quién soy y a qué me dedico": "Me llamo Ana y hago cerámica en un taller pequeño, sobre todo tazas y platos "
+                                   "que vendo en ferias.",
+    "con qué trabajo": "Con IA casi nada, alguna vez le pido textos para Instagram. Sin IA todo lo demás: el torno,\n"
+                       "  el horno y las cuentas en una libreta.",
+    "lo que me agobia": "Se me escapan los encargos: los apunto en papelitos y alguno se pierde.",
+    "qué quiero conseguir": "Vender en dos ferias más este año y tener los encargos controlados.",
+    "qué no entra": "Nada de mi familia ni fotos de clientes.",
+    "qué espero del vault": "No sé muy bien qué es. Espero que me ordene los encargos.",
+}
+
+
+def contestar_como_ana(v):
+    """Lo que hace el agente en el paso 6 de vaultvoid.app/empezar con una persona inventada,
+    Ana, que no contesta la pregunta 3 (sus equipos)."""
+    hueco = "*Tu respuesta:* (la escribes aquí, o el agente te la pregunta y la copia tal cual)"
+    p = v / "criterio" / "apuntes.md"
+    bloques = p.read_text(encoding="utf-8").split("\n- **[sin contestar]** · ")
+    for i, b in enumerate(bloques[1:], 1):
+        tema = b.split("\n", 1)[0]
+        if tema in RESPUESTAS_ANA:
+            b = "**Principio** · " + b.replace(hueco, "*Tu respuesta:* " + RESPUESTAS_ANA[tema]).replace(
+                "*Qué hizo el vault con esto:* nada todavía.", "*Qué hizo el vault con esto:* la cité en el README.")
+        else:
+            b = "**[sin contestar]** · " + b
+        bloques[i] = b
+    p.write_text("\n- ".join(bloques), encoding="utf-8")
+
+    readme = v / "README.md"
+    texto = readme.read_text(encoding="utf-8")
+    for viejo, nuevo in (
+            ("«[sin contestar]» (tu respuesta 7)", "«Espero que me ordene los encargos» (tu respuesta 7)"),
+            ("[sin contestar] (respuesta 1)", "«hago cerámica en un taller pequeño, sobre todo tazas y platos» (respuesta 1)"),
+            ("[sin contestar] (respuestas 2 y 3)", "«Con IA casi nada» (respuestas 2 y 3)"),
+            ("[sin contestar] (respuesta 4)", "«Se me escapan los encargos» (respuesta 4)"),
+            ("[sin contestar] (respuesta 5)", "«Vender en dos ferias más este año» (respuesta 5)"),
+            ("[sin contestar] (respuesta 6)", "«Nada de mi familia ni fotos de clientes» (respuesta 6)"),
+            ("- **Proyectos:** 0.", "- **Proyectos:** 1."),
+            ("- **Siguiente paso:** [sin contestar]", "- **Siguiente paso:** elegir la herramienta.")):
+        assert viejo in texto, viejo
+        texto = texto.replace(viejo, nuevo)
+    readme.write_text(texto, encoding="utf-8")
+
+    proyecto = (v / "proyectos" / "_plantilla.md").read_text(encoding="utf-8")
+    for viejo, nuevo in (("{{alias}}", "encargos"),
+                         ("- qué es:", "- qué es: «los apunto en papelitos y alguno se pierde» (respuesta 4)"),
+                         ("- para qué:", "- para qué: «tener los encargos controlados» (respuesta 5)"),
+                         ("- objetivo:", "- objetivo: [sin contestar]"),
+                         ("- fecha límite:", "- fecha límite: [sin contestar]"),
+                         ("- siguiente paso:", "- siguiente paso: [sin contestar]"),
+                         ("- dónde vive lo suyo:", "- dónde vive lo suyo: [sin contestar]")):
+        proyecto = proyecto.replace(viejo, nuevo)
+    (v / "proyectos" / "encargos.md").write_text(proyecto, encoding="utf-8")
+
+    for f in v.rglob("*.md"):
+        if ".git" in f.parts or f.name == "_plantilla.md":
+            continue
+        f.write_text(f.read_text(encoding="utf-8").replace("{{nombre}}", "Ana").replace("{{fecha}}", "2026-10-08"),
+                     encoding="utf-8")
 
 
 FRASES_EMPEZAR = ["empieza mi vault: vaultvoid.app/empezar", "network_access = false", "xcode-select --install",
                   "py --version", "Homebrew", "Si no dice que sí, para aquí", "[sin contestar]", "gratis",
-                  "vaultvoid.app/entrar", "La instalación la acepta la persona"]
+                  "vaultvoid.app/entrar", "La instalación la acepta la persona",
+                  "Una pregunta cada vez, tal como está escrita", "Cópiala literal", "entre «» y tal cual",
+                  "lo que no dijo", "corrígelo con sus palabras"]
 
 
 def self_h(texto):

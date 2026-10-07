@@ -95,7 +95,7 @@ python3 -c "import hashlib,os,urllib.request as u;h='ec24228c5aecd180743bdcf7035
 ### Paso 4 · Pon la plantilla
 
 ```
-python3 herramientas/void.py empezar --huella a71d96214afdea600957afd86f0ead2270405ac2c431932d9ad8e30b520f931e
+python3 herramientas/void.py empezar --huella 55eca2e17f5044afc1c39e159d7a32efe240719e82f82149c38382f9e41b8b39
 ```
 
 Baja la plantilla del vault, comprueba que es la que publica esta página (la huella de detrás de
@@ -125,6 +125,58 @@ Pone la base común de Void (las reglas para los agentes, los candados de Codex 
 - Tiene que decir `Ficheros: … nuevos, 3 sin cambios.`: `AGENTS.md` y `CLAUDE.md` ya traían el
   tramo de la base y `void.py` es el que bajaste. Si dice «sin tocar porque es tuyo», para y
   enséñaselo.
+
+### Paso 6 · Las siete preguntas, una a una
+
+Están en `criterio/apuntes.md`, en orden. Antes de la primera, dile a la persona algo así:
+
+> Ahora te hago siete preguntas, de una en una. Contesta como quieras: largo, corto o pegando un
+> audio transcrito. Copio tus palabras tal cual, sin corregirlas. Si alguna no la quieres contestar
+> o no lo sabes, dilo y pasamos a la siguiente: se queda «sin contestar» y la puedes contestar
+> otro día.
+
+1. **Una pregunta cada vez, tal como está escrita**, y espera la respuesta antes de la siguiente.
+   No le sugieras respuestas ni le pongas ejemplos que la empujen.
+2. **Cópiala literal** en su hueco: cambia el paréntesis de `*Tu respuesta:*` por lo que haya dicho,
+   sin corregir faltas ni resumir. Si es larga, sigue en las líneas de debajo con dos espacios
+   delante. Cambia `[sin contestar]` por el tipo que le propongas (Principio, Regla, Elegí,
+   Descarté) y díselo.
+3. **Si no la contesta**, deja el hueco y el `[sin contestar]` como están. No la deduzcas de las
+   otras respuestas.
+4. **Su nombre** sale de la respuesta 1: pregúntale cómo quiere que la llame el vault y ponlo donde
+   dice `{{nombre}}`, en todos los ficheros salvo `proyectos/_plantilla.md`. Donde dice `{{fecha}}`,
+   la de hoy (`AAAA-MM-DD`).
+
+Cuando acabe, con **sus palabras** y nada más:
+
+- **El README.** La cita de arriba, con la respuesta 7, y cada línea de «Hoy», con la respuesta
+  que dice su número. Sus palabras van **entre «» y tal cual** (puedes recortar con «…»), con el
+  número detrás: `«hago cerámica en un taller pequeño» (respuesta 1)`. Si esa respuesta está sin
+  contestar, la línea se queda `[sin contestar]`. En «Siguiente paso», lo que haya dicho ella; si
+  no lo dijo, «elegir la herramienta» (paso 7).
+- **El primer proyecto.** Pregúntale si el proyecto que más pesa en sus respuestas (suele salir de
+  la 4 y la 5) es el primero y con qué nombre corto. Copia `proyectos/_plantilla.md` como
+  `proyectos/<nombre corto>.md` y rellena cada campo igual: sus palabras entre «» con su número, y
+  **lo que no dijo, `[sin contestar]`**. En el README, «Proyectos: 1».
+- **En «Qué hizo el vault con esto»** de cada respuesta, una línea con lo que cambiaste por ella.
+  Cualquier otro cambio que se te ocurra por una respuesta, propónlo y no lo hagas sin su sí.
+
+Comprueba y guarda:
+
+```
+python3 herramientas/revisar.py
+python3 herramientas/pruebas.py
+```
+
+Los dos tienen que salir en verde. `revisar` caza lo que el vault dice de la persona sin que ella
+lo dijera: una línea que cita una respuesta sin contestar, o unas comillas que no están tal cual en
+su respuesta. Si sale algo, corrígelo con sus palabras o deja la línea en `[sin contestar]`; no lo
+apagues. Enséñale el README y el proyecto y guarda en **un commit**:
+
+```
+git add -A
+git commit -m "vault: tus siete respuestas"
+```
 
 ---
 

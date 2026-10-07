@@ -17,6 +17,9 @@ Qué mira:
      otra configuración y por eso lleva los mismos candados que la de Windows),
      .claude/encerrado.json (Mac, Linux, WSL2), .claude/encerrado-windows.json (Claude en la
      terminal de Windows), .codex/config.toml, y AGENTS.md importado desde CLAUDE.md.
+  5. Que el README y los proyectos no digan de ti lo que no dijiste: si una línea cita una de tus
+     siete respuestas (criterio/apuntes.md) y está sin contestar, dice [sin contestar]; si está
+     contestada, lleva tus palabras entre «» y están tal cual en tu respuesta.
 
 Qué NO puede ver: un nombre de persona no tiene forma reconocible. Eso se cuida al escribir.
 
@@ -292,6 +295,79 @@ def reglas_compartidas(raiz):
     return faltan
 
 
+# ------------------------------------------------------------------ lo que dice el vault de ti
+
+SIN_CONTESTAR = "[sin contestar]"
+HUECO_RESPUESTA = "(la escribes aquí, o el agente te la pregunta y la copia tal cual)"
+CITA_RESPUESTA = re.compile(r"\((?:tu |tus )?respuestas? (\d+(?:(?:, | y )\d+)*)\)")
+ENTRE_COMILLAS = re.compile(r"«([^«»]*)»")
+ELIPSIS = re.compile(r"\s*(?:…|\.\.\.)\s*")
+
+
+def junto(texto):
+    return " ".join(texto.split())
+
+
+def respuestas(raiz):
+    """Tus siete respuestas de criterio/apuntes.md, en orden: el texto tal cual, o None si
+    sigue sin contestar."""
+    salida, actual = [], None
+    for linea in leer_texto(raiz, Path("criterio") / "apuntes.md").splitlines():
+        if "*Tu respuesta:*" in linea:
+            actual = [linea.split("*Tu respuesta:*", 1)[1]]
+            salida.append(actual)
+        elif actual is not None and ("*Qué hizo el vault con esto:*" in linea or linea.startswith(("- **", "#"))):
+            actual = None
+        elif actual is not None:
+            actual.append(linea)
+    textos = [junto(" ".join(trozos)) for trozos in salida[:7]]
+    return [None if t in ("", HUECO_RESPUESTA, SIN_CONTESTAR) else t for t in textos]
+
+
+def cita_literal(cita, texto):
+    """Lo que va entre «» está tal cual en tu respuesta (un «…» salta lo que se omite)."""
+    trozos = [junto(t) for t in ELIPSIS.split(cita) if junto(t)]
+    desde = 0
+    for t in trozos:
+        donde = texto.find(t, desde)
+        if donde < 0:
+            return False
+        desde = donde + len(t)
+    return bool(trozos)
+
+
+def inventado(raiz):
+    """Lo que el README o un proyecto dicen de ti citando una de tus respuestas sin que lo dijeras:
+    una respuesta sin contestar que no dice [sin contestar], o una cita entre «» que no está
+    literal en la respuesta que cita. El agente no deduce ni rellena: copia tus palabras."""
+    tuyas = respuestas(raiz)
+    problemas = []
+    carpeta = Path(raiz) / "proyectos"
+    proyectos = sorted(carpeta.glob("*.md")) if carpeta.is_dir() else []
+    for p in [Path(raiz) / "README.md"] + [x for x in proyectos if x.name != "_plantilla.md"]:
+        nombre = p.relative_to(raiz).as_posix()
+        for n, linea in enumerate(leer_texto(raiz, nombre).splitlines(), 1):
+            citas = CITA_RESPUESTA.findall(linea)
+            if not citas:
+                continue
+            numeros = [int(x) for c in citas for x in re.findall(r"\d+", c)]
+            dichas = [tuyas[i - 1] for i in numeros if 1 <= i <= len(tuyas) and tuyas[i - 1]]
+            comillas = [c for c in ENTRE_COMILLAS.findall(linea) if junto(c) != SIN_CONTESTAR]
+            if not dichas:
+                if SIN_CONTESTAR not in linea or comillas:
+                    problemas.append(f"{nombre}:{n} · dice algo de tu respuesta {', '.join(map(str, numeros))}, "
+                                     f"que está sin contestar: tiene que decir {SIN_CONTESTAR}")
+                continue
+            if not comillas:
+                problemas.append(f"{nombre}:{n} · cita tu respuesta {', '.join(map(str, numeros))} sin tus "
+                                 "palabras: van entre «» tal cual las dijiste")
+            for c in comillas:
+                if not any(cita_literal(c, d) for d in dichas):
+                    problemas.append(f"{nombre}:{n} · «{c[:60]}» no está tal cual en tu respuesta "
+                                     f"{', '.join(map(str, numeros))}")
+    return problemas
+
+
 # ------------------------------------------------------------------ entrada
 
 def linea_hallazgo(h, raiz=RAIZ):
@@ -331,9 +407,15 @@ def revisar_todo(raiz=RAIZ):
         o.append("El agente (Claude o Codex) ya no está encerrado, ya no pregunta antes de subir o se ha quedado sin reglas:")
         o += [f"  {a}" for a in abiertos]
         o.append("  Recupéralos:  git checkout -- .claude/ .codex/ AGENTS.md CLAUDE.md")
+    puesto = inventado(raiz)
+    if puesto:
+        problemas += len(puesto)
+        o.append("El vault dice de ti cosas que no dijiste en tus siete respuestas (criterio/apuntes.md):")
+        o += [f"  {x}" for x in puesto]
+        o.append("  Copia tus palabras tal cual entre «», o deja la línea en [sin contestar].")
     if not problemas:
         o.insert(0, f"revisar: {len(textos)} archivos de texto, sin claves, correos ni teléfonos escritos, "
-                    "sin copias de documentos en git, y Claude y Codex siguen encerrados.")
+                    "sin copias de documentos en git, Claude y Codex siguen encerrados y nada dice de ti lo que no dijiste.")
         o.insert(1, "  (Los nombres de personas no los puedo ver: eso se cuida al escribir.)")
     return o, (1 if problemas else 0)
 

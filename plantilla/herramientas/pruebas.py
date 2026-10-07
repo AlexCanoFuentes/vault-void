@@ -122,6 +122,49 @@ class NoInventa(Base):
         self.assertTrue(any("no dijiste" in x for x in lineas), lineas)
 
 
+# ---------------------------------------------------------------- tus herramientas
+
+class Herramientas(Base):
+    """Una herramienta nueva entra con sus pruebas, su sabotaje y sin dependencias."""
+
+    def poner(self, herramienta, pruebas, void_json=None):
+        (self.dir / "herramientas").mkdir()
+        (self.dir / "herramientas" / "encargos.py").write_text(herramienta, encoding="utf-8")
+        (self.dir / "herramientas" / "pruebas.py").write_text(pruebas, encoding="utf-8")
+        if void_json is not None:
+            (self.dir / "void.json").write_text(void_json, encoding="utf-8")
+        return revisar.herramientas_sin_pruebas(self.dir)
+
+    def test_las_de_este_vault_cumplen(self):
+        self.assertEqual(revisar.herramientas_sin_pruebas(RAIZ), [])
+
+    def test_con_pruebas_y_sabotaje_pasa(self):
+        self.assertEqual(self.poner("import re\nimport revisar\n",
+                                    "import encargos\nSABOTAJES = [\n    ('x', lambda: setattr(encargos, 'y', 1)),\n]\n"), [])
+
+    def test_caza_una_herramienta_sin_pruebas(self):
+        problemas = self.poner("import re\n", "import revisar\nSABOTAJES = []\n")
+        self.assertEqual(len(problemas), 1)
+        self.assertIn("encargos.py no tiene pruebas", problemas[0])
+
+    def test_caza_una_herramienta_sin_sabotaje(self):
+        problemas = self.poner("import re\n", "import encargos\n\nSABOTAJES = [\n]\n")
+        self.assertEqual(len(problemas), 1)
+        self.assertIn("no tiene sabotaje", problemas[0])
+
+    def test_caza_una_dependencia(self):
+        problemas = self.poner("import re\nimport pandas as pd\nfrom requests import get\n",
+                               "import encargos\nSABOTAJES = [('x', lambda: encargos)]\n")
+        self.assertEqual(len(problemas), 2, problemas)
+        self.assertTrue(all("no viene con Python" in x for x in problemas), problemas)
+
+    def test_lo_que_trae_void_no_es_tuyo(self):
+        """La base y las estrellas traen sus programas con sus propias pruebas: no se cuentan aquí."""
+        self.assertEqual(self.poner("import re\n", "SABOTAJES = []\n",
+                                    '{"ficheros": {}, "estrellas": {"x": {"ficheros": {"herramientas/encargos.py": "0"}}}}'),
+                         [])
+
+
 # ---------------------------------------------------------------- revisar
 
 class Revisar(Base):
@@ -327,6 +370,10 @@ SABOTAJES = [
      lambda: setattr(revisar, "leer_texto", _claude_sin_import(revisar.leer_texto))),
     ("el vault da por contestadas las preguntas que no contestaste",
      lambda: setattr(revisar, "HUECO_RESPUESTA", "(ninguna respuesta se ve como hueco)")),
+    ("una herramienta que depende de algo que no viene con Python pasa",
+     lambda: setattr(revisar, "viene_con_python", lambda nombre: True)),
+    ("una herramienta tuya se toma por una de Void y no se le piden pruebas",
+     lambda: setattr(revisar, "de_void", lambda raiz: {"herramientas/encargos.py"})),
     ("una cita que no es tal cual pasa por buena",
      lambda: setattr(revisar, "cita_literal", lambda cita, texto: True)),
 ]

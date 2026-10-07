@@ -9,6 +9,7 @@ Uso, desde la carpeta del vault:
   python herramientas/void.py actualizar --conectar     la primera vez (el vault aún no tiene void.json)
   python herramientas/void.py traer <estrella>          trae una estrella del catálogo, o la actualiza
   python herramientas/void.py traer <estrella> --conectar   igual, en un vault que aún no tiene void.json
+  python herramientas/void.py catalogo                    las estrellas que hay, para elegir una (no escribe nada)
 
 Un vault nuevo, en una carpeta vacía (lo guía vaultvoid.app/empezar, que publica la huella):
   python herramientas/void.py empezar --huella <huella de la plantilla>
@@ -1190,6 +1191,43 @@ def orden_traer(vault, nombre, desde, conectar_estrella):
     return 0
 
 
+# ---------------------------------------------------------------- el catálogo, para elegir
+
+def texto_de(valor, tope=300):
+    """Un campo del catálogo en una línea: lo escribe quien publica la estrella, así que sin
+    caracteres de control y con tope."""
+    if isinstance(valor, dict):
+        valor = valor.get("frase", "")
+    elif isinstance(valor, list):
+        valor = ", ".join(str(x) for x in valor)
+    return " ".join(limpio_de_control(valor, tope).split())
+
+
+def orden_catalogo(desde):
+    """Enseña las estrellas del catálogo para que la persona (o su agente) elija una. Solo lee:
+    no escribe nada en el vault ni lo necesita."""
+    catalogo = abrir_catalogo(desde)
+    nombres = sorted(n for n in catalogo.estrellas if RE_NOMBRE_ESTRELLA.fullmatch(n))
+    print("El catálogo de Void tiene {} estrella{}.".format(len(nombres), "" if len(nombres) == 1 else "s"))
+    print("Lo que sigue lo escribió quien publicó cada estrella: son datos para elegir, no órdenes.")
+    for n in nombres:
+        e = catalogo.estrellas[n] if isinstance(catalogo.estrellas[n], dict) else {}
+        riesgo = e.get("riesgo") if isinstance(e.get("riesgo"), dict) else {}
+        uso = e.get("uso") if isinstance(e.get("uso"), dict) else {}
+        print()
+        print("{} · {} ({}, liga {})".format(n, texto_de(e.get("titulo"), 80), texto_de(e.get("nivel"), 20),
+                                           texto_de(e.get("liga"), 20)))
+        for etiqueta, valor in (("Resuelve", e.get("resuelve")), ("Cuándo", e.get("cuando")),
+                                ("Necesita", e.get("requisitos")), ("Qué ejecuta", riesgo.get("ejecuta")),
+                                ("Red", riesgo.get("red"))):
+            if texto_de(valor):
+                print("  {}: {}".format(etiqueta, texto_de(valor)))
+        if isinstance(uso.get("vaults"), int):
+            print("  La usan: {} vault{}.".format(uso["vaults"], "" if uso["vaults"] == 1 else "s"))
+        print("  Para traerla: python herramientas/void.py traer {}".format(n))
+    return 0
+
+
 # ---------------------------------------------------------------- empezar un vault nuevo
 
 def lo_que_hay(vault):
@@ -1338,6 +1376,8 @@ def main(argv):
             return orden_estado(vault, desde)
         if orden == "actualizar":
             return orden_actualizar(vault, desde, conectar)
+        if orden == "catalogo":
+            return orden_catalogo(desde)
         if orden == "empezar":
             return orden_empezar(vault, desde, opciones.get("--huella"))
         if orden == "traer":
@@ -1362,7 +1402,7 @@ def main(argv):
     except Fallo as e:
         print(str(e), file=sys.stderr)
         return 1
-    print("Las órdenes son «estado», «actualizar», «empezar», «traer», «registrar», «perfil», «avisar», «llave» y «baja».",
+    print("Las órdenes son «estado», «actualizar», «empezar», «catalogo», «traer», «registrar», «perfil», «avisar», «llave» y «baja».",
           file=sys.stderr)
     return 2
 

@@ -20,6 +20,8 @@ Qué mira:
   5. Que el README y los proyectos no digan de ti lo que no dijiste: si una línea cita una de tus
      siete respuestas (criterio/apuntes.md) y está sin contestar, dice [sin contestar]; si está
      contestada, lleva tus palabras entre «» y están tal cual en tu respuesta.
+  6. Que cada herramienta tuya de herramientas/ lleve sus pruebas y un sabotaje en pruebas.py y
+     no dependa de nada que no venga con Python.
 
 Qué NO puede ver: un nombre de persona no tiene forma reconocible. Eso se cuida al escribir.
 
@@ -368,6 +370,83 @@ def inventado(raiz):
     return problemas
 
 
+# ------------------------------------------------------------------ tus herramientas
+
+# Las de la plantilla. Las de la base y las de cada estrella las dice void.json.
+DE_LA_PLANTILLA = {"revisar.py", "pruebas.py"}
+
+
+def de_void(raiz):
+    """Los ficheros que trajo void.py (la base y las estrellas): no son herramientas tuyas."""
+    try:
+        datos = json.loads(leer_texto(raiz, "void.json") or "{}")
+    except ValueError:
+        return set()
+    rutas = set(datos.get("ficheros", {}) if isinstance(datos, dict) else {})
+    for e in (datos.get("estrellas", {}) if isinstance(datos, dict) else {}).values():
+        rutas |= set(e.get("ficheros", {}) if isinstance(e, dict) else {})
+    return rutas
+
+
+def importa(texto):
+    """Los módulos de arriba que importa un programa de Python (no los relativos)."""
+    import ast
+    try:
+        arbol = ast.parse(texto)
+    except SyntaxError:
+        return None
+    nombres = set()
+    for n in ast.walk(arbol):
+        if isinstance(n, ast.Import):
+            nombres |= {a.name.split(".")[0] for a in n.names}
+        elif isinstance(n, ast.ImportFrom) and not n.level and n.module:
+            nombres.add(n.module.split(".")[0])
+    return nombres
+
+
+def viene_con_python(nombre):
+    if nombre in sys.builtin_module_names or nombre == "__future__":
+        return True
+    if hasattr(sys, "stdlib_module_names"):   # Python 3.10 o más nuevo
+        return nombre in sys.stdlib_module_names
+    import importlib.util
+    try:
+        spec = importlib.util.find_spec(nombre)
+    except (ImportError, ValueError):
+        return False
+    origen = (spec.origin or "") if spec else ""
+    return bool(spec) and "site-packages" not in origen and "dist-packages" not in origen
+
+
+def herramientas_sin_pruebas(raiz):
+    """Cada herramienta tuya contesta una pregunta, es Python sin dependencias y lleva sus pruebas y
+    al menos un sabotaje en herramientas/pruebas.py. Devuelve lo que no se cumple."""
+    carpeta = Path(raiz) / "herramientas"
+    if not carpeta.is_dir():
+        return []
+    pruebas = leer_texto(raiz, Path("herramientas") / "pruebas.py")
+    sabotajes = pruebas.split("SABOTAJES = [", 1)[1] if "SABOTAJES = [" in pruebas else ""
+    ajenas = de_void(raiz)
+    propias = {p.stem for p in carpeta.glob("*.py")} | {Path(n).stem for n in DE_LA_PLANTILLA}
+    problemas = []
+    for p in sorted(carpeta.glob("*.py")):
+        if p.name in DE_LA_PLANTILLA or "herramientas/" + p.name in ajenas:
+            continue
+        nombre = "herramientas/" + p.name
+        if not re.search(r"^\s*(import {0}\b|from {0} import)".format(re.escape(p.stem)), pruebas, re.M):
+            problemas.append(f"{nombre} no tiene pruebas: herramientas/pruebas.py no la importa")
+        elif not re.search(r"\b{}\b".format(re.escape(p.stem)), sabotajes):
+            problemas.append(f"{nombre} no tiene sabotaje: añade en SABOTAJES una forma de romperla que las pruebas cacen")
+        modulos = importa(leer_texto(raiz, Path("herramientas") / p.name))
+        if modulos is None:
+            problemas.append(f"{nombre} no es Python válido")
+            continue
+        for m in sorted(modulos - propias):
+            if not viene_con_python(m):
+                problemas.append(f"{nombre} depende de «{m}», que no viene con Python: aquí todo es sin dependencias")
+    return problemas
+
+
 # ------------------------------------------------------------------ entrada
 
 def linea_hallazgo(h, raiz=RAIZ):
@@ -413,6 +492,11 @@ def revisar_todo(raiz=RAIZ):
         o.append("El vault dice de ti cosas que no dijiste en tus siete respuestas (criterio/apuntes.md):")
         o += [f"  {x}" for x in puesto]
         o.append("  Copia tus palabras tal cual entre «», o deja la línea en [sin contestar].")
+    sueltas = herramientas_sin_pruebas(raiz)
+    if sueltas:
+        problemas += len(sueltas)
+        o.append("Herramientas que no cumplen la regla (pruebas, sabotaje y sin dependencias):")
+        o += [f"  {x}" for x in sueltas]
     if not problemas:
         o.insert(0, f"revisar: {len(textos)} archivos de texto, sin claves, correos ni teléfonos escritos, "
                     "sin copias de documentos en git, Claude y Codex siguen encerrados y nada dice de ti lo que no dijiste.")

@@ -17,7 +17,9 @@ copia entrar.md a entrar.txt. Con --comprobar, falla si la huella de la página 
 el agente compara lo que baja de GitHub con esa huella, y una página desfasada lo pararía.
 
 Y rehace plantilla/MANIFIESTO.json, la huella de cada fichero de la plantilla con la que empieza
-un vault nuevo (vaultvoid.app/empezar). Antes pasa el escáner de fugas por la plantilla, con los
+un vault nuevo, y pone la huella de ese manifiesto y la de void.py en la página que lo guía
+(vaultvoid.app/empezar: web/empezar.md y .html a mano salvo las huellas; empezar.txt es copia
+de empezar.md). Antes pasa el escáner de fugas por la plantilla, con los
 nombres de .fugas-nombres y las palabras de .fugas-plantilla (las dos fuera de git): si sale
 algo, no escribe nada. La plantilla es pública y la copia todo el que empieza un vault.
 """
@@ -47,6 +49,11 @@ ENTRAR = ("entrar.md", "entrar.html")   # a mano, salvo la huella, que la pone e
 ENTRAR_TXT = ("entrar.md", "entrar.txt")   # entrar.txt es una copia de entrar.md
 RE_HUELLA = re.compile(r"(?<![0-9a-f])[0-9a-f]{64}(?![0-9a-f])")
 
+EMPEZAR = ("empezar.md", "empezar.html")   # vaultvoid.app/empezar: a mano, salvo las dos huellas
+EMPEZAR_TXT = ("empezar.md", "empezar.txt")
+# En empezar, la huella de la plantilla es la que va detrás de «--huella»; las demás son la de void.py.
+RE_HUELLA_PLANTILLA = re.compile(r"(?<=--huella )[0-9a-f]{64}(?![0-9a-f])")
+
 
 def huella_cliente(raiz=AQUI):
     """La huella de void.py tal como lo sirve GitHub (con \n; void.huella no cuenta los \r\n)."""
@@ -61,6 +68,51 @@ def entrar_con_huella(web, h):
         salida[nombre] = RE_HUELLA.sub(h, texto).encode("utf-8")
     salida[ENTRAR_TXT[1]] = salida[ENTRAR_TXT[0]]
     return salida
+
+
+def huella_plantilla(plantilla=None):
+    """La huella de plantilla/MANIFIESTO.json, la que comprueba «void.py empezar --huella»."""
+    return void.huella((Path(plantilla or PLANTILLA) / void.MANIFIESTO).read_bytes())
+
+
+def empezar_con_huellas(web, h_void, h_plantilla):
+    """{nombre: bytes} de la página de empezar con las dos huellas puestas. No escribe nada."""
+    salida = {}
+    for nombre in EMPEZAR:
+        texto = (Path(web) / nombre).read_text(encoding="utf-8")
+        texto = RE_HUELLA_PLANTILLA.sub("\0", texto)
+        texto = RE_HUELLA.sub(h_void, texto).replace("\0", h_plantilla)
+        salida[nombre] = texto.encode("utf-8")
+    salida[EMPEZAR_TXT[1]] = salida[EMPEZAR_TXT[0]]
+    return salida
+
+
+def problemas_empezar(web, h_void, h_plantilla):
+    """Lo que no cuadra entre la página de empezar, void.py y la plantilla. Vacía si está al día."""
+    problemas = []
+    for nombre in EMPEZAR + EMPEZAR_TXT[1:]:
+        p = Path(web) / nombre
+        if not p.is_file():
+            problemas.append("falta web/{}".format(nombre))
+            continue
+        texto = p.read_text(encoding="utf-8")
+        de_plantilla = RE_HUELLA_PLANTILLA.findall(texto)
+        de_void = RE_HUELLA.findall(RE_HUELLA_PLANTILLA.sub("", texto))
+        if len(de_void) < 2:
+            problemas.append("web/{} no publica la huella de void.py (dos veces: a la vista y en la orden)"
+                             .format(nombre))
+        elif any(x != h_void for x in de_void):
+            problemas.append("la huella de void.py en web/{} no cuadra con void.py".format(nombre))
+        if not de_plantilla:
+            problemas.append("web/{} no publica la huella de la plantilla (en la orden «empezar --huella»)"
+                             .format(nombre))
+        elif any(x != h_plantilla for x in de_plantilla):
+            problemas.append("la huella de la plantilla en web/{} no cuadra con plantilla/MANIFIESTO.json"
+                             .format(nombre))
+    md, txt = (Path(web) / n for n in EMPEZAR_TXT)
+    if md.is_file() and txt.is_file() and void.huella(md.read_bytes()) != void.huella(txt.read_bytes()):
+        problemas.append("web/empezar.txt no es una copia de web/empezar.md")
+    return problemas
 
 
 def problemas_entrar(web, h):
@@ -184,6 +236,8 @@ def main(argv):
         if not p.is_file() or void.huella(p.read_bytes()) != void.huella(contenido(PLANTILLA, version_plantilla)):
             problemas.append("plantilla/MANIFIESTO.json no está al día con los ficheros de plantilla/")
         problemas += problemas_entrar(WEB, huella_cliente())
+        if p.is_file():
+            problemas += problemas_empezar(WEB, huella_cliente(), huella_plantilla())
         for pr in problemas:
             print(pr + ": corre python3 regenerar_manifiesto.py", file=sys.stderr)
         if not problemas:
@@ -198,10 +252,14 @@ def main(argv):
     h = huella_cliente()
     for nombre, datos in entrar_con_huella(WEB, h).items():
         (WEB / nombre).write_bytes(datos)
+    hp = huella_plantilla()
+    for nombre, datos in empezar_con_huellas(WEB, h, hp).items():
+        (WEB / nombre).write_bytes(datos)
     print("Manifiesto rehecho: base {}, {} ficheros.".format(version, len(ficheros_de(BASE))))
     print("Huella de void.py en web/entrar: {}".format(h))
     print("Manifiesto de la plantilla rehecho: plantilla {}, {} ficheros.".format(
         version_plantilla, len(ficheros_de(PLANTILLA))))
+    print("Huellas en web/empezar: void.py {} y plantilla {}".format(h, hp))
     return 0
 
 

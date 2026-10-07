@@ -10,6 +10,10 @@ Uso, desde la carpeta del vault:
   python herramientas/void.py traer <estrella>          trae una estrella del catálogo, o la actualiza
   python herramientas/void.py traer <estrella> --conectar   igual, en un vault que aún no tiene void.json
 
+Un vault nuevo, en una carpeta vacía (lo guía vaultvoid.app/empezar, que publica la huella):
+  python herramientas/void.py empezar --huella <huella de la plantilla>
+                                    pone la plantilla de Void en un commit; después, «actualizar --conectar»
+
 La red de Void (opcional: nada de esto sube nada de tu vault):
   python herramientas/void.py registrar --alias <alias> --agente <nombre de tu agente>
                                     da de alta el vault y guarda su llave en .void/llave, fuera de git
@@ -21,6 +25,8 @@ La red de Void (opcional: nada de esto sube nada de tu vault):
   python herramientas/void.py baja --si         borra tu perfil de la red y la llave
 
 Opciones:
+  --huella H          (empezar) la huella de la plantilla que publica vaultvoid.app/empezar. Sin ella
+                      no se baja nada.
   --vault CARPETA     el vault sobre el que trabaja. Si no se dice: la carpeta de encima de
                       herramientas/ cuando void.py vive ahí; si no, la carpeta actual.
   --desde RUTA        trae de una carpeta o de un .zip en vez de GitHub (para probar).
@@ -67,6 +73,10 @@ CATALOGO = "catalogo.json"
 NIVELES = ("oficiales", "socio", "comunidad")
 LIGAS = ("grande", "pequeña")
 VOID_JSON = "void.json"
+PLANTILLA = "plantilla"
+RE_HUELLA = re.compile(r"[0-9a-f]{64}")
+# Lo que el sistema deja solo en una carpeta y no cuenta como «tener algo» (Mac y Windows).
+DEL_SISTEMA = {".ds_store", "desktop.ini", "thumbs.db"}
 SUFIJO_NUEVA = ".base-nueva"
 MARCA_INICIO = "<!-- base:inicio -->"
 MARCA_FIN = "<!-- base:fin -->"
@@ -211,28 +221,28 @@ def dentro(vault, destino):
 
 # ---------------------------------------------------------------- de dónde sale la base
 
-def validar_manifiesto(datos):
+def validar_manifiesto(datos, que="la base"):
     try:
         m = json.loads(datos.decode("utf-8"))
     except (UnicodeDecodeError, ValueError):
-        raise Fallo("El manifiesto de la base está roto: no he escrito nada.")
+        raise Fallo("El manifiesto de {} está roto: no he escrito nada.".format(que))
     version = m.get("version") if isinstance(m, dict) else None
     ficheros = m.get("ficheros") if isinstance(m, dict) else None
     if not isinstance(version, str) or not re.fullmatch(r"\d+(\.\d+)*", version):
-        raise Fallo("El manifiesto de la base no dice una versión válida: no he escrito nada.")
+        raise Fallo("El manifiesto de {} no dice una versión válida: no he escrito nada.".format(que))
     if not isinstance(ficheros, dict) or not ficheros:
-        raise Fallo("El manifiesto de la base no lista ficheros: no he escrito nada.")
+        raise Fallo("El manifiesto de {} no lista ficheros: no he escrito nada.".format(que))
     vistos = set()
     for ruta, h in ficheros.items():
         if not ruta_segura(ruta):
-            raise Fallo("El manifiesto de la base trae una ruta que saldría del vault o no vale "
-                        "en Windows ({}): no he escrito nada.".format(ruta))
+            raise Fallo("El manifiesto de {} trae una ruta que saldría del vault o no vale "
+                        "en Windows ({}): no he escrito nada.".format(que, ruta))
         if not isinstance(h, str) or not re.fullmatch(r"[0-9a-f]{64}", h):
-            raise Fallo("El manifiesto de la base trae una huella rota para {}: no he escrito nada."
-                        .format(ruta))
+            raise Fallo("El manifiesto de {} trae una huella rota para {}: no he escrito nada."
+                        .format(que, ruta))
         if ruta.lower() in vistos:
-            raise Fallo("El manifiesto de la base repite {} (en Windows serían el mismo fichero): "
-                        "no he escrito nada.".format(ruta))
+            raise Fallo("El manifiesto de {} repite {} (en Windows serían el mismo fichero): "
+                        "no he escrito nada.".format(que, ruta))
         vistos.add(ruta.lower())
     return version, dict(ficheros)
 
@@ -240,13 +250,15 @@ def validar_manifiesto(datos):
 class Fuente:
     """La base: su manifiesto y una forma de leer cada fichero. No ejecuta nada."""
 
-    def __init__(self, descripcion, leer):
+    def __init__(self, descripcion, leer, carpeta="base", que="la base"):
         self.descripcion = descripcion
         self._leer = leer
+        self.que = que
         crudo = leer(MANIFIESTO)
         if crudo is None:
-            raise Fallo("No encuentro base/{} en {}: no he escrito nada.".format(MANIFIESTO, descripcion))
-        self.version, self.ficheros = validar_manifiesto(crudo)
+            raise Fallo("No encuentro {}/{} en {}: no he escrito nada.".format(carpeta, MANIFIESTO, descripcion))
+        self.huella_manifiesto = huella(crudo)
+        self.version, self.ficheros = validar_manifiesto(crudo, que)
 
     def leer_comprobado(self):
         """Lee todos los ficheros del manifiesto y comprueba su huella. Si uno falla, no
@@ -255,12 +267,12 @@ class Fuente:
         for ruta, esperado in sorted(self.ficheros.items()):
             datos = self._leer(ruta)
             if datos is None:
-                raise Fallo("A la base le falta {}, que su manifiesto sí lista: no he escrito nada."
-                            .format(ruta))
+                raise Fallo("A {} le falta {}, que su manifiesto sí lista: no he escrito nada."
+                            .format(self.que, ruta))
             if huella(datos) != esperado:
-                raise Fallo("La base no cuadra con su manifiesto en {}: puede haberse cambiado por el "
+                raise Fallo("{} no cuadra con su manifiesto en {}: puede haberse cambiado por el "
                             "camino, así que no he escrito nada. Vuelve a probar más tarde y, si se "
-                            "repite, avisa a quien mantiene la base.".format(ruta))
+                            "repite, avisa a quien mantiene Void.".format(self.que[0].upper() + self.que[1:], ruta))
             contenido[ruta] = datos
         return contenido
 
@@ -340,6 +352,22 @@ def bajar(url=URL_BASE):
     if len(datos) > MAX_DESCARGA:
         raise Fallo("Lo descargado pesa más de lo que puede pesar Void: no he escrito nada.")
     return datos
+
+
+def abrir_plantilla(desde):
+    """La plantilla de un vault nuevo (plantilla/ en el repo de Void), de GitHub o de --desde."""
+    que = "la plantilla"
+    if desde is None:
+        leer = lector_de_zip(bajar(), "GitHub ({})".format(REPO), PLANTILLA + "/" + MANIFIESTO)
+        return Fuente("GitHub ({})".format(REPO), lambda ruta: leer(PLANTILLA + "/" + ruta), PLANTILLA, que)
+    p = Path(desde)
+    if p.is_dir():
+        raiz = p / PLANTILLA if (p / PLANTILLA / MANIFIESTO).is_file() else p
+        return Fuente(str(raiz), lector_de_carpeta(raiz), PLANTILLA, que)
+    if p.is_file():
+        leer = lector_de_zip(p.read_bytes(), str(p), PLANTILLA + "/" + MANIFIESTO)
+        return Fuente(str(p), lambda ruta: leer(PLANTILLA + "/" + ruta), PLANTILLA, que)
+    raise Fallo("No existe {}: dime una carpeta o un .zip con la plantilla.".format(desde))
 
 
 def abrir_fuente(desde):
@@ -1162,6 +1190,100 @@ def orden_traer(vault, nombre, desde, conectar_estrella):
     return 0
 
 
+# ---------------------------------------------------------------- empezar un vault nuevo
+
+def lo_que_hay(vault):
+    """Lo que ya hay en la carpeta, sin contar .git, lo que deja el sistema solo y el
+    herramientas/void.py que acaba de bajar el agente para empezar."""
+    if not vault.is_dir():
+        return []
+    salida = []
+    for p in sorted(vault.iterdir()):
+        if p.name == ".git" or p.name.lower() in DEL_SISTEMA:
+            continue
+        if p.name == "herramientas" and p.is_dir() and not p.is_symlink():
+            dentro_h = [x.name for x in p.iterdir() if x.name.lower() not in DEL_SISTEMA]
+            if dentro_h in ([], ["void.py"]):
+                continue
+        salida.append(p.name)
+    return salida
+
+
+def orden_empezar(vault, desde, esperada):
+    """Pone la plantilla de Void en una carpeta vacía, en un commit. Comprueba la huella del
+    manifiesto contra la de vaultvoid.app/empezar y la de cada fichero contra el manifiesto ANTES
+    de escribir: si una no cuadra, no escribe nada."""
+    if not esperada or not RE_HUELLA.fullmatch(esperada):
+        raise Fallo("Falta la huella de la plantilla: está en vaultvoid.app/empezar, en la orden «empezar "
+                    "--huella …». Sin ella no bajo nada.")
+    if (vault / "AGENTS.md").exists() or (vault / "CLAUDE.md").exists() or (vault / VOID_JSON).exists():
+        raise Fallo("Aquí ya hay un vault, así que no toco nada. Para conectarlo a Void: "
+                    "vaultvoid.app/entrar.")
+    hay = lo_que_hay(vault)
+    if hay:
+        raise Fallo("Esta carpeta no está vacía ({}{}): un vault nuevo empieza en una carpeta vacía. "
+                    "No he tocado nada.".format(", ".join(hay[:5]), "…" if len(hay) > 5 else ""))
+    crear_repo = True
+    if vault.is_dir():
+        raiz = raiz_git(vault)
+        if raiz is not None and raiz.resolve() != vault.resolve():
+            raise Fallo("{} está dentro de otro repositorio ({}): el vault tiene que ser su propia "
+                        "carpeta de git, así que no toco nada.".format(vault, raiz))
+        if raiz is not None:
+            codigo, _ = git(vault, "rev-parse", "--verify", "-q", "HEAD", comprobar=False)
+            if codigo == 0:
+                raise Fallo("Esta carpeta ya tiene historia en git: un vault nuevo empieza en una carpeta "
+                            "vacía. No he tocado nada.")
+            crear_repo = False
+
+    fuente = abrir_plantilla(desde)
+    if fuente.huella_manifiesto != esperada:
+        raise Fallo("La plantilla que he bajado no es la que publica vaultvoid.app/empezar (su huella no "
+                    "cuadra), así que no he escrito nada. Vuelve a probar en unos minutos: GitHub tarda "
+                    "hasta cinco en servir una versión nueva. Si se repite, avisa a quien te pasó Void.")
+    nuevos = fuente.leer_comprobado()   # cada huella, antes de escribir nada
+
+    if crear_repo:
+        vault.mkdir(parents=True, exist_ok=True)
+        git(vault, "init", "-q")
+    rutas = sorted(nuevos)
+    finales = finales_de_git(vault, rutas)
+    escritos = []
+    mensaje = "vault: plantilla {} de Void".format(fuente.version)
+    try:
+        for ruta in rutas:
+            destino = vault.joinpath(*PurePosixPath(ruta).parts)
+            if destino.exists() or destino.is_symlink():
+                raise Fallo("{} ya existe: no lo piso. No he tocado nada.".format(ruta))
+            destino.parent.mkdir(parents=True, exist_ok=True)
+            if not dentro(vault, destino.parent):
+                raise Fallo("{} saldría de la carpeta, así que no lo escribo.".format(ruta))
+            datos = nuevos[ruta]
+            if finales.get(ruta) is not None:
+                datos = con_finales(datos, finales[ruta])
+            escritos.append(destino)
+            destino.write_bytes(datos)
+        git(vault, "add", "--", *rutas)
+        codigo, _ = git(vault, "commit", "-q", "-m", mensaje, "--", *rutas, comprobar=False)
+        if codigo != 0:
+            raise Fallo("git no ha podido guardar el commit (¿tiene tu nombre y correo? «git config "
+                        "user.name» y «git config user.email»). He dejado la carpeta como estaba.")
+    except BaseException:
+        git(vault, "rm", "-q", "--cached", "--ignore-unmatch", "--", *rutas, comprobar=False)
+        for destino in reversed(escritos):
+            if destino.is_file():
+                destino.unlink()
+            d = destino.parent
+            while d != vault and d.is_dir() and not any(d.iterdir()):
+                d.rmdir()
+                d = d.parent
+        raise
+    print("Vault empezado con la plantilla {} de Void, en un commit («{}»).".format(fuente.version, mensaje))
+    print("Ficheros: {} nuevos.".format(len(rutas)))
+    print("Siguiente paso: conectarlo a Void con «python herramientas/void.py actualizar --conectar».")
+    return 0
+
+
 def carpeta_vault(arg):
     if arg:
         return Path(arg).absolute()
@@ -1189,7 +1311,7 @@ def main(argv):
     sueltos = []
     conectar = si = False
     con_valor = ("--vault", "--desde") + (("--alias", "--agente") if orden == "registrar" else ()) + \
-        (("--publico",) if orden == "perfil" else ())
+        (("--publico",) if orden == "perfil" else ()) + (("--huella",) if orden == "empezar" else ())
     cuantos = {"traer": 1, "avisar": 3, "llave": 1}.get(orden, 0)
     i = 0
     while i < len(resto):
@@ -1216,6 +1338,8 @@ def main(argv):
             return orden_estado(vault, desde)
         if orden == "actualizar":
             return orden_actualizar(vault, desde, conectar)
+        if orden == "empezar":
+            return orden_empezar(vault, desde, opciones.get("--huella"))
         if orden == "traer":
             if not sueltos:
                 print("Dime qué estrella: «python herramientas/void.py traer <estrella>».", file=sys.stderr)
@@ -1238,7 +1362,7 @@ def main(argv):
     except Fallo as e:
         print(str(e), file=sys.stderr)
         return 1
-    print("Las órdenes son «estado», «actualizar», «traer», «registrar», «perfil», «avisar», «llave» y «baja».",
+    print("Las órdenes son «estado», «actualizar», «empezar», «traer», «registrar», «perfil», «avisar», «llave» y «baja».",
           file=sys.stderr)
     return 2
 

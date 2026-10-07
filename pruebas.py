@@ -819,6 +819,190 @@ class Plantilla(unittest.TestCase):
         self.assertEqual(texto.count("- **[sin contestar]**"), 7)
 
 
+# ---------------------------------------------------------------- vaultvoid.app/empezar
+
+class Empezar(unittest.TestCase):
+    """Un vault nuevo en una carpeta vacía: la página que lee el agente, «void.py empezar» y el
+    recorrido entero hasta un vault conectado con sus pruebas en verde."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="void-empezar-"))
+
+    def tearDown(self):
+        borrar(str(self.tmp))
+
+    def huellas(self):
+        return REF.huella(VOID_PY.read_bytes()), M.huella_plantilla(PLANTILLA)
+
+    def copia_web(self):
+        web = self.tmp / "web"
+        web.mkdir(exist_ok=True)
+        for n in ("empezar.md", "empezar.html", "empezar.txt"):
+            shutil.copyfile(str(WEB / n), str(web / n))
+        return web
+
+    def carpeta(self, ficheros=None):
+        """La carpeta vacía de la persona, con el herramientas/void.py que bajó el agente en el paso 3."""
+        v = self.tmp / "mi-vault"
+        (v / "herramientas").mkdir(parents=True)
+        shutil.copyfile(str(VOID_PY), str(v / "herramientas" / "void.py"))
+        for ruta, datos in (ficheros or {}).items():
+            (v / ruta).write_bytes(datos)
+        return v
+
+    # ---- la página
+
+    def test_la_pagina_publica_las_dos_huellas(self):
+        self.assertEqual(M.problemas_empezar(WEB, *self.huellas()), [], "corre python3 regenerar_manifiesto.py")
+
+    def test_huella_de_la_plantilla_que_no_cuadra_sale_en_rojo(self):
+        hv, hp = self.huellas()
+        otra = ("0" if hp[0] != "0" else "1") + hp[1:]
+        for nombre in ("empezar.md", "empezar.html", "empezar.txt"):
+            web = self.copia_web()
+            p = web / nombre
+            p.write_text(p.read_text(encoding="utf-8").replace(hp, otra), encoding="utf-8")
+            problemas = M.problemas_empezar(web, hv, hp)
+            if not any("plantilla" in x and "no cuadra" in x and nombre in x for x in problemas):
+                self.fail("la huella de la plantilla de {} no cuadra y no salta (vio {})".format(nombre, problemas))
+            borrar(str(web))
+
+    def test_la_plantilla_cambia_y_la_pagina_no(self):
+        hv, hp = self.huellas()
+        if not any("plantilla" in x for x in M.problemas_empezar(self.copia_web(), hv, REF.huella(b"otra"))):
+            self.fail("la plantilla cambió y la página sigue publicando la huella vieja sin que salte")
+
+    def test_md_html_y_txt_dicen_lo_mismo(self):
+        md = (WEB / "empezar.md").read_text(encoding="utf-8")
+        ht = (WEB / "empezar.html").read_text(encoding="utf-8")
+        self.assertEqual((WEB / "empezar.txt").read_bytes(), (WEB / "empezar.md").read_bytes())
+        self.assertTrue(ordenes_md(md), "empezar.md no tiene órdenes")
+        self.assertEqual(ordenes_md(md), ordenes_html(ht), "las órdenes de empezar.md y empezar.html no son las mismas")
+        for frase in FRASES_EMPEZAR:
+            self.assertIn(frase, md)
+            self.assertIn(frase, html.unescape(re.sub(r"<[^>]+>", "", ht)))
+
+    def test_el_html_se_lee_sin_javascript(self):
+        self.assertNotIn("<script", (WEB / "empezar.html").read_text(encoding="utf-8").lower())
+
+    def test_las_ordenes_de_la_pagina_son_las_de_void_py(self):
+        """La orden de bajar void.py es la misma que la de entrar, y la de empezar lleva la huella."""
+        md = (WEB / "empezar.md").read_text(encoding="utf-8")
+        entrar = (WEB / "entrar.md").read_text(encoding="utf-8")
+        self.assertEqual(ordenes_md(md)[0], ordenes_md(entrar)[0])
+        self.assertIn("python3 herramientas/void.py empezar --huella " + self.huellas()[1], ordenes_md(md))
+        self.assertIn("python3 herramientas/void.py actualizar --conectar", ordenes_md(md))
+
+    # ---- void.py empezar
+
+    def test_huella_de_la_pagina_que_no_cuadra_no_escribe_nada(self):
+        v = self.carpeta()
+        antes = foto(v)
+        _, hp = self.huellas()
+        otra = ("0" if hp[0] != "0" else "1") + hp[1:]
+        codigo, out, err = correr("empezar", "--huella", otra, "--vault", v, "--desde", AQUI)
+        self.assertEqual(codigo, 1, "empezó con una plantilla cuya huella no es la de la página")
+        self.assertIn("no cuadra", err)
+        self.assertEqual(foto(v), antes, "escribió algo con la huella cambiada")
+        self.assertFalse((v / ".git").exists(), "creó el repositorio con la huella cambiada")
+
+    def test_fichero_cambiado_por_el_camino_no_escribe_nada(self):
+        fuente = self.tmp / "fuente"
+        shutil.copytree(str(PLANTILLA), str(fuente / "plantilla"))
+        readme = fuente / "plantilla" / "README.md"
+        readme.write_bytes(readme.read_bytes() + b"\nalgo que no estaba\n")
+        v = self.carpeta()
+        antes = foto(v)
+        codigo, out, err = correr("empezar", "--huella", self.huellas()[1], "--vault", v, "--desde", fuente)
+        self.assertEqual(codigo, 1, "empezó con un fichero que no cuadra con el manifiesto")
+        self.assertIn("no cuadra con su manifiesto", err)
+        self.assertEqual(foto(v), antes, "escribió algo con un fichero cambiado")
+
+    def test_sin_huella_no_baja_nada(self):
+        v = self.carpeta()
+        codigo, out, err = correr("empezar", "--vault", v, "--desde", AQUI)
+        self.assertEqual(codigo, 1)
+        self.assertIn("huella", err)
+
+    def test_carpeta_que_no_esta_vacia_no_se_toca(self):
+        v = self.carpeta({"notas.txt": b"lo mio\n"})
+        antes = foto(v)
+        codigo, out, err = correr("empezar", "--huella", self.huellas()[1], "--vault", v, "--desde", AQUI)
+        self.assertEqual(codigo, 1, "montó la plantilla en una carpeta con cosas")
+        self.assertEqual(foto(v), antes)
+
+    def test_un_vault_que_ya_existe_va_a_entrar(self):
+        v = self.carpeta({"AGENTS.md": b"# reglas\n"})
+        antes = foto(v)
+        codigo, out, err = correr("empezar", "--huella", self.huellas()[1], "--vault", v, "--desde", AQUI)
+        self.assertEqual(codigo, 1)
+        self.assertIn("vaultvoid.app/entrar", err)
+        self.assertEqual(foto(v), antes)
+
+    def test_si_el_commit_falla_no_deja_nada(self):
+        v = self.carpeta()
+        antes = foto(v)
+        original = V.git
+
+        def git_sin_commit(vault, *args, comprobar=True):
+            if args and args[0] == "commit":
+                return 1, ""
+            return original(vault, *args, comprobar=comprobar)
+        with mock.patch.object(V, "git", git_sin_commit):
+            codigo, out, err = correr("empezar", "--huella", self.huellas()[1], "--vault", v, "--desde", AQUI)
+        self.assertEqual(codigo, 1)
+        self.assertIn("nombre y correo", err)
+        self.assertEqual(foto(v), antes, "dejó la plantilla a medias al fallar el commit")
+        self.assertEqual(git(v, "ls-files")[1].strip(), "", "dejó ficheros preparados en git")
+
+    # ---- el recorrido entero, como lo haría el agente
+
+    def test_recorrido_entero_de_una_carpeta_vacia_a_un_vault_conectado(self):
+        v = self.tmp / "mi-vault"
+        v.mkdir()
+        hv, hp = self.huellas()
+        ordenes = ordenes_md((WEB / "empezar.md").read_text(encoding="utf-8"))
+        # Paso 3: la orden de la página, bajando de un fichero local en vez de GitHub.
+        codigo_py = re.fullmatch(r'python3 -c "(.*)"', ordenes[0]).group(1)
+        url = "https://raw.githubusercontent.com/AlexCanoFuentes/vault-void/main/void.py"
+        r = subprocess.run([sys.executable, "-c", codigo_py.replace(url, VOID_PY.as_uri())], cwd=str(v),
+                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        self.assertEqual(r.returncode, 0, r.stdout.decode("utf-8", "replace"))
+
+        def paso(orden):
+            args = orden.split()[1:] + ["--desde", str(AQUI)]
+            r = subprocess.run([sys.executable] + args, cwd=str(v), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            salida = r.stdout.decode("utf-8", "replace")
+            self.assertEqual(r.returncode, 0, orden + "\n" + salida)
+            return salida
+        paso(next(o for o in ordenes if " empezar --huella " in o))     # paso 4
+        self.assertEqual(commits(v), ["vault: plantilla {} de Void".format(
+            REF.validar_manifiesto((PLANTILLA / REF.MANIFIESTO).read_bytes())[0])])
+        salida = paso("python3 herramientas/void.py actualizar --conectar")   # paso 5
+        self.assertIn("3 sin cambios", salida)   # AGENTS.md, CLAUDE.md y el void.py del paso 3
+        self.assertNotIn("tuyo", salida, "al conectar, la plantilla chocó con la base")
+        self.assertEqual(len(commits(v)), 2)
+        self.assertTrue(limpio(v), "dejó algo fuera de los commits")
+
+        # Lo que hace el agente con la primera respuesta: el nombre donde dice {{nombre}}.
+        for p in v.rglob("*.md"):
+            if ".git" in p.parts or p.name == "_plantilla.md":
+                continue
+            p.write_text(p.read_text(encoding="utf-8").replace("{{nombre}}", "Ana").replace("{{fecha}}", "2026-10-08"),
+                         encoding="utf-8")
+        git(v, "add", "-A")
+        git(v, "commit", "-q", "-m", "vault: tu nombre")
+        for programa in ("pruebas.py", "pruebas_comunes.py", "revisar.py"):
+            r = subprocess.run([sys.executable, str(v / "herramientas" / programa)], cwd=str(v),
+                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            self.assertEqual(r.returncode, 0, programa + ": " + r.stdout.decode("utf-8", "replace")[-800:])
+
+
+FRASES_EMPEZAR = ["empieza mi vault: vaultvoid.app/empezar", "network_access = false", "xcode-select --install",
+                  "py --version", "Homebrew", "Si no dice que sí, para aquí", "[sin contestar]", "gratis",
+                  "vaultvoid.app/entrar", "La instalación la acepta la persona"]
+
+
 def self_h(texto):
     import fugas
     return fugas.h(texto)
@@ -1795,7 +1979,8 @@ SABOTAJES = [
      ["Nebulosa.test_un_correo_no_sale"], "taller.py"),
     ("hash cambiado en el manifiesto: no comprueba la huella",
      [("if huella(datos) != esperado:", "if False:")],
-     ["Actualizar.test_hash_cambiado_en_el_manifiesto", "Actualizar.test_fichero_cambiado_por_el_camino"]),
+     ["Actualizar.test_hash_cambiado_en_el_manifiesto", "Actualizar.test_fichero_cambiado_por_el_camino",
+      "Empezar.test_fichero_cambiado_por_el_camino_no_escribe_nada"]),
     ("fichero modificado por el usuario: pisa lo suyo",
      [("elif h_instalada is not None and h_local == h_instalada:", "elif True:")],
      ["Actualizar.test_fichero_modificado_por_el_usuario",
@@ -1837,6 +2022,19 @@ SABOTAJES = [
     ("plantilla: escribe el manifiesto aunque lleve un nombre",
      [("    if sucia:\n        for pr in sucia:", "    if False:\n        for pr in sucia:")],
      ["Plantilla.test_con_un_nombre_dentro_no_se_escribe_nada"], "regenerar_manifiesto.py"),
+    ("empezar: no comprueba la huella que publica la página",
+     [("    if fuente.huella_manifiesto != esperada:", "    if False:")],
+     ["Empezar.test_huella_de_la_pagina_que_no_cuadra_no_escribe_nada"]),
+    ("empezar: monta en una carpeta que no está vacía",
+     [("    if hay:\n        raise Fallo(\"Esta carpeta no está vacía", "    if False:\n        raise Fallo(\"Esta carpeta no está vacía")],
+     ["Empezar.test_carpeta_que_no_esta_vacia_no_se_toca"]),
+    ("empezar: si el commit falla deja la plantilla a medias",
+     [("    except BaseException:\n        git(vault, \"rm\"", "    except ZeroDivisionError:\n        git(vault, \"rm\"")],
+     ["Empezar.test_si_el_commit_falla_no_deja_nada"]),
+    ("empezar: la página publica una huella de la plantilla que no es la suya",
+     [("        elif any(x != h_plantilla for x in de_plantilla):", "        elif False:")],
+     ["Empezar.test_huella_de_la_plantilla_que_no_cuadra_sale_en_rojo", "Empezar.test_la_plantilla_cambia_y_la_pagina_no"],
+     "regenerar_manifiesto.py"),
     ("conectar: deja fuera del commit el void.py recién bajado",
      [('    sueltos = sorted(set(sin_seguir(vault, [r for r in iguales if ruta_segura(r)])) - set(rutas))\n',
        "    sueltos = []\n")],

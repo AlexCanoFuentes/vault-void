@@ -217,7 +217,8 @@ class Herramientas(Base):
         self.assertIn("encargos.py no tiene pruebas", problemas[0])
 
     def test_caza_una_herramienta_sin_sabotaje(self):
-        problemas = self.poner("import re\n", "import encargos\n\nSABOTAJES = [\n]\n")
+        # El señuelo: otro «SABOTAJES = [» que nombra la herramienta, dentro de un texto de una prueba.
+        problemas = self.poner("import re\n", "import encargos\nX = 'SABOTAJES = [encargos]'\n\nSABOTAJES = [\n]\n")
         self.assertEqual(len(problemas), 1)
         self.assertIn("no tiene sabotaje", problemas[0])
 

@@ -306,6 +306,11 @@ ENTRE_COMILLAS = re.compile(r"«([^«»]*)»")
 ELIPSIS = re.compile(r"\s*(?:…|\.\.\.)\s*")
 
 
+def y_numeros(numeros):
+    n = [str(x) for x in numeros]
+    return n[0] if len(n) == 1 else ", ".join(n[:-1]) + " y " + n[-1]
+
+
 def junto(texto):
     return " ".join(texto.split())
 
@@ -357,16 +362,16 @@ def inventado(raiz):
             comillas = [c for c in ENTRE_COMILLAS.findall(linea) if junto(c) != SIN_CONTESTAR]
             if not dichas:
                 if SIN_CONTESTAR not in linea or comillas:
-                    problemas.append(f"{nombre}:{n} · dice algo de tu respuesta {', '.join(map(str, numeros))}, "
+                    problemas.append(f"{nombre}:{n} · dice algo de tu respuesta {y_numeros(numeros)}, "
                                      f"que está sin contestar: tiene que decir {SIN_CONTESTAR}")
                 continue
             if not comillas:
-                problemas.append(f"{nombre}:{n} · cita tu respuesta {', '.join(map(str, numeros))} sin tus "
+                problemas.append(f"{nombre}:{n} · cita tu respuesta {y_numeros(numeros)} sin tus "
                                  "palabras: van entre «» tal cual las dijiste")
             for c in comillas:
                 if not any(cita_literal(c, d) for d in dichas):
                     problemas.append(f"{nombre}:{n} · «{c[:60]}» no está tal cual en tu respuesta "
-                                     f"{', '.join(map(str, numeros))}")
+                                     f"{y_numeros(numeros)}")
     return problemas
 
 
@@ -425,7 +430,10 @@ def herramientas_sin_pruebas(raiz):
     if not carpeta.is_dir():
         return []
     pruebas = leer_texto(raiz, Path("herramientas") / "pruebas.py")
-    sabotajes = pruebas.split("SABOTAJES = [", 1)[1] if "SABOTAJES = [" in pruebas else ""
+    # La lista de verdad: la que empieza en su propia línea y acaba en un «]» a final de línea. Un
+    # «SABOTAJES = [» dentro de una prueba (un texto entre comillas) no cuenta.
+    lista = re.search(r"^SABOTAJES = \[(.*?)(?:^\]|\]$)", pruebas, re.S | re.M)
+    sabotajes = lista.group(1) if lista else ""
     ajenas = de_void(raiz)
     propias = {p.stem for p in carpeta.glob("*.py")} | {Path(n).stem for n in DE_LA_PLANTILLA}
     problemas = []

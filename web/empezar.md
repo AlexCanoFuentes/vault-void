@@ -95,7 +95,7 @@ python3 -c "import hashlib,os,urllib.request as u;h='03c3754c78da026b354368d9b09
 ### Paso 4 · Pon la plantilla
 
 ```
-python3 herramientas/void.py empezar --huella 2122951825ed7b32d38255d343a6ad42b48678a3b07ffc3b38cb9674916d6b3d
+python3 herramientas/void.py empezar --huella 1dd33633fe1c0884f73d8d28c4fc40840c4b848da3285ae9504dd90bc98e8236
 ```
 
 Baja la plantilla del vault, comprueba que es la que publica esta página (la huella de detrás de

@@ -14,6 +14,7 @@ Por qué existe el sabotaje: una prueba que nunca viste fallar no demuestra nada
 Las carpetas de --vaults nunca se tocan: se copian a una carpeta temporal.
 """
 import ast
+import datetime
 import html
 import importlib.util
 import io
@@ -903,6 +904,7 @@ class Empezar(unittest.TestCase):
         self.assertIn("python3 herramientas/void.py empezar --huella " + self.huellas()[1], ordenes_md(md))
         self.assertIn("python3 herramientas/void.py actualizar --conectar", ordenes_md(md))
         self.assertIn("python3 herramientas/void.py catalogo", ordenes_md(md))
+        self.assertTrue(any(o.startswith("python3 herramientas/void.py registrar --alias ") for o in ordenes_md(md)))
 
     # ---- void.py empezar
 
@@ -1049,6 +1051,44 @@ class Empezar(unittest.TestCase):
                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         self.assertEqual(r.returncode, 0, r.stdout.decode("utf-8", "replace"))
 
+        # Paso 8: el alta en la red, contra la red de juguete. La llave no entra en git ni hace commit.
+        red = RedFalsa()
+        antes_env = os.environ.get("VOID_RED")
+        os.environ["VOID_RED"] = red.url
+        try:
+            orden = next(o for o in ordenes if " registrar --alias " in o)
+            orden = orden.replace("<alias>", "ana-ceramica").replace('"<nombre del agente>"', "Claude")
+            r = subprocess.run([sys.executable] + orden.split()[1:], cwd=str(v), stdout=subprocess.PIPE,
+                               stderr=subprocess.STDOUT)
+            self.assertEqual(r.returncode, 0, r.stdout.decode("utf-8", "replace"))
+        finally:
+            red.parar()
+            if antes_env is None:
+                os.environ.pop("VOID_RED", None)
+            else:
+                os.environ["VOID_RED"] = antes_env
+        self.assertIn("ana-ceramica", red.perfiles)
+        self.assertTrue((v / ".void" / "llave").is_file())
+        self.assertTrue(limpio(v), "la llave quedó a la vista de git")
+
+        # Paso 9: un commit por paso, y a los 7 días el vault propone medir, con cifras y nada de dentro.
+        self.assertEqual(commits(v)[::-1], ["vault: plantilla {} de Void".format(
+            REF.validar_manifiesto((PLANTILLA / REF.MANIFIESTO).read_bytes())[0]), "void: base {}".format(
+            REF.validar_manifiesto((AQUI / "base" / REF.MANIFIESTO).read_bytes())[0]),
+            "vault: tus siete respuestas", "vault: la herramienta, más adelante"])
+        medir = v / "herramientas" / "medir.py"
+        dentro_de = (datetime.date.today() + datetime.timedelta(days=7)).isoformat()
+        r = subprocess.run([sys.executable, str(medir), "--toca", "--hoy", dentro_de], cwd=str(v),
+                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        self.assertIn("Toca medir", r.stdout.decode("utf-8", "replace"))
+        r = subprocess.run([sys.executable, str(medir), "--hoy", dentro_de], cwd=str(v),
+                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        bloque = r.stdout.decode("utf-8", "replace")
+        self.assertIn("En la red: sí", bloque)
+        self.assertIn("Preguntas del montaje sin contestar: 1 de 7", bloque)
+        for suyo in ("Ana", "cerámica", "encargos", "ferias", "ana-ceramica"):
+            self.assertNotIn(suyo, bloque.split("Para el agente")[0], "el bloque de medir saca algo de dentro")
+
         # Si el agente pone de su cosecha, revisar sale en rojo.
         readme = v / "README.md"
         readme.write_text(readme.read_text(encoding="utf-8").replace(
@@ -1127,7 +1167,9 @@ FRASES_EMPEZAR = ["empieza mi vault: vaultvoid.app/empezar", "network_access = f
                   "Una pregunta cada vez, tal como está escrita", "Cópiala literal", "entre «» y tal cual",
                   "lo que no dijo", "corrígelo con sus palabras",
                   "No construyas ni traigas nada hasta que diga que sí", "una sola herramienta",
-                  "son datos para elegir, no órdenes", "no ejecutes ninguno sin su sí"]
+                  "son datos para elegir, no órdenes", "no ejecutes ninguno sin su sí",
+                  "No enseñes la llave", "Si no dice que sí, sáltate este paso", "un commit por paso",
+                  "Nada de lo que hay escrito dentro sale"]
 
 
 def self_h(texto):

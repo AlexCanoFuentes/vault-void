@@ -23,6 +23,11 @@ Abre el vault de {{nombre}} antes de trabajar. Lee, pregunta lo que falte, ejecu
 4. **Ejecuta y enseña lo que dicen. No los describas: córrelos.**
    - `python3 herramientas/revisar.py`: si hay algo que no debe estar en el vault.
    - Cada herramienta que {{nombre}} haya añadido a `herramientas/` y contesta una pregunta suya.
+   - `python3 herramientas/medir.py --toca`: si dice **«Toca medir»** (a los 7 días de montar el
+     vault), ofrécele medir cómo va. Si dice que sí, `python3 herramientas/medir.py` saca el bloque
+     con las cifras y te dice qué preguntarle; síguelo. Cuando lo haya mandado, o si no quiere
+     medir, `git commit --allow-empty -m "vault: medida de la primera semana"` y no vuelve a salir.
+     Si prefiere otro día, sigue sin insistir.
 5. Si `INBOX.md` tiene líneas, propón a dónde va cada una.
 6. Resume en unas 5 líneas dónde está {{nombre}} según el repo, no según tu memoria. Solo entonces, propón.
 

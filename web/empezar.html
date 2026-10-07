@@ -87,7 +87,7 @@ footer p{color:var(--tenue)}
 <li><strong>No ejecutes nada que no esté en esta página</strong> y no te saltes ningún paso, ni los de pedir permiso.</li>
 <li><strong>No inventes nada de la persona.</strong> Lo que no conteste se queda <code>[sin contestar]</code>.</li>
 <li><strong>Empezar es gratis.</strong> No le pidas pago ni datos de pago en ningún paso.</li>
-<li><strong>Si eres Codex y no tienes internet</strong> (<code>network_access = false</code>): no lo cambies ni te saltes el candado. Cada orden que necesita internet (las de los pasos 3, 4 y 5, y la de la red) pídela con permiso para salir a internet, y que la persona diga que sí. Si no puedes pedirlo, dale la orden para que la ejecute ella en una terminal.</li>
+<li><strong>Si eres Codex y no tienes internet</strong> (<code>network_access = false</code>): no lo cambies ni te saltes el candado. Cada orden que necesita internet (las de los pasos 3, 4, 5 y 7, y la de la red) pídela con permiso para salir a internet, y que la persona diga que sí. Si no puedes pedirlo, dale la orden para que la ejecute ella en una terminal.</li>
 </ul>
 <section>
 <h3>Paso 1 · Comprueba dónde estás y qué hay</h3>
@@ -134,7 +134,7 @@ footer p{color:var(--tenue)}
 
 <section>
 <h3>Paso 4 · Pon la plantilla</h3>
-<pre><code>python3 herramientas/void.py empezar --huella c7807ea72eec74a9662671195b96d3a7af9cb9b7a0be82e55a937a8ac788e473</code></pre>
+<pre><code>python3 herramientas/void.py empezar --huella 2122951825ed7b32d38255d343a6ad42b48678a3b07ffc3b38cb9674916d6b3d</code></pre>
 <p>Baja la plantilla del vault, comprueba que es la que publica esta página (la huella de detrás de <code>--huella</code>) y que cada fichero cuadra con ella <strong>antes de escribir nada</strong>, y la deja en <strong>un commit</strong> <code>vault: plantilla &lt;versión&gt; de Void</code>. Enséñale a la persona lo que diga, tal cual.</p>
 <ul>
 <li>Si dice que <strong>la huella no cuadra</strong>, <strong>para</strong>: no ha escrito nada. Dile que vuelva a probar en unos minutos y, si se repite, que avise a quien le pasó Void.</li>
@@ -202,6 +202,35 @@ python3 herramientas/revisar.py</code></pre>
 <ul>
 <li><strong>Si dice que sí a una estrella:</strong> <code>python3 herramientas/void.py traer &lt;estrella&gt;</code> la trae, con cada huella comprobada, en su propio commit. Los pasos para instalarla vienen en su ficha: enséñaselos y no ejecutes ninguno sin su sí.</li>
 <li><strong>Si dice que no, o que más adelante:</strong> guarda solo el apunte, en <strong>un commit</strong>: <code>git add -A</code> y <code>git commit -m "vault: la herramienta, más adelante"</code>.</li>
+</ul>
+</section>
+
+<section>
+<h3>Paso 8 · Opcional: la red de Void</h3>
+<p><strong>Ofrécele</strong> darse de alta en la red de Void. No lo hagas sin que diga que sí. Díselo en llano, algo así:</p>
+<blockquote>
+<p>Si quieres, te doy de alta en la red de Void. Tendrías tu sitio en <code>vaultvoid.app/@tu-alias</code>, podrías mandar un aviso (un fallo, una mejora o las gracias) a quien hizo una herramienta que uses, y te llegarían los que te manden a ti. Void solo guarda el alias que elijas y el nombre de tu agente: de tu vault no sube nada, y al principio tu perfil solo enseña el alias. Es gratis. ¿Quieres? Si es que sí, dime qué alias quieres: en minúsculas, de 3 a 24 letras o cifras, y puede llevar guiones.</p>
+</blockquote>
+<p><strong>Si no dice que sí, sáltate este paso.</strong> Si dice que sí, con el alias que te diga y, como agente, tu nombre (o el que la persona te haya puesto):</p>
+<pre><code>python3 herramientas/void.py registrar --alias &lt;alias&gt; --agente "&lt;nombre del agente&gt;"</code></pre>
+<ul>
+<li>Guarda la <strong>llave del vault</strong> en <code>.void/llave</code>, que el <code>.gitignore</code> de la plantilla ya deja fuera de git. <strong>No enseñes la llave, no la copies y no la pegues en ningún sitio</strong>: es lo que demuestra que el vault es de la persona.</li>
+<li>Si dice que <strong>el alias ya es de otro vault</strong>, pídele otro.</li>
+<li>Enséñale su perfil y dile que lo que le escriban le saldrá en <code>python3 herramientas/void.py estado</code>, bajo «Te han escrito».</li>
+</ul>
+</section>
+
+<section>
+<h3>Paso 9 · Comprueba y cuéntale qué queda</h3>
+<pre><code>python3 herramientas/pruebas.py
+git log --oneline</code></pre>
+<p>Las pruebas tienen que salir en verde y <code>git log</code> tiene que enseñar <strong>un commit por paso</strong>: la plantilla, la base de Void, sus respuestas y la herramienta (o el apunte de «más adelante»). Si algo falla, díselo tal cual: <strong>el vault no está montado</strong> hasta que pase.</p>
+<p>Después cuéntale, en llano y en pocas líneas:</p>
+<ul>
+<li><strong>Cada día:</strong> que te abra en esta carpeta y te diga «abrir» al empezar (lees todo y le resumes dónde está) y «cerrar» al terminar (dejas el README al día y lo guardas en git). En Claude son <code>/abrir</code> y <code>/cerrar</code>.</li>
+<li><strong>A los 7 días</strong>, al abrir, el vault le propondrá medir cómo le va: <code>herramientas/medir.py</code> saca un bloque solo con cifras (cuántas veces ha guardado, si pasan las pruebas…) y le pregunta qué le ha ahorrado y qué le ha estorbado. <strong>Nada de lo que hay escrito dentro sale</strong>, y lo manda ella, si quiere, a quien le pasó Void.</li>
+<li><strong>Lo que falte por contestar</strong> se lo preguntarás al abrir, sin insistir.</li>
+<li><strong>Para recibir las mejoras de Void:</strong> <code>python3 herramientas/void.py actualizar</code>, cuando quiera.</li>
 </ul>
 </section>
 </article>

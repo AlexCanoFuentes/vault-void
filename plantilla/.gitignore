@@ -73,6 +73,9 @@ __pycache__/
 # Permisos personales de Claude en esta máquina (no viajan con el repo)
 .claude/settings.local.json
 
+# La llave de tu vault en la red de Void (si te das de alta): es tuya y no sale de este equipo
+.void/
+
 # Por si alguna vez aparece un archivo de claves: nunca entra al repo
 .env
 .env.*

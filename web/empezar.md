@@ -26,8 +26,8 @@ Lo que tienes que saber antes de empezar:
 - **No inventes nada de la persona.** Lo que no conteste se queda `[sin contestar]`.
 - **Empezar es gratis.** No le pidas pago ni datos de pago en ningún paso.
 - **Si eres Codex y no tienes internet** (`network_access = false`): no lo cambies ni te saltes el
-  candado. Cada orden que necesita internet (las de los pasos 3, 4 y 5, y la de la red) pídela con
-  permiso para salir a internet, y que la persona diga que sí. Si no puedes pedirlo, dale la orden
+  candado. Cada orden que necesita internet (las de los pasos 3, 4, 5 y 7, y la de la red) pídela
+  con permiso para salir a internet, y que la persona diga que sí. Si no puedes pedirlo, dale la orden
   para que la ejecute ella en una terminal.
 
 ### Paso 1 · Comprueba dónde estás y qué hay
@@ -95,7 +95,7 @@ python3 -c "import hashlib,os,urllib.request as u;h='03c3754c78da026b354368d9b09
 ### Paso 4 · Pon la plantilla
 
 ```
-python3 herramientas/void.py empezar --huella c7807ea72eec74a9662671195b96d3a7af9cb9b7a0be82e55a937a8ac788e473
+python3 herramientas/void.py empezar --huella 2122951825ed7b32d38255d343a6ad42b48678a3b07ffc3b38cb9674916d6b3d
 ```
 
 Baja la plantilla del vault, comprueba que es la que publica esta página (la huella de detrás de
@@ -223,6 +223,53 @@ que instalar. Córrela, enséñale lo que contesta y guarda en **un commit**: `g
   enséñaselos y no ejecutes ninguno sin su sí.
 - **Si dice que no, o que más adelante:** guarda solo el apunte, en **un commit**: `git add -A` y
   `git commit -m "vault: la herramienta, más adelante"`.
+
+### Paso 8 · Opcional: la red de Void
+
+**Ofrécele** darse de alta en la red de Void. No lo hagas sin que diga que sí. Díselo en llano, algo así:
+
+> Si quieres, te doy de alta en la red de Void. Tendrías tu sitio en `vaultvoid.app/@tu-alias`, podrías
+> mandar un aviso (un fallo, una mejora o las gracias) a quien hizo una herramienta que uses, y te
+> llegarían los que te manden a ti. Void solo guarda el alias que elijas y el nombre de tu agente: de tu
+> vault no sube nada, y al principio tu perfil solo enseña el alias. Es gratis. ¿Quieres? Si es que sí,
+> dime qué alias quieres: en minúsculas, de 3 a 24 letras o cifras, y puede llevar guiones.
+
+**Si no dice que sí, sáltate este paso.** Si dice que sí, con el alias que te diga y, como agente, tu
+nombre (o el que la persona te haya puesto):
+
+```
+python3 herramientas/void.py registrar --alias <alias> --agente "<nombre del agente>"
+```
+
+- Guarda la **llave del vault** en `.void/llave`, que el `.gitignore` de la plantilla ya deja fuera de
+  git. **No enseñes la llave, no la copies y no la pegues en ningún sitio**: es lo que demuestra que
+  el vault es de la persona.
+- Si dice que **el alias ya es de otro vault**, pídele otro.
+- Enséñale su perfil y dile que lo que le escriban le saldrá en `python3 herramientas/void.py estado`,
+  bajo «Te han escrito».
+
+### Paso 9 · Comprueba y cuéntale qué queda
+
+```
+python3 herramientas/pruebas.py
+git log --oneline
+```
+
+Las pruebas tienen que salir en verde y `git log` tiene que enseñar **un commit por paso**: la
+plantilla, la base de Void, sus respuestas y la herramienta (o el apunte de «más adelante»). Si algo
+falla, díselo tal cual: **el vault no está montado** hasta que pase.
+
+Después cuéntale, en llano y en pocas líneas:
+
+- **Cada día:** que te abra en esta carpeta y te diga «abrir» al empezar (lees todo y le resumes
+  dónde está) y «cerrar» al terminar (dejas el README al día y lo guardas en git). En Claude son
+  `/abrir` y `/cerrar`.
+- **A los 7 días**, al abrir, el vault le propondrá medir cómo le va: `herramientas/medir.py` saca un
+  bloque solo con cifras (cuántas veces ha guardado, si pasan las pruebas…) y le pregunta qué le ha
+  ahorrado y qué le ha estorbado. **Nada de lo que hay escrito dentro sale**, y lo manda ella, si
+  quiere, a quien le pasó Void.
+- **Lo que falte por contestar** se lo preguntarás al abrir, sin insistir.
+- **Para recibir las mejoras de Void:** `python3 herramientas/void.py actualizar`, cuando quiera.
 
 ---
 

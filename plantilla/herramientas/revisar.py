@@ -373,7 +373,7 @@ def inventado(raiz):
 # ------------------------------------------------------------------ tus herramientas
 
 # Las de la plantilla. Las de la base y las de cada estrella las dice void.json.
-DE_LA_PLANTILLA = {"revisar.py", "pruebas.py"}
+DE_LA_PLANTILLA = {"revisar.py", "pruebas.py", "medir.py"}
 
 
 def de_void(raiz):

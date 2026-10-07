@@ -16,6 +16,7 @@ menos una forma de romperla que las pruebas tienen que cazar.
 import importlib
 import io
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -25,6 +26,7 @@ AQUI = Path(__file__).resolve().parent
 RAIZ = AQUI.parent
 sys.path.insert(0, str(AQUI))
 import revisar  # noqa: E402
+import medir  # noqa: E402
 
 
 class Base(unittest.TestCase):
@@ -120,6 +122,73 @@ class NoInventa(Base):
         lineas, codigo = revisar.revisar_todo(self.dir)
         self.assertEqual(codigo, 1)
         self.assertTrue(any("no dijiste" in x for x in lineas), lineas)
+
+
+# ---------------------------------------------------------------- medir
+
+@unittest.skipUnless(revisar.hay_git(), "sin git en este equipo")
+class Medir(Base):
+    """A los 7 días el vault propone medir cómo va, una vez, y el bloque solo lleva cifras."""
+
+    SECRETO = "Zacarías"
+
+    def guardar(self, dia, mensaje):
+        entorno = dict(__import__("os").environ, GIT_AUTHOR_DATE=dia + "T12:00:00", GIT_COMMITTER_DATE=dia + "T12:00:00")
+        subprocess.run(["git", "-C", str(self.dir), "add", "-A"], check=True)
+        subprocess.run(["git", "-C", str(self.dir), "-c", "user.name=Prueba", "-c", "user.email=prueba@" "ejemplo.invalid",
+                        "commit", "-q", "--allow-empty", "-m", mensaje], check=True, env=entorno)
+
+    def vault(self):
+        """Un vault con algo de cada cosa y el mismo nombre escondido en todas partes."""
+        revisar.git(self.dir, "init", "-q")
+        (self.dir / "criterio").mkdir()
+        (self.dir / "proyectos").mkdir()
+        (self.dir / "herramientas").mkdir()
+        preguntas = "".join("\n- **{}** · tema {}\n  *Pregunta:* ¿{}?\n  *Tu respuesta:* {}\n".format(
+            "Principio" if i != 3 else "[sin contestar]", i, i,
+            "habla de " + self.SECRETO if i != 3 else "(la escribes aquí, o el agente te la pregunta y la copia tal cual)")
+            for i in range(1, 8))
+        (self.dir / "criterio" / "apuntes.md").write_text(
+            "# Apuntes\n" + preguntas + "\n- **Regla** · con " + self.SECRETO + "\n  «sí»\n"
+            "\n- **Corregí** · la regla de " + self.SECRETO + "\n  «no»\n", encoding="utf-8")
+        (self.dir / "proyectos" / "_plantilla.md").write_text("- objetivo:\n- fecha límite:\n", encoding="utf-8")
+        (self.dir / "proyectos" / "zacarias.md").write_text(
+            "# " + self.SECRETO + "\n- objetivo: vender\n- fecha límite: 31/10\n", encoding="utf-8")
+        (self.dir / "proyectos" / "otro.md").write_text("- objetivo: [sin contestar]\n- fecha límite:\n",
+                                                        encoding="utf-8")
+        (self.dir / "herramientas" / "zacarias.py").write_text("print(1)\n", encoding="utf-8")
+        (self.dir / "void.json").write_text('{"base": "0.4", "ficheros": {}}', encoding="utf-8")
+        self.guardar("2026-10-01", "vault: plantilla de " + self.SECRETO)
+        self.guardar("2026-10-01", "vault: tus siete respuestas")
+        self.guardar("2026-10-03", "vault: " + self.SECRETO)
+
+    def datos(self, hoy="2026-10-08"):
+        return medir.datos(self.dir, medir.date.fromisoformat(hoy), comprobar_vault=lambda raiz: (True, False))
+
+    def test_cuenta_lo_que_hay(self):
+        self.vault()
+        self.assertEqual(self.datos(), {
+            "dias": 7, "guardados": 3, "dias_con_algo": 2, "proyectos": 2, "con_objetivo_y_fecha": 1,
+            "apuntes_nuevos": 2, "corregi": 1, "sin_contestar": 1, "herramientas": 1, "pruebas": True,
+            "revisar": False, "void": "0.4", "red": False})
+
+    def test_el_bloque_no_saca_nada_de_dentro(self):
+        self.vault()
+        texto = medir.bloque(self.datos()) + medir.PARA_EL_AGENTE
+        for trozo in (self.SECRETO, "zacarias", "Zacar", "vender", "31/10", "habla de"):
+            self.assertNotIn(trozo.lower(), texto.lower())
+        self.assertIn("[tu respuesta]", texto)
+
+    def test_toca_a_los_siete_dias_y_una_vez(self):
+        self.vault()
+        self.assertEqual(medir.toca(self.dir, medir.date(2026, 10, 7)), (False, 6))
+        self.assertEqual(medir.toca(self.dir, medir.date(2026, 10, 8)), (True, 7))
+        self.guardar("2026-10-08", "vault: medida de la primera semana")   # lo que dice abrir.md, tal cual
+        self.assertEqual(medir.toca(self.dir, medir.date(2026, 10, 20)), (False, 19))
+
+    def test_sin_commits_no_toca(self):
+        revisar.git(self.dir, "init", "-q")
+        self.assertEqual(medir.toca(self.dir, medir.date(2026, 10, 8)), (False, 0))
 
 
 # ---------------------------------------------------------------- tus herramientas
@@ -374,6 +443,12 @@ SABOTAJES = [
      lambda: setattr(revisar, "viene_con_python", lambda nombre: True)),
     ("una herramienta tuya se toma por una de Void y no se le piden pruebas",
      lambda: setattr(revisar, "de_void", lambda raiz: {"herramientas/encargos.py"})),
+    ("medir propone medir antes de los 7 días",
+     lambda: setattr(medir, "DIAS", 0)),
+    ("medir vuelve a proponer medir aunque ya se midió",
+     lambda: setattr(medir, "MENSAJE", "vault: otra cosa")),
+    ("medir cuenta las siete preguntas como apuntes nuevos",
+     lambda: setattr(medir, "es_pregunta", lambda lineas, i: False)),
     ("una cita que no es tal cual pasa por buena",
      lambda: setattr(revisar, "cita_literal", lambda cita, texto: True)),
 ]
@@ -388,6 +463,7 @@ def correr(verbosidad=0):
 
 def restaurar():
     importlib.reload(revisar)
+    importlib.reload(medir)
 
 
 def sabotaje():

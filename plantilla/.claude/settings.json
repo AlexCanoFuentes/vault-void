@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "blockReadsOutsideWorkingDirectories": true,
+    "defaultMode": "default",
+    "disableBypassPermissionsMode": "disable",
+    "disableAutoMode": "disable",
+    "deny": [
+      "Bash(curl *)",
+      "Bash(wget *)",
+      "Bash(ssh *)",
+      "Bash(scp *)",
+      "PowerShell(curl *)",
+      "PowerShell(wget *)",
+      "PowerShell(ssh *)",
+      "PowerShell(scp *)",
+      "PowerShell(Invoke-WebRequest *)",
+      "PowerShell(Invoke-RestMethod *)",
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(git add -f *)",
+      "Bash(git add --force *)",
+      "PowerShell(git push --force *)",
+      "PowerShell(git push -f *)",
+      "PowerShell(git add -f *)",
+      "PowerShell(git add --force *)"
+    ],
+    "ask": [
+      "Bash",
+      "PowerShell",
+      "WebFetch",
+      "WebSearch",
+      "Bash(git push *)",
+      "Bash(git push)",
+      "PowerShell(git push *)",
+      "PowerShell(git push)"
+    ]
+  }
+}

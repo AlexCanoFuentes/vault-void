@@ -1,0 +1,79 @@
+# Este vault guarda TEXTO: tu trabajo, tus proyectos y tu criterio, con tus palabras.
+# Tus correos, tus documentos, tus fotos y tus vídeos se quedan donde ya están (tu correo, tu
+# nube, tu disco): el agente los consulta cuando se lo pides, y aquí solo se apunta lo que
+# sacaste de ellos, o su ruta o su enlace, no la copia.
+#
+# Cada extensión va en mayúsculas y minúsculas porque Windows y los móviles guardan
+# muchos archivos como FOTO.JPG o CONTRATO.PDF.
+# Lo comprueba: python3 herramientas/revisar.py
+
+# Documentos
+*.[pP][dD][fF]
+*.[dD][oO][cC]
+*.[dD][oO][cC][xX]
+*.[xX][lL][sS]
+*.[xX][lL][sS][xX]
+*.[pP][pP][tT]
+*.[pP][pP][tT][xX]
+*.[oO][dD][tT]
+*.[oO][dD][sS]
+*.[oO][dD][pP]
+*.[pP][aA][gG][eE][sS]
+*.[nN][uU][mM][bB][eE][rR][sS]
+*.[kK][eE][yY]
+
+# Correos guardados
+*.[eE][mM][lL]
+*.[mM][sS][gG]
+*.[mM][bB][oO][xX]
+
+# Imágenes
+*.[pP][nN][gG]
+*.[jJ][pP][gG]
+*.[jJ][pP][eE][gG]
+*.[wW][eE][bB][pP]
+*.[gG][iI][fF]
+*.[bB][mM][pP]
+*.[tT][iI][fF]
+*.[tT][iI][fF][fF]
+*.[hH][eE][iI][cC]
+*.[pP][sS][dD]
+*.[rR][aA][wW]
+
+# Vídeo
+*.[mM][pP]4
+*.[mM][oO][vV]
+*.[aA][vV][iI]
+*.[mM][kK][vV]
+*.[wW][eE][bB][mM]
+*.[mM]4[vV]
+
+# Audio
+*.[mM][pP]3
+*.[wW][aA][vV]
+*.[mM]4[aA]
+*.[aA][aA][cC]
+*.[oO][gG][gG]
+*.[oO][pP][uU][sS]
+*.[fF][lL][aA][cC]
+
+# Comprimidos (suelen llevar lo de arriba dentro)
+*.[zZ][iI][pP]
+*.[rR][aA][rR]
+*.7[zZ]
+
+# La carpeta donde copias algo para que el agente lo mire una vez. Nunca entra en git:
+# cuando termines, bórralo de ahí (el original sigue donde estaba).
+mirar/
+
+# Lo que genera Python al correr los programas
+__pycache__/
+*.pyc
+
+# Permisos personales de Claude en esta máquina (no viajan con el repo)
+.claude/settings.local.json
+
+# Por si alguna vez aparece un archivo de claves: nunca entra al repo
+.env
+.env.*
+*.pem

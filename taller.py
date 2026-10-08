@@ -165,7 +165,7 @@ def repasar(carpeta, nivel="comunidad", autor=None, nombres=frozenset(), escribi
                     falta.append("subir {} para llegar a 80 y entrar en la liga grande".format(d))
     finally:
         shutil.rmtree(str(tmp), ignore_errors=True)
-    return {"pasos": pasos, "falta": falta, "lista": not falta}
+    return {"pasos": pasos, "falta": falta, "lista": not falta, "nivel": nv}
 
 
 def main(argv):
@@ -194,7 +194,7 @@ def main(argv):
         print("{} {}  {}".format(marca, paso, detalle) if paso else detalle)
     print()
     if r["lista"]:
-        print("Lista para publicar. Cópiala a estrellas/{}/{}/ en tu copia de Void y abre un pull request.".format(nivel, Path(args[0]).name))
+        print("Lista para publicar. Cópiala a estrellas/{}/{}/ en tu copia de Void y abre un pull request.".format(r.get("nivel") or nivel, Path(args[0]).name))
         return 0
     print("Le falta:")
     for f in r["falta"]:

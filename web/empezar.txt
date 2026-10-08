@@ -74,14 +74,14 @@ Antes de bajar nada, dile a la persona, en llano, algo así:
 
 La huella (sha256) de `void.py` que publica esta página es:
 
-`03c3754c78da026b354368d9b09aa6bd486eb4227963252096df5ae0dea31985`
+`50173a310bb5c90a865d1ebed40a19e46eb504beb33befdb611ef2afffeb8134`
 
 Esta orden lo baja de GitHub, calcula su huella y **solo lo guarda en `herramientas/void.py` si
 cuadra** con la de arriba. No lo ejecuta. Ejecútala desde la carpeta (es igual en Mac, Linux y
 Windows; cambia `python3` por el nombre del paso 1):
 
 ```
-python3 -c "import hashlib,os,urllib.request as u;h='03c3754c78da026b354368d9b09aa6bd486eb4227963252096df5ae0dea31985';d=u.urlopen('https://raw.githubusercontent.com/AlexCanoFuentes/vault-void/main/void.py',timeout=30).read();r=hashlib.sha256(d).hexdigest();ok=r==h;ok and (os.makedirs('herramientas',exist_ok=True),open('herramientas/void.py','wb').write(d));print('Huella OK: '+r if ok else 'NO CUADRA: ha llegado '+r);raise SystemExit(0 if ok else 1)"
+python3 -c "import hashlib,os,urllib.request as u;h='50173a310bb5c90a865d1ebed40a19e46eb504beb33befdb611ef2afffeb8134';d=u.urlopen('https://raw.githubusercontent.com/AlexCanoFuentes/vault-void/main/void.py',timeout=30).read();r=hashlib.sha256(d).hexdigest();ok=r==h;ok and (os.makedirs('herramientas',exist_ok=True),open('herramientas/void.py','wb').write(d));print('Huella OK: '+r if ok else 'NO CUADRA: ha llegado '+r);raise SystemExit(0 if ok else 1)"
 ```
 
 - Si dice **`Huella OK`**, sigue.
@@ -107,8 +107,8 @@ Baja la plantilla del vault, comprueba que es la que publica esta página (la hu
 - Si dice que **git no tiene su nombre y correo**, pregúntale cuáles quiere usar, ponlos solo en esta
   carpeta con `git config user.name "…"` y `git config user.email "…"` y repite este paso.
 - Si dice que la carpeta **no está vacía** o que **ya hay un vault**, haz lo que dice el paso 1.
-- Si falla y la persona no quiere seguir, borra el `herramientas/void.py` que bajaste en el paso 3:
-  así la carpeta queda como estaba.
+- Si falla y la persona no quiere seguir, borra el `herramientas/void.py` que bajaste en el paso 3
+  y, si la hay, la carpeta `.git` vacía: así la carpeta queda como estaba.
 
 ### Paso 5 · Conéctalo a Void
 

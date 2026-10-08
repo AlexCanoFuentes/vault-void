@@ -1305,7 +1305,9 @@ def orden_empezar(vault, desde, esperada):
         codigo, _ = git(vault, "commit", "-q", "-m", mensaje, "--", *rutas, comprobar=False)
         if codigo != 0:
             raise Fallo("git no ha podido guardar el commit (¿tiene tu nombre y correo? «git config "
-                        "user.name» y «git config user.email»). He dejado la carpeta como estaba.")
+                        "user.name» y «git config user.email»). He quitado lo que puse{}.".format(
+                            ", salvo el repositorio de git vacío (.git), que hace falta para poner tu nombre y "
+                            "correo solo en esta carpeta" if crear_repo else ""))
     except BaseException:
         git(vault, "rm", "-q", "--cached", "--ignore-unmatch", "--", *rutas, comprobar=False)
         for destino in reversed(escritos):

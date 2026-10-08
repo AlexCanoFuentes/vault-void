@@ -19,7 +19,7 @@
 <meta name="twitter:image" content="https://vaultvoid.app/og.jpg">
 <link rel="icon" href="/icono.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<meta name="theme-color" content="#050506">
+<meta name="theme-color" content="#12110E">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 /*
@@ -31,14 +31,15 @@
   Se llega por un agujero blanco que escupe la retícula que se tragó la landing. Cada capa de Void es un
   objeto en el vacío (el mapa vive en el «Plano unificado del vault»). Hoy hay tres:
     · la constelación: el catálogo, leído en vivo del repo público. Cada estrella, una luz.
-      Color = nivel (oficial violeta, socio ámbar, comunidad blanco). Tamaño = vaults que la usan.
+      Color = nivel (oficial ámbar, socio latón, comunidad blanco cálido). Tamaño = vaults que la usan.
     · el anillo: la puerta. La liga grande vive dentro; la pequeña orbita fuera.
     · el telescopio: buscas por lo que se te ha roto, no por el nombre, y se encienden las que lo resuelven.
-  El violeta es el mismo reactivo que corre por la landing.
+  Paleta (8-oct, paleta.md del vault): la de LinkedIn. Ámbar para actuar, verde para resaltar, nada morado y sin
+  halos: el auditor de diseño marcaba los dos como firma de interfaz hecha con IA.
 */
 :root{
-  --vacio:#050506; --tinta:#EDEAF2; --tinta-2:#A9A3B5; --tenue:#6D6878; --linea:#221F29;
-  --reactivo:#B06BFF; --reactivo-2:#D9B8FF; --ambar:#FFB43A; --rojo:#F0604F;
+  --vacio:#12110E; --tinta:#ECE7DE; --tinta-2:#B3AC9F; --tenue:#8C8578; --linea:#2B2822;
+  --ambar:#F2A93B; --ambar-2:#F8CB86; --verde:#5BE06A; --laton:#B08D57; --rojo:#F0604F;
   --serif:"Instrument Serif",Georgia,"Times New Roman",serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
   color-scheme:dark;
 }
@@ -70,15 +71,15 @@ body{margin:0;background:var(--vacio);color:var(--tinta);font:15px/1.6 var(--mon
 .astro{position:absolute;left:var(--x);top:var(--y);width:56px;height:56px;margin:-28px 0 0 -28px;border:0;padding:0;
   background:transparent;cursor:pointer;border-radius:50%;-webkit-tap-highlight-color:transparent}
 .astro .luz{position:absolute;left:50%;top:50%;width:var(--d,9px);height:var(--d,9px);transform:translate(-50%,-50%);border-radius:50%;background:#fff;
-  box-shadow:0 0 0 2px var(--c2),0 0 18px 4px var(--c),0 0 60px 14px var(--c3);animation:late 3.2s ease-in-out infinite}
-@keyframes late{50%{box-shadow:0 0 0 2px var(--c2),0 0 26px 7px var(--c),0 0 90px 22px var(--c3)}}
+  box-shadow:0 0 0 2px var(--c2);animation:late 3.2s ease-in-out infinite}
+@keyframes late{50%{box-shadow:0 0 0 2px var(--c2),0 0 0 6px var(--c3)}}
 .astro .rot{position:absolute;left:50%;top:calc(50% + 20px);transform:translateX(-50%);white-space:nowrap;font:500 10px var(--mono);
   letter-spacing:.14em;text-transform:uppercase;color:var(--tinta-2);transition:color .3s}
 .astro:hover .rot,.astro:focus-visible .rot,.astro.encendida .rot{color:var(--tinta)}
-.astro:focus-visible{outline:1px solid var(--reactivo-2);outline-offset:6px}
-.astro[data-nivel="oficiales"]{--c:var(--reactivo);--c2:var(--reactivo-2);--c3:rgba(176,107,255,.35)}
-.astro[data-nivel="socio"]{--c:var(--ambar);--c2:#FFD796;--c3:rgba(255,180,58,.3)}
-.astro[data-nivel="comunidad"]{--c:#cfcbd8;--c2:#fff;--c3:rgba(220,215,235,.22)}
+.astro:focus-visible{outline:1px solid var(--ambar-2);outline-offset:6px}
+.astro[data-nivel="oficiales"]{--c:var(--ambar);--c2:var(--ambar-2);--c3:rgba(242,169,59,.45)}
+.astro[data-nivel="socio"]{--c:var(--laton);--c2:#D9BE8F;--c3:rgba(176,141,87,.45)}
+.astro[data-nivel="comunidad"]{--c:#E9E5DC;--c2:#FFFFFF;--c3:rgba(233,229,220,.35)}
 
 /* la nebulosa: donde nacen las estrellas. Su gas es un fluido de verdad (webgl-fluid, MIT) */
 .nebulosa{position:absolute;left:var(--nx,20%);top:var(--ny,74%);width:var(--nd,300px);height:var(--nd,300px);transform:translate(-50%,-50%);
@@ -95,8 +96,8 @@ body{margin:0;background:var(--vacio);color:var(--tinta);font:15px/1.6 var(--mon
 /* la antena: el vacío contesta a los asistentes de IA. Emite ondas; al tocarla da la dirección para conectarla */
 .antena{position:absolute;left:var(--ax,82%);top:var(--ay,28%);width:44px;height:44px;margin:-22px 0 0 -22px;border:0;padding:0;background:transparent;
   cursor:pointer;border-radius:50%;z-index:2;-webkit-tap-highlight-color:transparent}
-.antena .nucleo{position:absolute;left:50%;top:50%;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;background:var(--tinta);box-shadow:0 0 10px var(--tinta)}
-.antena .onda{position:absolute;left:50%;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:1px solid var(--reactivo-2);opacity:0;animation:onda 3.6s cubic-bezier(.2,.6,.3,1) infinite}
+.antena .nucleo{position:absolute;left:50%;top:50%;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;background:var(--verde)}
+.antena .onda{position:absolute;left:50%;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:1px solid var(--verde);opacity:0;animation:onda 3.6s cubic-bezier(.2,.6,.3,1) infinite}
 .antena .onda:nth-child(3){animation-delay:1.2s}.antena .onda:nth-child(4){animation-delay:2.4s}
 @keyframes onda{0%{transform:scale(1);opacity:.7}100%{transform:scale(7);opacity:0}}
 .antena .rot{position:absolute;left:50%;top:calc(50% + 22px);transform:translateX(-50%);white-space:nowrap;font:500 10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--tinta-2)}
@@ -107,10 +108,10 @@ body{margin:0;background:var(--vacio);color:var(--tinta);font:15px/1.6 var(--mon
 
 /* la ficha de una estrella */
 .ficha{position:absolute;left:var(--fx,50%);top:var(--fy,50%);width:min(360px,calc(100vw - 32px));max-height:calc(100% - 32px);overflow:auto;padding:18px 18px 16px;
-  background:rgba(12,10,16,.9);border:1px solid var(--linea);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:5;
+  background:rgba(27,25,21,.92);border:1px solid var(--linea);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:5;
   opacity:0;transform:translateY(8px);pointer-events:none;transition:opacity .45s ease,transform .45s cubic-bezier(.2,.7,.2,1)}
 .ficha.abierta{opacity:1;transform:none;pointer-events:auto}
-.ficha .n{margin:0 0 4px;font:500 10px var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--reactivo-2)}
+.ficha .n{margin:0 0 4px;font:500 10px var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--ambar-2)}
 .ficha h2{margin:0 0 10px;font:400 30px/1.05 var(--serif);letter-spacing:-.01em;padding-right:24px}
 .ficha p{margin:0 0 9px;color:var(--tinta-2);font-size:13px;line-height:1.6}
 .ficha .dato{display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--linea);padding:8px 0 0;margin:10px 0 0;font-size:11.5px;color:var(--tenue)}
@@ -119,7 +120,7 @@ body{margin:0;background:var(--vacio);color:var(--tinta);font:15px/1.6 var(--mon
 .ficha .orden code{flex:1;min-width:0;padding:8px 10px;font:12px var(--mono);color:var(--tinta);white-space:nowrap;overflow-x:auto}
 .ficha .orden button{border:0;border-left:1px solid var(--linea);background:transparent;color:var(--tinta-2);font:500 11px var(--mono);padding:0 12px;cursor:pointer}
 .ficha .orden button:hover{color:var(--tinta)}
-.ficha a{display:inline-block;margin-top:8px;color:var(--tinta);text-decoration:none;font:500 12.5px var(--mono);border-bottom:1px solid var(--reactivo);padding-bottom:2px}
+.ficha a{display:inline-block;margin-top:8px;color:var(--tinta);text-decoration:none;font:500 12.5px var(--mono);border-bottom:1px solid var(--ambar);padding-bottom:2px}
 .ficha a:hover{border-bottom-color:var(--tinta)}
 .ficha a[hidden]{display:none}
 .ficha #ficha-a{margin-right:18px}
@@ -129,14 +130,14 @@ body{margin:0;background:var(--vacio);color:var(--tinta);font:15px/1.6 var(--mon
 /* el telescopio: se busca por lo que se ha roto */
 .telescopio{position:absolute;left:50%;bottom:calc(52px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(520px,calc(100vw - 32px));z-index:4}
 .telescopio label{display:block;margin:0 0 8px;font:500 10px var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--tenue);text-align:center}
-.telescopio .lente{display:flex;align-items:center;gap:10px;border:1px solid var(--linea);background:rgba(10,9,14,.75);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+.telescopio .lente{display:flex;align-items:center;gap:10px;border:1px solid var(--linea);background:rgba(27,25,21,.8);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
   padding:0 14px;border-radius:999px;transition:border-color .3s}
-.telescopio .lente:focus-within{border-color:var(--reactivo)}
+.telescopio .lente:focus-within{border-color:var(--ambar)}
 .telescopio .ojo{width:10px;height:10px;border-radius:50%;border:1.5px solid var(--tinta-2);flex:none}
 .telescopio input{flex:1;min-width:0;background:transparent;border:0;outline:0;color:var(--tinta);font:400 14px var(--mono);padding:12px 0}
 .telescopio input::placeholder{color:var(--tenue)}
 .telescopio .eco{margin:8px 0 0;min-height:1.6em;text-align:center;font-size:12px;color:var(--tinta-2)}
-.telescopio .eco a{color:var(--tinta);text-decoration:none;border-bottom:1px solid var(--reactivo)}
+.telescopio .eco a{color:var(--tinta);text-decoration:none;border-bottom:1px solid var(--ambar)}
 
 .pie{position:absolute;left:16px;right:16px;bottom:calc(14px + env(safe-area-inset-bottom,0px));display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
   font:400 11px var(--mono);letter-spacing:.06em;color:var(--tenue)}
@@ -303,7 +304,7 @@ html:not(.js) .sinjs a{color:var(--tinta)}
     lista.forEach(function(e){var ok=!pal.length||pal.every(function(p){return e.texto.indexOf(p)>=0;});
       var antes=e.el.classList.contains("encendida");
       e.vis=ok?1:.12; e.el.style.setProperty("--vis",e.vis); e.el.classList.toggle("encendida",ok&&pal.length>0); if(ok) n++;
-      if(G&&ok&&pal.length&&!antes) G.fromTo(e.el.querySelector(".luz"),{scale:2.4},{scale:1,duration:.9,ease:"elastic.out(1,.35)"});});
+      if(G&&ok&&pal.length&&!antes) G.fromTo(e.el.querySelector(".luz"),{scale:2.4},{scale:1,duration:.9,ease:"expo.out"});});
     if(!pal.length) eco.textContent="";
     else if(n) eco.textContent=n===1?"Una estrella lo resuelve. Tócala.":n+" estrellas lo resuelven.";
     else eco.innerHTML='Ninguna estrella lo resuelve todavía. <a href="https://alexcanofuentes.com" rel="noopener">Cuéntamelo</a> y quizá sea la siguiente.';
@@ -337,8 +338,8 @@ html:not(.js) .sinjs a{color:var(--tinta)}
       sc.onload=function(){ try{ var r=cv.getBoundingClientRect(); cv.width=Math.round(r.width); cv.height=Math.round(r.height);
         window.WebGLFluid(cv,{TRIGGER:"hover",IMMEDIATE:true,AUTO:true,INTERVAL:2600,SPLAT_COUNT:3,SIM_RESOLUTION:64,DYE_RESOLUTION:256,CAPTURE_RESOLUTION:128,
           DENSITY_DISSIPATION:.45,VELOCITY_DISSIPATION:.25,CURL:28,SPLAT_RADIUS:.32,SPLAT_FORCE:2200,PRESSURE:.8,
-          COLORFUL:false,SPLAT_COLOR:{r:.24,g:.11,b:.42},SHADING:true,TRANSPARENT:true,BACK_COLOR:{r:0,g:0,b:0},
-          BLOOM:true,BLOOM_INTENSITY:.6,BLOOM_THRESHOLD:.4,SUNRAYS:false}); }catch(x){console.warn(x);} };
+          COLORFUL:false,SPLAT_COLOR:{r:.40,g:.25,b:.06},SHADING:true,TRANSPARENT:true,BACK_COLOR:{r:0,g:0,b:0},
+          BLOOM:false,SUNRAYS:false} /* gas ámbar y sin resplandor (8-oct: nada morado, sin halos) */); }catch(x){console.warn(x);} };
       document.head.appendChild(sc); }
     setTimeout(arranca,1800);   // después de la llegada: primero el agujero blanco, luego el gas
   })();
@@ -389,7 +390,7 @@ html:not(.js) .sinjs a{color:var(--tinta)}
         cx.fillStyle="rgba("+s.c[0]+","+s.c[1]+","+s.c[2]+","+(s.a*tw*e).toFixed(3)+")";
         cx.beginPath(); cx.arc(x,y,s.r,0,6.283); cx.fill(); }
       if(lista.length&&polvo.length){ for(var n=0;n<2;n++) paso(dt/2,lista);
-        cx.fillStyle="rgba(190,150,255,1)";
+        cx.fillStyle="rgba(233,229,220,1)";
         for(var k=0;k<polvo.length;k++){ var q=polvo[k]; cx.globalAlpha=q.a*e*.8; cx.fillRect(q.x,q.y,1.2,1.2); }
         cx.globalAlpha=1; }
       cx.globalCompositeOperation="source-over";
@@ -407,7 +408,7 @@ html:not(.js) .sinjs a{color:var(--tinta)}
     "float cov(float p,float Q){float q=mod(p+.5,Q);float d=min(q,Q-q);return 1.-smoothstep(.5-.7/dpr,.5+.7/dpr,d);}"+
     "void main(){vec2 f=vec2(gl_FragCoord.x,S.y*dpr-gl_FragCoord.y)/dpr;vec2 c=vec2(S.x*.5,S.y*.3);vec2 d=f-c;float r=length(d);"+
     "float m=min(S.x,S.y);float a=clamp(max(t/3.2,salto),0.,1.);float e=1.-pow(1.-a,3.);"+
-    "vec3 col=vec3(.0196,.0196,.0235);"+
+    "vec3 col=vec3(.0706,.0667,.0549);"+
 
     // FÍSICA REAL: el agujero blanco es el negro con el tiempo al revés. Fuera, la luz se curva igual (desvío de
     // Schwarzschild, tabla Al calculada al cargar); dentro del radio crítico, en vez de sombra, sale luz.
@@ -417,22 +418,23 @@ html:not(.js) .sinjs a{color:var(--tinta)}
     "float ret=0.;if(b>2.75&&al<1.45){vec2 sc=c+dir*(b-6.*tan(al))*Rs;sc=mix(sc,f,smoothstep(m*.25,m*.9,r));"+
       "float g1=max(cov(sc.x,24.),cov(sc.y,24.)),g2=max(cov(sc.x,120.),cov(sc.y,120.));"+
       "ret=(g1*.35+g2*.65)*(1.-e)*(1.-smoothstep(m*.3,m*(.6+1.4*e),r));}"+
-    "col+=mix(vec3(.85,.72,1.),vec3(.69,.42,1.),e)*ret*.55;"+
+    "col+=mix(vec3(1.,.86,.62),vec3(.95,.66,.23),e)*ret*.55;"+
     "float dentro=1.-smoothstep(2.45,2.75,b);float anillo=exp(-pow((b-2.62)/.08,2.));"+
-    "col+=vec3(1.)*(dentro*2.6+anillo*1.4)*(1.-e*.97)+vec3(.92,.84,1.)*exp(-r/(Rs*5.))*(1.-e)*1.2+vec3(.86,.75,1.)*exp(-r/(Rs*16.))*(1.-e)*.35;"+
-    "float ondas=pow(.5+.5*sin(r/m*38.-t*7.),6.)*exp(-r/(m*.45))*(1.-e)*.45;col+=vec3(.86,.75,1.)*ondas;"+
+    "col+=vec3(1.)*(dentro*2.6+anillo*1.4)*(1.-e*.97)+vec3(1.,.9,.74)*exp(-r/(Rs*5.))*(1.-e)*1.2+vec3(.97,.8,.55)*exp(-r/(Rs*16.))*(1.-e)*.35;"+
+    "float ondas=pow(.5+.5*sin(r/m*38.-t*7.),6.)*exp(-r/(m*.45))*(1.-e)*.45;col+=vec3(.97,.8,.55)*ondas;"+
     "col+=vec3(1.)*max(0.,1.-t*2.4)*(1.-salto);"+
     // el anillo de la puerta: una elipse tenue, con un brillo que la recorre despacio
     "vec2 q=(f-Ani.xy)/vec2(Ani.z*(S.x<700.?1.:1.5),Ani.z);float an=atan(q.y,q.x);"+
-    "float ani=exp(-pow((length(q)-1.)*Ani.z/1.6,2.))*(.10+.18*pow(.5+.5*cos(an-t*.25),8.));col+=vec3(.69,.42,1.)*ani*smoothstep(.6,1.,e);"+
-    // el halo de cada estrella, con su color y su brillo (las que no casan con la búsqueda se apagan)
-    "for(int i=0;i<16;i++){float de=length(f-E[i].xy);col+=C[i]*exp(-de/(m*.045))*.22*E[i].z*smoothstep(.55,1.,e);}"+
+    "float ani=exp(-pow((length(q)-1.)*Ani.z/1.6,2.))*(.10+.18*pow(.5+.5*cos(an-t*.25),8.));col+=vec3(.95,.66,.23)*ani*smoothstep(.6,1.,e);"+
+    // sin halo alrededor de cada estrella (8-oct): la estrella la dibuja su punto; aquí solo una mancha mínima,
+    // la dispersión de un punto de luz, para que la búsqueda pueda apagar las que no casan
+    "for(int i=0;i<16;i++){float de=length(f-E[i].xy);col+=C[i]*exp(-de/(m*.006))*.18*E[i].z*smoothstep(.55,1.,e);}"+
     "gl_FragColor=vec4(col,1.);}";
   function llega(){
     if(!G) return;
     if(window.SplitText){ var sp=SplitText.create(".marca h1",{type:"chars"});
       G.from(sp.chars,{opacity:0,filter:"blur(12px)",y:18,duration:1.1,ease:"expo.out",stagger:.045}); }
-    G.from(".astro .luz",{scale:0,duration:1.3,ease:"elastic.out(1,.4)",stagger:.12,delay:.9});
+    G.from(".astro .luz",{scale:0,duration:1.3,ease:"expo.out",stagger:.12,delay:.9});
   }
   function inicia(){
     try{gl=cv.getContext("webgl",{antialias:false,depth:false,stencil:false,powerPreference:"low-power"});}catch(x){gl=null;}
@@ -456,7 +458,7 @@ html:not(.js) .sinjs a{color:var(--tinta)}
     }catch(x){console.warn(x);gl=null;return false;}
     return true;
   }
-  var COLOR={oficiales:[.69,.42,1.],socio:[1.,.71,.23],comunidad:[.85,.83,.92]}, vis={};
+  var COLOR={oficiales:[.95,.66,.23],socio:[.69,.55,.34],comunidad:[.91,.9,.86]}, vis={};
   function tam(){W=innerWidth;H=innerHeight;dpr=Math.min(devicePixelRatio||1,(navigator.hardwareConcurrency||4)<=4?1:1.5);
     cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);if(gl)gl.viewport(0,0,cv.width,cv.height);geometria();}
   function pinta(now){raf=0; if(document.hidden) return;
@@ -470,7 +472,7 @@ html:not(.js) .sinjs a{color:var(--tinta)}
     var ee=Math.max(0,Math.min(1,(red?1:Math.max(t/3.2,salto)))); hondo.pinta(now,Math.max(0,(ee-.45)/.55),lista);
     if((t>2.6||salto)&&!root.classList.contains("listo")){ root.classList.add("listo"); llega(); }
     if(!red) raf=requestAnimationFrame(pinta);}
-  if(!inicia()){cv.style.background="radial-gradient(circle at 50% 30%,#1a1022 0,#050506 60%)"; root.classList.add("listo"); llega();}
+  if(!inicia()){cv.style.background="radial-gradient(circle at 50% 30%,#1F1C16 0,#12110E 60%)"; root.classList.add("listo"); llega();}
   tam(); addEventListener("resize",tam,{passive:true});
   addEventListener("pointermove",function(ev){mx=ev.clientX/W;my=ev.clientY/H;},{passive:true});
   document.addEventListener("visibilitychange",function(){if(!document.hidden&&!raf) raf=requestAnimationFrame(pinta);});

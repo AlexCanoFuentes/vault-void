@@ -15,25 +15,25 @@ export const CSP = "default-src 'none'; style-src 'unsafe-inline' https://fonts.
   + "img-src https://vaultvoid.app; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
 
 const ESTILO = `
-:root{--vacio:#050506;--tinta:#EDEAF2;--tinta-2:#A9A3B5;--tenue:#6D6878;--linea:#221F29;--panel:#0D0C11;
---reactivo:#B06BFF;--reactivo-2:#D9B8FF;--ambar:#FFB43A;--rojo:#FF6B6B;--verde:#7BE0A6;
+:root{--vacio:#12110E;--tinta:#ECE7DE;--tinta-2:#B3AC9F;--tenue:#8C8578;--linea:#2B2822;--panel:#1B1915;
+--acento:#F2A93B;--acento-2:#F8CB86;--ambar:#F2A93B;--rojo:#FF6B6B;--verde:#5BE06A;
 --serif:"Instrument Serif",Georgia,"Times New Roman",serif;--mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;color-scheme:dark}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--vacio);color:var(--tinta);font:15px/1.7 var(--mono);-webkit-font-smoothing:antialiased;min-height:100vh;
 background-image:radial-gradient(1px 1px at 12% 18%,#fff8 50%,transparent),radial-gradient(1px 1px at 78% 12%,#fff6 50%,transparent),
 radial-gradient(1px 1px at 63% 74%,#fff5 50%,transparent),radial-gradient(1px 1px at 28% 86%,#fff4 50%,transparent),
-radial-gradient(1.5px 1.5px at 88% 52%,#D9B8FF88 50%,transparent)}
+radial-gradient(1.5px 1.5px at 88% 52%,#F8CB8688 50%,transparent)}
 main{max-width:42rem;margin:0 auto;padding:72px 16px 72px}
-.n{margin:0 0 10px;font:500 11px var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--reactivo-2)}
+.n{margin:0 0 10px;font:500 11px var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--acento-2)}
 h1{margin:0 0 14px;font:400 clamp(48px,11vw,88px)/1 var(--serif);letter-spacing:-.02em;overflow-wrap:anywhere}
 h1 em{font-style:italic;color:transparent;-webkit-text-stroke:1px var(--tinta)}
 h2{margin:48px 0 14px;font:400 28px/1.15 var(--serif)}
 p{color:var(--tinta-2);margin:0 0 12px}
 strong{color:var(--tinta);font-weight:500}
-a{color:var(--reactivo-2);text-underline-offset:3px}
+a{color:var(--acento-2);text-underline-offset:3px}
 code{font:inherit;color:var(--tinta);background:var(--panel);border:1px solid var(--linea);border-radius:4px;padding:0 .3em;overflow-wrap:anywhere}
-pre{margin:14px 0;padding:12px 14px;background:var(--panel);border:1px solid var(--linea);border-left:2px solid var(--reactivo);border-radius:6px;overflow-x:auto}
+pre{margin:14px 0;padding:12px 14px;background:var(--panel);border:1px solid var(--linea);border-left:2px solid var(--acento);border-radius:6px;overflow-x:auto}
 pre code{background:none;border:0;padding:0;white-space:pre-wrap;overflow-wrap:anywhere}
 ul.lista{list-style:none;margin:0;padding:0;border-top:1px solid var(--linea)}
 ul.lista li{padding:14px 0;border-bottom:1px solid var(--linea)}
@@ -68,7 +68,7 @@ function pagina(o: { titulo: string; descripcion: string; url: string; cuerpo: s
 <meta name="twitter:image" content="${WEB}/og.jpg">
 <link rel="icon" href="${WEB}/icono.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="${WEB}/apple-touch-icon.png">
-<meta name="theme-color" content="#050506">
+<meta name="theme-color" content="#12110E">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>${ESTILO}</style>
 </head>

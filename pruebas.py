@@ -245,6 +245,20 @@ class SinVoidJson(Caso):
         self.assertIn("uno.txt.base-nueva", out)
         self.assertIn("AGENTS.md.base-nueva", out)
 
+    def test_conectar_con_carpeta_ignorada(self):
+        """El vault de Alex, 8-oct: su .gitignore ignora .codex/ entera salvo config.toml. void.py dejó al
+        lado la versión de la base como .base-nueva, git la rechazó por ignorada y la conexión se
+        deshizo entera. Lo que escribe void.py entra en su commit aunque la carpeta esté ignorada."""
+        v = hacer_vault(self.tmp / "vault", {".gitignore": b"herramientas/*\n!herramientas/dos.py\n",
+                                             "herramientas/dos.py": b"X = 9\n"})
+        codigo, out, err = correr("actualizar", "--conectar", "--vault", v, "--desde", self.b01)
+        self.assertEqual(codigo, 0, "no conectó un vault que ignora una carpeta de la base: " + err)
+        self.assertEqual((v / "herramientas" / "dos.py").read_bytes(), b"X = 9\n", "pisó lo del usuario")
+        self.assertEqual((v / "herramientas" / "dos.py.base-nueva").read_bytes(), BASE_01["herramientas/dos.py"])
+        self.assertTrue(limpio(v), "quedaron cambios fuera del commit")
+        codigo, lista = git(v, "ls-files", "herramientas/dos.py.base-nueva")
+        self.assertIn("dos.py.base-nueva", lista, "la .base-nueva no entró en el commit")
+
     def test_conectar_pone_marcas_al_tramo_que_ya_es_igual(self):
         propio = b"# Mis reglas\n\nMi intro.\n- regla com\xc3\xban 1\nMi final.\n"
         v = hacer_vault(self.tmp / "vault", {"AGENTS.md": propio})
@@ -1847,6 +1861,18 @@ class Nebulosa(unittest.TestCase):
         shutil.copytree(str(AQUI / "estrellas" / "oficiales" / "candados"), str(c), ignore=shutil.ignore_patterns("__pycache__"))
         r = T.repasar(c, nivel="oficiales")
         self.assertTrue(r["lista"], r)
+
+    def test_dice_la_carpeta_del_nivel_de_la_ficha(self):
+        """8-oct: la estrella de un socio salía «lista» con «cópiala a estrellas/comunidad/», porque el
+        mensaje usaba el --nivel de la orden y no el nivel que dice la ficha."""
+        c = self.tmp / "candados"
+        shutil.copytree(str(AQUI / "estrellas" / "oficiales" / "candados"), str(c), ignore=shutil.ignore_patterns("__pycache__"))
+        codigo, out = None, io.StringIO()
+        with redirect_stdout(out):
+            codigo = T.main([str(c)])
+        self.assertEqual(codigo, 0, out.getvalue())
+        self.assertIn("estrellas/oficiales/candados/", out.getvalue(),
+                      "el taller manda la estrella a otra carpeta que la de su nivel")
 
     def test_un_correo_no_sale(self):
         c = self.tmp / "con-correo"

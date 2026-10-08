@@ -731,7 +731,9 @@ def aplicar(vault, escrituras, borrados, void_json, mensaje, iguales=()):
             with os.fdopen(fd, "wb") as f:
                 f.write(cambian[ruta])
             os.replace(tmp, str(destino))
-        git(vault, "add", "-A", "--", *(rutas + sueltos))
+        # -f: lo que escribe void.py entra en su commit aunque el .gitignore de la persona ignore esa
+        # carpeta (vault de Alex, 8-oct: .codex/ ignorada salvo config.toml tumbaba la conexión entera).
+        git(vault, "add", "-A", "-f", "--", *(rutas + sueltos))
         codigo, _ = git(vault, "commit", "-q", "-m", mensaje, "--", *(rutas + sueltos), comprobar=False)
         if codigo != 0:
             raise Fallo("git no ha podido guardar el commit (¿tiene tu nombre y correo? "

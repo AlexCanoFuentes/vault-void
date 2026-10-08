@@ -163,3 +163,8 @@ python taller.py tu-carpeta
 Busca lo tuyo que no puede salir (nombres, correos, teléfonos, claves, rutas de tu máquina), te deja un
 borrador de la ficha si no la tiene, la prueba en un vault vacío, le pasa la puerta y te dice qué le falta
 para entrar en el catálogo. No toca nada fuera de esa carpeta.
+
+## Licencia
+
+Apache-2.0 (`LICENSE`, aviso en `NOTICE`): puedes usar, cambiar y redistribuir Void, también en tu trabajo, conservando el aviso.
+El servicio de la nube (tu vault vivo) no forma parte de este repositorio.

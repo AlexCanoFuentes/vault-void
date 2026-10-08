@@ -37,11 +37,14 @@ async function levantar(dir, puerto, vars = []) {
   const todas = [`CATALOGO_URL:http://127.0.0.1:${PUERTO_CATALOGO}/catalogo.json`, ...vars];
   const p = spawn(WRANGLER, ["dev", "--port", String(puerto), "--ip", "127.0.0.1", "--persist-to", persist,
     ...todas.flatMap((v) => ["--var", v])], { cwd: dir, stdio: ["ignore", "pipe", "pipe"], detached: true });
-  await new Promise((ok, no) => {
-    const t = setTimeout(() => no(new Error("wrangler dev no arrancó en 90 s")), 90_000);
-    const mira = (d) => { if (/Ready on/.test(String(d))) { clearTimeout(t); ok(); } };
-    p.stdout.on("data", mira); p.stderr.on("data", mira);
-  });
+  // Se pregunta al puerto hasta que contesta, en vez de leer lo que escribe wrangler: desde la 4.14x, cuando lo lanza
+  // un agente y sin pantalla, ya no escribe «Ready on» (8-oct) y la espera se quedaba colgada aunque arrancara.
+  const limite = Date.now() + 90_000;
+  for (;;) {
+    try { await fetch(`http://127.0.0.1:${puerto}/`); break; } catch { /* aún no escucha */ }
+    if (Date.now() > limite) throw new Error("wrangler dev no arrancó en 90 s");
+    await new Promise((r) => setTimeout(r, 500));
+  }
   return {
     url: `http://127.0.0.1:${puerto}`,
     /** SQL directo contra la D1 local de este Worker: lo que haría Alex con wrangler. */

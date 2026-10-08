@@ -62,6 +62,21 @@ class Montaje(Base):
         self.assertEqual(revisar.inventado(RAIZ), [])
 
 
+class Sabotaje(Base):
+    def test_restaurar_deja_como_estaba_cualquier_herramienta(self):
+        """Un programa nuevo de herramientas/ también vuelve a estar como estaba tras su sabotaje."""
+        (self.dir / "herramienta_de_prueba.py").write_text("MARGEN = 7\n", encoding="utf-8")
+        sys.path.insert(0, str(self.dir))
+        try:
+            modulo = importlib.import_module("herramienta_de_prueba")
+            modulo.MARGEN = -1
+            restaurar(self.dir)
+            self.assertEqual(modulo.MARGEN, 7)
+        finally:
+            sys.path.remove(str(self.dir))
+            sys.modules.pop("herramienta_de_prueba", None)
+
+
 class NoInventa(Base):
     """El agente rellena el README y el primer proyecto con tus siete respuestas. Lo que no
     contestaste queda [sin contestar] y lo que cita va entre «», tal cual lo dijiste."""
@@ -462,9 +477,13 @@ def correr(verbosidad=0):
     return res, flujo.getvalue()
 
 
-def restaurar():
-    importlib.reload(revisar)
-    importlib.reload(medir)
+def restaurar(carpeta=AQUI):
+    """Deja como estaban todos los programas de herramientas/ tras un sabotaje, también los que
+    añadas tú (si no, el sabotaje de uno rompería todas las pruebas que vienen detrás)."""
+    for modulo in list(sys.modules.values()):
+        fichero = getattr(modulo, "__file__", None)
+        if fichero and modulo.__name__ != "__main__" and Path(fichero).resolve().parent == Path(carpeta).resolve():
+            importlib.reload(modulo)
 
 
 def sabotaje():

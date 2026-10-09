@@ -25,6 +25,11 @@ La red de Void (opcional: nada de esto sube nada de tu vault):
   python herramientas/void.py llave cambiar     llave nueva; la vieja deja de valer (si se te escapa)
   python herramientas/void.py baja --si         borra tu perfil de la red y la llave
 
+Tu huella en el lienzo de Void (opcional; solo cifras, nunca nada de dentro del vault):
+  python herramientas/void.py huella            te enseña las cifras que saldrían, sin mandar nada
+  python herramientas/void.py huella --publicar [--tono 0-359]   las manda; Void dibuja con ellas tu huella
+  python herramientas/void.py huella --retirar  la quita del lienzo
+
 Opciones:
   --huella H          (empezar) la huella de la plantilla que publica vaultvoid.app/empezar. Sin ella
                       no se baja nada.
@@ -977,6 +982,68 @@ def orden_llave(vault, que):
     return 0
 
 
+TIPOS_DE_APUNTE = ("Elegí", "Descarté", "Regla", "Corregí", "Aplacé")
+RE_APUNTE = re.compile(r"^- \*\*(?:{})\*\*".format("|".join(TIPOS_DE_APUNTE)))
+
+
+def cifras_huella(vault, tono=None):
+    """Lo que viaja de tu vault para dibujar tu huella: solo cuántos y cuándo, nunca qué.
+
+    días con el vault (desde el primer commit), pulso (commits de los últimos 30 días), decisiones (apuntes de
+    criterio: Elegí, Descarté, Regla, Corregí, Aplacé), proyectos (ficheros de proyecto) y calladas (preguntas del
+    montaje sin contestar). Nada de nombres, textos ni rutas."""
+    def contar_git(*args):
+        codigo, salida = git(vault, *args, comprobar=False)
+        return salida.split() if codigo == 0 else []
+    primero = contar_git("log", "--reverse", "--format=%ct")
+    dias = max(0, int((time.time() - int(primero[0])) // 86400)) if primero else 0
+    pulso = len(contar_git("log", "--since=30.days", "--format=%h"))
+    decisiones = proyectos = calladas = 0
+    for raiz, dirs, ficheros in os.walk(str(vault)):
+        dirs[:] = [d for d in dirs if not d.startswith(".") and d not in ("node_modules", "herramientas", "archivo")]   # el archivo repite los apuntes
+        rel = Path(raiz).relative_to(vault).as_posix()
+        for nombre in ficheros:
+            if not nombre.endswith(".md"):
+                continue
+            if Path(rel).name in ("proyectos", "03-proyectos") and not nombre.startswith("_"):
+                proyectos += 1
+            try:
+                lineas = (Path(raiz) / nombre).read_text(encoding="utf-8", errors="replace").splitlines()
+            except OSError:
+                continue
+            decisiones += sum(1 for l in lineas if RE_APUNTE.match(l))
+            if nombre == "apuntes.md" and Path(rel).name == "criterio":
+                calladas += sum(1 for l in lineas if l.startswith("- **[sin contestar]**"))
+    h = {"version": 1, "dias": min(dias, 36500), "pulso": min(pulso, 100000), "decisiones": min(decisiones, 100000),
+         "proyectos": min(proyectos, 10000), "calladas": min(calladas, 7)}
+    if tono is not None:
+        h["tono"] = tono
+    return h
+
+
+def orden_huella(vault, publicar, retirar, tono):
+    vault_conectado(vault)
+    if tono is not None:
+        if not re.fullmatch(r"\d{1,3}", tono) or int(tono) > 359:
+            raise Fallo("El tono es un número de 0 a 359 (la rueda de colores).")
+        tono = int(tono)
+    if retirar:
+        _, r = pedir_red("POST", "/v1/huella/retirar", la_llave(vault))
+        print("Hecho: la huella de @{} ya no está en el lienzo.".format(r.get("alias", "?")))
+        return 0
+    h = cifras_huella(vault, tono)
+    print("Tu huella sale de estas cifras, y de nada más:")
+    print("  {} días con el vault · {} commits en el último mes · {} decisiones · {} proyectos · {} preguntas sin contestar{}".format(
+        h["dias"], h["pulso"], h["decisiones"], h["proyectos"], h["calladas"], " · tono {}".format(h["tono"]) if "tono" in h else ""))
+    if not publicar:
+        print("No he mandado nada. Para ponerla en el lienzo de Void: python herramientas/void.py huella --publicar")
+        return 0
+    _, r = pedir_red("POST", "/v1/huella", la_llave(vault), {"huella": h})
+    print("Tu huella ya está en el lienzo de Void: {}/@{}".format(WEB, r.get("alias", "?")))
+    print("Para quitarla: python herramientas/void.py huella --retirar")
+    return 0
+
+
 def orden_baja(vault, si):
     vault_conectado(vault)
     llave = la_llave(vault)
@@ -1353,7 +1420,8 @@ def main(argv):
     sueltos = []
     conectar = si = False
     con_valor = ("--vault", "--desde") + (("--alias", "--agente") if orden == "registrar" else ()) + \
-        (("--publico",) if orden == "perfil" else ()) + (("--huella",) if orden == "empezar" else ())
+        (("--publico",) if orden == "perfil" else ()) + (("--huella",) if orden == "empezar" else ()) + \
+        (("--tono",) if orden == "huella" else ())
     cuantos = {"traer": 1, "avisar": 3, "llave": 1}.get(orden, 0)
     i = 0
     while i < len(resto):
@@ -1366,6 +1434,9 @@ def main(argv):
             i += 1
         elif a == "--si" and orden == "baja":
             si = True
+            i += 1
+        elif a in ("--publicar", "--retirar") and orden == "huella":
+            opciones[a] = True
             i += 1
         elif len(sueltos) < cuantos and (not a.startswith("-") or len(sueltos) == 2):
             sueltos.append(a)
@@ -1403,10 +1474,12 @@ def main(argv):
             return orden_llave(vault, sueltos[0] if sueltos else None)
         if orden == "baja":
             return orden_baja(vault, si)
+        if orden == "huella":
+            return orden_huella(vault, opciones.get("--publicar"), opciones.get("--retirar"), opciones.get("--tono"))
     except Fallo as e:
         print(str(e), file=sys.stderr)
         return 1
-    print("Las órdenes son «estado», «actualizar», «empezar», «catalogo», «traer», «registrar», «perfil», «avisar», «llave» y «baja».",
+    print("Las órdenes son «estado», «actualizar», «empezar», «catalogo», «traer», «registrar», «perfil», «avisar», «llave», «baja» y «huella».",
           file=sys.stderr)
     return 2
 

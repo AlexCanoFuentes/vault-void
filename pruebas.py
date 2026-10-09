@@ -1914,6 +1914,7 @@ class RedFalsa:
         self.avisos = []        # {"estrella", "tipo", "texto", "de", "creado"}
         self.autoria = {}       # estrella -> alias
         self.vistas = []        # (método, ruta, llave o None)
+        self.huellas = {}       # alias -> huella tal cual llegó
         red = self
 
         class Manejador(http.server.BaseHTTPRequestHandler):
@@ -1978,6 +1979,12 @@ class RedFalsa:
                     nueva = "vv_" + hashlib_sha("otra" + llave)[:43]
                     red.perfiles[alias]["llave"] = nueva
                     return self.responder(200, {"alias": alias, "llave": nueva})
+                if self.path == "/v1/huella":
+                    red.huellas[alias] = b["huella"]
+                    return self.responder(200, {"alias": alias, "huella": b["huella"]})
+                if self.path == "/v1/huella/retirar":
+                    red.huellas.pop(alias, None)
+                    return self.responder(200, {"alias": alias, "retirada": True})
                 if self.path == "/v1/baja":
                     del red.perfiles[alias]
                     return self.responder(200, {"alias": alias, "baja": True})
@@ -2019,6 +2026,27 @@ class RedDeVoid(Caso):
         codigo, out, err = correr("registrar", "--alias", alias, "--agente", "Brock", "--vault", v)
         self.assertEqual(codigo, 0, err)
         return out
+
+    def test_huella_solo_cifras_y_solo_si_se_pide(self):
+        """VV-007: la huella sale del vault como cifras. Sin --publicar no se manda nada; con él, solo números y
+        ningún texto del vault, aunque el vault esté lleno de nombres."""
+        v = self.conectado({"README.md": b"# Mi vault\n", "criterio/apuntes.md": "- **Elegí** · negocio · Lucía Pérez\n- **[sin contestar]** · algo\n".encode("utf-8"),
+                            "proyectos/taller.md": "# Taller de Lucía\n".encode("utf-8"), "proyectos/_plantilla.md": b"# plantilla\n"})
+        self.alta(v)
+        codigo, out, err = correr("huella", "--vault", v)
+        self.assertEqual(codigo, 0, err)
+        self.assertIn("1 decisiones", out); self.assertIn("1 proyectos", out); self.assertIn("1 preguntas sin contestar", out)
+        self.assertEqual(self.red.huellas, {}, "sin --publicar ha mandado la huella")
+        codigo, out, err = correr("huella", "--publicar", "--tono", "200", "--vault", v)
+        self.assertEqual(codigo, 0, err)
+        h = self.red.huellas["nube"]
+        self.assertEqual(sorted(h), sorted(["version", "dias", "pulso", "decisiones", "proyectos", "calladas", "tono"]))
+        self.assertTrue(all(isinstance(x, int) for x in h.values()), "la huella lleva algo que no es un número")
+        self.assertNotIn("Lucía", json.dumps(h), "la huella lleva texto del vault")
+        codigo, out, err = correr("huella", "--retirar", "--vault", v)
+        self.assertEqual(codigo, 0, err)
+        self.assertNotIn("nube", self.red.huellas)
+        self.assertEqual(correr("huella", "--publicar", "--tono", "999", "--vault", v)[0], 1, "un tono fuera de la rueda no se para")
 
     def test_registrar_guarda_la_llave_y_la_deja_fuera_de_git(self):
         v = self.conectado()

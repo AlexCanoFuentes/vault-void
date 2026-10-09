@@ -81,3 +81,36 @@ export function problemaTexto(texto: unknown): string | null {
   }
   return null;
 }
+
+// ---------------------------------------------------------------- VV-007: el planeta de cada vault
+
+/** Las luces que puede tener un planeta: la paleta de Void (paleta.md, 9-oct). Una lista cerrada, sin colores libres. */
+export const LUCES = ["ambar", "laton", "teja", "salvia", "arena", "verde"] as const;
+export interface Planeta { version: 1; dias: number; pulso: number; luz: string; capas: { t: "contada" | "callada"; peso: 1 | 2 | 3 }[] }
+
+const entero = (v: unknown, min: number, max: number) => Number.isInteger(v) && (v as number) >= min && (v as number) <= max;
+const soloClaves = (o: Record<string, unknown>, permitidas: string[]) => Object.keys(o).every((k) => permitidas.includes(k));
+
+/** null si el planeta vale; si no, por qué. Solo números y palabras de listas cerradas: ningún texto libre puede entrar. */
+export function problemaPlaneta(p: unknown): string | null {
+  if (!p || typeof p !== "object" || Array.isArray(p)) return "El planeta tiene que ser un objeto.";
+  const o = p as Record<string, unknown>;
+  if (!soloClaves(o, ["version", "dias", "pulso", "luz", "capas"])) return "El planeta solo puede llevar version, dias, pulso, luz y capas.";
+  if (o.version !== 1) return "Versión de planeta desconocida.";
+  if (!entero(o.dias, 0, 36500)) return "«dias» tiene que ser un entero entre 0 y 36500.";
+  if (!entero(o.pulso, 0, 100000)) return "«pulso» tiene que ser un entero entre 0 y 100000.";
+  if (!(LUCES as readonly string[]).includes(o.luz as string)) return `«luz» tiene que ser una de: ${LUCES.join(", ")}.`;
+  if (!Array.isArray(o.capas) || o.capas.length > 12) return "«capas» tiene que ser una lista de 12 como mucho.";
+  for (const c of o.capas) {
+    if (!c || typeof c !== "object" || Array.isArray(c) || !soloClaves(c as Record<string, unknown>, ["t", "peso"])) return "Cada capa solo lleva t y peso.";
+    const k = c as Record<string, unknown>;
+    if (k.t !== "contada" && k.t !== "callada") return "Cada capa es «contada» o «callada».";
+    if (k.peso !== 1 && k.peso !== 2 && k.peso !== 3) return "El peso de una capa es 1, 2 o 3.";
+  }
+  return null;
+}
+
+/** El planeta tal cual se guarda: mismas claves, mismo orden, nada más. */
+export function planetaNormal(o: Planeta): Planeta {
+  return { version: 1, dias: o.dias, pulso: o.pulso, luz: o.luz, capas: o.capas.map((c) => ({ t: c.t, peso: c.peso })) };
+}

@@ -85,7 +85,41 @@ function exige(cond, motivo) { if (!cond) throw new Falla(motivo); }
 
 // ---------------------------------------------------------------- las pruebas (cada una, un nombre)
 
+const PLANETA = { version: 1, dias: 12, pulso: 40, luz: "ambar", capas: [{ t: "contada", peso: 2 }, { t: "callada", peso: 1 }] };
+
 const PRUEBAS = {
+  async "planeta: solo cifras y listas cerradas, nunca texto"(w) {
+    const r = await alta(w, alias()); const llave = r.datos.llave;
+    const ok = await pedir(w, "POST", "/v1/planeta", { llave, cuerpo: { planeta: PLANETA } });
+    exige(ok.estado === 200, `un planeta válido dio ${ok.estado}: ${ok.texto.slice(0, 160)}`);
+    for (const [motivo, malo] of [["una clave de más con texto", { ...PLANETA, nota: "me llamo Lucía" }],
+      ["una luz que no está en la paleta", { ...PLANETA, luz: "morado" }],
+      ["una capa con texto", { ...PLANETA, capas: [{ t: "contada", peso: 2, texto: "hola" }] }],
+      ["un número con decimales", { ...PLANETA, dias: 1.5 }], ["una capa de tipo inventado", { ...PLANETA, capas: [{ t: "secreta", peso: 1 }] }]]) {
+      const x = await pedir(w, "POST", "/v1/planeta", { llave, cuerpo: { planeta: malo } });
+      exige(x.estado === 400, `${motivo} dio ${x.estado}, no 400`);
+    }
+    const sin = await pedir(w, "POST", "/v1/planeta", { cuerpo: { planeta: PLANETA } });
+    exige(sin.estado === 401, `sin llave dio ${sin.estado}, no 401`);
+    const cielo = await pedir(w, "GET", "/v1/planetas");
+    exige(cielo.cabeceras.get("access-control-allow-origin") === "*", "el cielo no se puede leer desde vaultvoid.app");
+    const mio = (cielo.datos?.planetas ?? []).find((x) => x.alias === r.datos.alias);
+    exige(mio && JSON.stringify(Object.keys(mio.planeta)) === JSON.stringify(["version", "dias", "pulso", "luz", "capas"]), "el cielo no trae el planeta, o trae algo más");
+    exige(!JSON.stringify(w.sql("SELECT * FROM planetas")).includes("Lucía"), "la base guardó texto de un planeta rechazado");
+  },
+
+  async "planeta: retirarlo o darse de baja lo quita del cielo"(w) {
+    const a = await alta(w, alias()), b = await alta(w, alias());
+    for (const x of [a, b]) await pedir(w, "POST", "/v1/planeta", { llave: x.datos.llave, cuerpo: { planeta: PLANETA } });
+    await pedir(w, "POST", "/v1/planeta/retirar", { llave: a.datos.llave });
+    await pedir(w, "POST", "/v1/baja", { llave: b.datos.llave });
+    const quedan = (await pedir(w, "GET", "/v1/planetas")).datos.planetas.map((x) => x.alias);
+    exige(!quedan.includes(a.datos.alias), "retirado, sigue en el cielo");
+    exige(!quedan.includes(b.datos.alias), "dado de baja, su planeta sigue en el cielo");
+    exige(w.sql("SELECT COUNT(*) AS n FROM planetas pl LEFT JOIN perfiles p ON p.id = pl.perfil_id WHERE p.id IS NULL")[0].n === 0,
+      "dado de baja, su planeta no sale en el cielo pero sigue guardado en la base");
+  },
+
   async "alta: da una llave y la base solo guarda su huella"(w) {
     const a = alias();
     const r = await alta(w, a);
@@ -255,6 +289,13 @@ async function correr(w, pruebas, nombres = Object.keys(pruebas)) {
 // ---------------------------------------------------------------- sabotajes
 
 const SABOTAJES = [
+  { nombre: "el planeta deja pasar claves de más", fichero: "src/reglas.ts",
+    buscar: "if (!soloClaves(o, [\"version\", \"dias\", \"pulso\", \"luz\", \"capas\"])) return", poner: "if (false) return",
+    pruebas: ["planeta: solo cifras y listas cerradas, nunca texto"] },
+  { nombre: "la baja deja el planeta en el cielo (sin el borrado de la baja ni el de la base en cascada)", fichero: "src/worker.ts",
+    buscar: "    env.DB.prepare(\"DELETE FROM planetas WHERE perfil_id = ?\").bind(p.id),\n", poner: "",
+    mas: [{ fichero: "migrations/0002_planetas.sql", buscar: "REFERENCES perfiles(id) ON DELETE CASCADE", poner: "" }],
+    pruebas: ["planeta: retirarlo o darse de baja lo quita del cielo"] },
   { nombre: "una llave falsa entra como el primer perfil", fichero: "src/worker.ts",
     buscar: ".bind(await huella(llave)).first<Perfil>();",
     poner: ".bind(await huella(llave)).first<Perfil>() ?? await env.DB.prepare(\"SELECT id, alias, agente, publico, creado FROM perfiles\").first<Perfil>();",
@@ -289,6 +330,11 @@ async function sabotaje() {
       const f = join(dir, s.fichero), texto = readFileSync(f, "utf-8");
       if (!texto.includes(s.buscar)) { console.log(`EL SABOTAJE NO SE PUDO APLICAR (${s.nombre})`); mal++; continue; }
       writeFileSync(f, texto.replace(s.buscar, s.poner));
+      for (const x of s.mas ?? []) {   // la misma defensa puesta dos veces: el sabotaje quita las dos
+        const g = join(dir, x.fichero), tx = readFileSync(g, "utf-8");
+        if (!tx.includes(x.buscar)) { console.log(`EL SABOTAJE NO SE PUDO APLICAR (${s.nombre})`); mal++; continue; }
+        writeFileSync(g, tx.replace(x.buscar, x.poner));
+      }
       const w = await levantar(dir, puerto++, s.altas ? ["TOPE_ALTAS_HORA:2"] : ["TOPE_ALTAS_HORA:1000"]);
       let rojas;
       try { rojas = await correr(w, s.altas ? PRUEBAS_ALTAS : PRUEBAS, s.pruebas); } finally { w.parar(); }

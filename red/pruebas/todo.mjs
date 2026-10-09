@@ -32,6 +32,10 @@ function servirCatalogo() {
 
 /** Un Worker de la red en local, con su propia D1 vacía y la migración puesta. */
 async function levantar(dir, puerto, vars = []) {
+  // Si el puerto ya contesta antes de arrancar, es un servidor viejo colgado: las pruebas hablarían con él, con otra base
+  // de datos y otro límite, y fallarían por la razón equivocada (pasó el 8-oct: un wrangler de hacía 4 h en el 8791).
+  try { await fetch(`http://127.0.0.1:${puerto}/`); throw new Error(`el puerto ${puerto} ya está ocupado por otro servidor: páralo antes de probar`); }
+  catch (e) { if (String(e.message).startsWith("el puerto")) throw e; }
   const persist = mkdtempSync(join(tmpdir(), "void-red-d1-"));
   execFileSync(WRANGLER, ["d1", "migrations", "apply", "DB", "--local", "--persist-to", persist], { cwd: dir, stdio: "pipe" });
   const todas = [`CATALOGO_URL:http://127.0.0.1:${PUERTO_CATALOGO}/catalogo.json`, ...vars];

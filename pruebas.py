@@ -720,6 +720,23 @@ class Entrar(unittest.TestCase):
             self.assertIn(frase, md)
             self.assertIn(frase, html.unescape(ht))
 
+    def test_hay_camino_a_mano_si_el_agente_no_puede(self):
+        """Informe de un socio, 9-oct: el modo automático de Claude Code rechazó bajar y comprobar, y la
+        entrada se quedó parada. La página tiene que decirle al agente que no insista y darle a la persona
+        las órdenes para pegarlas ella, con la misma orden de bajar que el paso 3 (que comprueba la huella)."""
+        md = (WEB / "entrar.md").read_text(encoding="utf-8")
+        ht = html.unescape(re.sub(r"<[^>]+>", "", (WEB / "entrar.html").read_text(encoding="utf-8")))
+        for texto in (md, ht):
+            for frase in ("Camino a mano", "auto mode classifier", "no la repitas ni busques otra forma",
+                          "para echarle un vistazo", "qué cambian los candados",
+                          "`python3` por `py`" if texto is md else "python3 por py"):
+                self.assertIn(frase, texto)
+        ordenes = ordenes_md(md)
+        self.assertEqual(ordenes.count(ordenes[0]), 2, "el camino a mano no usa la misma orden de bajar que el paso 3")
+        for o in ("git --version\npython3 --version", "python3 herramientas/void.py actualizar --conectar",
+                  "python3 herramientas/void.py estado"):
+            self.assertIn(o, ordenes)
+
     def test_el_html_se_lee_sin_javascript(self):
         ht = (WEB / "entrar.html").read_text(encoding="utf-8").lower()
         self.assertNotIn("<script", ht, "entrar.html depende de JavaScript: un agente no lo ejecuta")

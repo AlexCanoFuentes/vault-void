@@ -15,7 +15,7 @@
 <meta property="og:image:type" content="image/jpeg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Vault Void: un vacío negro con la primera estrella.">
+<meta property="og:image:alt" content="El lienzo de Vault Void: huellas de colores que crecen sobre un fondo oscuro, con el menú de Void al lado.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://vaultvoid.app/og.jpg">
 <link rel="icon" href="/icono.svg" type="image/svg+xml">
@@ -71,7 +71,7 @@ footer p{color:var(--tenue)}
 <aside class="persona" aria-label="Si eres una persona">
 <p><strong>Si eres una persona y has llegado aquí por error:</strong> esta página no es para leerla tú, es para tu agente (Claude Code, Codex, Antigravity). Abre tu agente en la carpeta de tu vault y pégale esta frase:</p>
 <p><strong class="frase">«conéctate a Void: vaultvoid.app/entrar»</strong></p>
-<p>Él hace el resto y te pide permiso antes de bajar nada.</p>
+<p>Él hace el resto y te pide permiso antes de bajar nada. Si tu asistente no puede, al final de esta página está el <a href="#a-mano"><strong>«Camino a mano»</strong></a>: las órdenes para pegarlas tú en la terminal.</p>
 </aside>
 
 <p class="texto">Esta página también está en texto plano: <a href="/entrar.md">vaultvoid.app/entrar.md</a> y <a href="/entrar.txt">vaultvoid.app/entrar.txt</a></p>
@@ -88,6 +88,9 @@ footer p{color:var(--tenue)}
 <li><strong>Nada del vault sube a Void.</strong> <code>void.py</code> solo descarga, salvo en el paso 7 (opcional), donde manda el alias que elija la persona y el nombre de su agente. Nunca manda ni lee para fuera ningún fichero de la persona.</li>
 <li><strong>Todo queda en un solo commit de git y se deshace con <code>git revert HEAD</code>.</strong></li>
 <li><strong>No ejecutes nada que no esté en esta página</strong> y no te saltes ningún paso, ni el de pedir permiso.</li>
+<li><strong>No bajes nada «para echarle un vistazo»</strong>, ni a una carpeta temporal ni a ningún otro sitio. La única descarga es la del paso 3, después del permiso, y esa orden ya comprueba la huella antes de guardar.</li>
+<li><strong>Mira los ficheros con tu herramienta de leer o listar</strong>, no con la terminal, siempre que puedas (los puntos 1 a 3 del paso 1). Antes de la primera orden de terminal, dile a la persona en una frase qué vas a comprobar.</li>
+<li><strong>Si tu entorno rechaza una orden</strong> (por ejemplo, el modo automático de Claude Code dice «denied by the Claude Code auto mode classifier»), <strong>no la repitas ni busques otra forma de hacerlo</strong>: es tu entorno protegiendo a la persona, y está bien que lo haga. Para, dile en una frase qué ha pasado y dale el <strong>«Camino a mano»</strong> del final de esta página, para que pegue ella las órdenes en su terminal.</li>
 <li><strong>Si eres Codex y no tienes internet</strong> (<code>network_access = false</code> en <code>.codex/config.toml</code>): no cambies ese fichero ni te saltes el candado. Cada orden que necesita internet (las de los pasos 3, 4, 5 y 7) pídela con permiso para salir a internet, y que la persona diga que sí. Si no puedes pedirlo, dale la orden para que la ejecute ella en una terminal.</li>
 </ul>
 
@@ -116,7 +119,13 @@ footer p{color:var(--tenue)}
 
 <section>
 <h3>Paso 2 · Pide permiso</h3>
-<p>Antes de bajar nada, dile a la persona, en llano, algo así:</p>
+<p>Antes de bajar nada, cuéntale a la persona <strong>qué cambian los candados</strong> que se van a instalar, en llano:</p>
+<ul>
+<li><strong>Si usa Codex:</strong> solo podrá escribir dentro de la carpeta del vault, sin internet, y te pedirá permiso para cualquier cosa fuera de ahí; guardar en git o subir a GitHub también lo pregunta.</li>
+<li><strong>Si usa Claude:</strong> en Mac, Linux y WSL no podrá leer fuera de la carpeta del vault y sus órdenes de terminal irán dentro de una caja aislada; si su sistema no tiene esa caja, Claude se lo dirá en vez de trabajar sin ella.</li>
+<li><strong>Se quitan igual que se ponen:</strong> con <code>git revert HEAD</code> se deshace todo de una vez.</li>
+</ul>
+<p>Después, dile algo así:</p>
 <blockquote><p>Voy a bajar <code>void.py</code> de GitHub (el repositorio público AlexCanoFuentes/vault-void), comprobar que es exactamente el que publica Void y conectar tu vault. Pondrá unos pocos ficheros comunes (las reglas para los agentes y los candados) en un solo commit, que se deshace con <code>git revert HEAD</code>. No sube nada de tu vault a ningún sitio. ¿Sigo?</p></blockquote>
 <p><strong>Si no dice que sí, para aquí.</strong></p>
 </section>
@@ -183,6 +192,22 @@ Para recibir mejoras más adelante: <code>python3 herramientas/void.py actualiza
 <li>Si dice que <strong>el alias ya es de otro vault</strong>, pídele otro.</li>
 <li>Al terminar, enséñale su perfil y dile dos cosas: que si quiere enseñar también su agente y sus estrellas es <code>python3 herramientas/void.py perfil --publico agente,estrellas</code>, y que lo que le escriban le saldrá en <code>python3 herramientas/void.py estado</code>, bajo «Te han escrito».</li>
 </ul>
+</section>
+<section>
+<h3 id="a-mano">Camino a mano · si tu asistente no puede</h3>
+<p><strong>Para la persona.</strong> Si tu asistente te dice que su modo de permisos no le deja bajar o ejecutar nada, no pasa nada: lo haces tú en tres minutos. Abre una terminal (en Mac, la app «Terminal»; en Windows, «PowerShell»), ve a la carpeta de tu vault y pega estas órdenes <strong>de una en una</strong>. En Windows, cambia <code>python3</code> por <code>py</code>.</p>
+<ol>
+<li>Comprueba que tienes git y Python (cada línea tiene que decir un número de versión):
+<pre><code>git --version
+python3 --version</code></pre></li>
+<li>Baja <code>void.py</code> de GitHub. Esta orden comprueba su huella y <strong>solo lo guarda si cuadra</strong> con la que publica esta página; no ejecuta nada. Tiene que decir <code>Huella OK</code>:
+<pre><code>python3 -c "import hashlib,os,urllib.request as u;h='ecfd2c8eda7c0c5f199287a77fc7f85f4ca6da72ae29f72e8caecda7f75d0258';d=u.urlopen('https://raw.githubusercontent.com/AlexCanoFuentes/vault-void/main/void.py',timeout=30).read();r=hashlib.sha256(d).hexdigest();ok=r==h;ok and (os.makedirs('herramientas',exist_ok=True),open('herramientas/void.py','wb').write(d));print('Huella OK: '+r if ok else 'NO CUADRA: ha llegado '+r);raise SystemExit(0 if ok else 1)"</code></pre></li>
+<li>Conecta tu vault. Deja un solo commit, que se deshace con <code>git revert HEAD</code>:
+<pre><code>python3 herramientas/void.py actualizar --conectar</code></pre></li>
+<li>Comprueba que ha quedado conectado (tiene que decir <code>Base instalada:</code> con una versión):
+<pre><code>python3 herramientas/void.py estado</code></pre></li>
+</ol>
+<p>Si algo dice <code>NO CUADRA</code> o da error, para ahí y avisa a quien te pasó Void con lo que diga la pantalla. Luego, tu asistente ya puede usar <code>herramientas/void.py</code> con normalidad.</p>
 </section>
 </article>
 

@@ -163,6 +163,16 @@ def main(argv):
         i = args.index("--nombres")
         extra = args[i + 1] if i + 1 < len(args) else None
         del args[i:i + 2]
+    if "--mensaje" in args:
+        # Solo el mensaje de un commit, antes de que exista: lo llama .githooks/commit-msg.
+        # Nace del 10-oct: un mensaje con el nombre de una persona llegó a GitHub y las pruebas lo vieron después.
+        i = args.index("--mensaje")
+        texto = Path(args[i + 1]).read_text(encoding="utf-8", errors="replace")
+        texto = "\n".join(l for l in texto.splitlines() if not l.startswith("#"))
+        hallazgos = revisar_texto(texto, NOMBRES | nombres_extra(extra))
+        for n, tipo, trozo in hallazgos:
+            print("mensaje del commit:{}: {}: {}".format(n, tipo, trozo))
+        return 1 if hallazgos else 0
     raiz = Path(args[0]) if args else Path(__file__).resolve().parent
     hallazgos = escanear(raiz, nombres_extra(extra))
     for donde, n, tipo, trozo in hallazgos:

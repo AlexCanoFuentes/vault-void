@@ -157,7 +157,7 @@ details[open] summary::after{content:"−"}
     <p class="lema">Tu asistente de IA olvida todo al cerrar la sesión; tu vault no. Cada vault deja aquí su huella, hecha solo con cifras.</p>
   </div>
   <div class="acciones">
-    <a class="primario" href="/tu-planeta">Empezar</a>
+    <a class="primario" href="/tu-huella">Empezar</a>
     <button class="secundario" id="tengo" type="button" aria-expanded="false" aria-controls="tengo-panel">Ya tengo vault</button>
   </div>
   <div class="tengo" id="tengo-panel" hidden>
@@ -376,7 +376,7 @@ details[open] summary::after{content:"−"}
     $("f-alias").textContent = "Un sitio libre";
     $("f-cifras").innerHTML = "";
     $("f-texto").textContent = "Aquí puede crecer la huella de tu vault. Saldrá de tus cifras y no habrá otra igual.";
-    var a = $("f-enlace"); a.hidden = false; a.href = "/tu-planeta"; a.textContent = "Empezar mi vault →";
+    var a = $("f-enlace"); a.hidden = false; a.href = "/tu-huella"; a.textContent = "Empezar mi vault →";
     colocaFicha(px, py);
   }
   function cierraFicha() { $("ficha").hidden = true; sel = null; sucio = true; }

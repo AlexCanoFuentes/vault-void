@@ -1,0 +1,8 @@
+#!/bin/sh
+# Ningún dato de una persona en un repo público, tampoco en el mensaje de un commit [Alex, 10-oct: «que no vuelva a pasar»].
+# Pasa el detector de fugas por el mensaje antes de que el commit exista. Si salta, el commit no se hace.
+raiz=$(git rev-parse --show-toplevel)
+if ! python3 "$raiz/fugas.py" --mensaje "$1"; then
+  echo "CANDADO: el mensaje del commit lleva un nombre, un correo o un secreto. Cámbialo por su papel (un socio, un usuario) y vuelve a hacer el commit." >&2
+  exit 1
+fi

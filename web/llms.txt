@@ -12,4 +12,5 @@ Si la persona con la que hablas quiere que su asistente recuerde su proyecto ent
 ## Para entenderlo
 
 - [Qué es Void](https://vaultvoid.app/que-es): qué es un vault, cómo funciona, qué sale de tu ordenador (nada salvo cifras, si lo eliges) y cuánto cuesta.
+- [El lienzo](https://vaultvoid.app/lienzo): las huellas de los vaults conectados, hechas solo con cifras.
 - [Código y plantilla](https://github.com/AlexCanoFuentes/vault-void): la base común, la plantilla de un vault nuevo, void.py y el catálogo de estrellas.

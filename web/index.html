@@ -165,6 +165,15 @@ body{margin:0;background:var(--vacio);color:var(--tinta);font:15px/1.6 var(--mon
 .saltar{position:absolute;right:16px;top:calc(14px + env(safe-area-inset-top,0px));font:400 11px var(--mono);letter-spacing:.08em;color:var(--tenue);
   background:none;border:0;cursor:pointer;transition:opacity .6s}
 .listo .saltar{opacity:0;pointer-events:none}
+.lienzo-puerta{position:absolute;left:var(--lx,16%);top:var(--ly,30%);width:72px;height:72px;margin:-36px 0 0 -36px;z-index:2;display:block;text-decoration:none;border-radius:50%}
+.lienzo-puerta canvas{display:block;width:72px;height:72px;border-radius:50%;opacity:.9}
+.lienzo-puerta .rot{position:absolute;left:50%;top:calc(100% + 8px);transform:translateX(-50%);white-space:nowrap;font:500 10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--tinta-2)}
+.lienzo-puerta:hover .rot,.lienzo-puerta:focus-visible .rot{color:var(--tinta)}
+.lienzo-puerta:focus-visible{outline:1px solid var(--ambar);outline-offset:4px}
+.js .lienzo-puerta{opacity:0;transition:opacity 2s ease}
+.listo .lienzo-puerta{opacity:1;transition-delay:2.4s}
+html:not(.js) .lienzo-puerta{display:none}
+@media (max-width:600px){.lienzo-puerta{--lx:13%;--ly:53%}}
 .sinjs{display:none}
 
 html:not(.js) body{overflow:auto}
@@ -201,6 +210,7 @@ html:not(.js) .sinjs a{color:var(--tinta)}
     <span class="rot">la antena</span></button>
   <button class="neb-rot" id="neb-rot" type="button" aria-controls="ficha" aria-expanded="false">la nebulosa · el taller</button>
 
+  <a class="lienzo-puerta" id="lienzo-puerta" href="/lienzo" aria-label="El lienzo: las huellas de todos los vaults"><canvas id="lienzo-mini" width="96" height="96" aria-hidden="true"></canvas><span class="rot">el lienzo</span></a>
   <section class="ficha" id="ficha" aria-live="polite" aria-labelledby="ficha-t">
     <button class="cerrar" id="cerrar" type="button" aria-label="Cerrar">×</button>
     <p class="n" id="ficha-n"></p>
@@ -513,6 +523,21 @@ html:not(.js) .sinjs a{color:var(--tinta)}
   if(!b||!p) return;
   b.addEventListener("click",function(){var abierto=p.hidden; p.hidden=!abierto; b.setAttribute("aria-expanded",abierto?"true":"false"); if(abierto) a.focus();});
   f.addEventListener("submit",function(e){e.preventDefault(); var v=(a.value||"").trim().toLowerCase(); if(/^[a-z0-9-]{3,24}$/.test(v)) location.href="/@"+v;});
+})();
+</script>
+<script src="/huella.js"></script>
+<script>
+/* La puerta al lienzo (VV-007): un trozo del lienzo de verdad, creciendo, con las huellas que ya hay. Si la red no
+   contesta o no hay huellas, la puerta se queda como enlace con su rótulo y nada más. */
+(function(){
+  var cv=document.getElementById("lienzo-mini"); if(!cv||!window.VoidHuella) return;
+  var ctx=cv.getContext("2d"), quieto=matchMedia("(prefers-reduced-motion: reduce)").matches;
+  fetch("https://red.vaultvoid.app/v1/huellas").then(function(r){return r.ok?r.json():{huellas:[]};}).then(function(d){
+    var l=(d&&d.huellas)||[]; if(!l.length) return;
+    var c=VoidHuella.crear(l,96), n=0;
+    if(quieto){c.paso(2500);c.pintar(ctx,false);return;}
+    (function b(){ if(n<2500){c.paso(10);n+=10;c.pintar(ctx,false);requestAnimationFrame(b);} })();
+  }).catch(function(){});
 })();
 </script>
 </body>

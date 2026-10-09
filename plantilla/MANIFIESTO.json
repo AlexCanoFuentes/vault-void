@@ -1,12 +1,12 @@
 {
-  "version": "0.1",
+  "version": "0.2",
   "ficheros": {
     ".claude/commands/abrir.md": "e955bbd314ca953024e7e5bf72e53dffc9bf562beaa22675e46bf2b53490f307",
     ".claude/commands/cerrar.md": "7491d12d9a53b8a8e6e367985b0b5ece6e90508193c539512c58beeef0f14707",
     ".claude/encerrado-windows.json": "5b2e47e268fac50772c764fbc6740249b31434f58abb90c97340430d618f254e",
     ".claude/settings.json": "9de4b07873bb518a1c3e472efee5bc1df74b0aa75835d68e0dd09a273afdf241",
     ".gitignore": "14d141a543a2920d14e62202785acc895e301d5ece625eab50eb30791c6290d7",
-    "AGENTS.md": "ca3661514482fa1ca1a8660856baa83a6fa668f376d7243db54351e8e75bc28c",
+    "AGENTS.md": "f4d9bd0d933e6c68c70964b0644e48d14c38c7f9b250e4a3f110fd5af04b2823",
     "CLAUDE.md": "d9b0bc4af8053145bbb16dedc4fed805c0b799ed20690f27ce6e0ff5239a8597",
     "INBOX.md": "e0e6c1ceb298c9955fd5774ec06892b1355a4885f2311190eb93f91fdec690e8",
     "README.md": "17a2d56d5872eb9af866a80888cadf0341ed9e28257651e93cdaf50dfca3f691",

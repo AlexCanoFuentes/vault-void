@@ -1,9 +1,9 @@
 {
-  "version": "0.5",
+  "version": "0.6",
   "ficheros": {
     ".claude/encerrado.json": "eec25e9d797c7c27781fb9a05ca9bd3889db13c652db55dc8ab62f6719b09e6a",
     ".codex/config.toml": "cfc04062c7202287399afc910a42b9b909fd09ad37379b16e2f71e62f04470de",
-    "AGENTS.md": "7aa564e01dcc5cb694a4522fadb663f0f2e82daf0d2b75986d24f57aeeb4f4d9",
+    "AGENTS.md": "36b17ade496df82571d3e2fa6b66b9a54d2a950b96cd30993e1a8220b3fc701c",
     "CLAUDE.md": "8e9e3e44a9dd3aae3bb4efdd1218cf66f249a28b809e49b9797ac5d0cca23eac",
     "herramientas/candados_comunes.py": "098329176cb8262e519090f1de5530762eacdfec74deda78fea77bc9081e9f55",
     "herramientas/pruebas_comunes.py": "183dbe1b1dfe9e7fa46ff563e044a3b9407b29e408685e2ff8debeb0c0f694b5",

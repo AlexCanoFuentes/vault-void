@@ -82,35 +82,31 @@ export function problemaTexto(texto: unknown): string | null {
   return null;
 }
 
-// ---------------------------------------------------------------- VV-007: el planeta de cada vault
+// ---------------------------------------------------------------- VV-007: la huella de cada vault
 
-/** Las luces que puede tener un planeta: la paleta de Void (paleta.md, 9-oct). Una lista cerrada, sin colores libres. */
-export const LUCES = ["ambar", "laton", "teja", "salvia", "arena", "verde"] as const;
-export interface Planeta { version: 1; dias: number; pulso: number; luz: string; capas: { t: "contada" | "callada"; peso: 1 | 2 | 3 }[] }
-
+/** La huella de cada vault: solo cifras. Con ellas Void dibuja una forma única (reacción-difusión sembrada por el alias).
+ *  «tono» es el color, 0-359; si no viene, sale del alias. Ningún texto libre puede entrar. */
+export interface Huella { version: 1; dias: number; pulso: number; decisiones: number; proyectos: number; calladas: number; tono?: number }
+const CLAVES_HUELLA = ["version", "dias", "pulso", "decisiones", "proyectos", "calladas", "tono"];
 const entero = (v: unknown, min: number, max: number) => Number.isInteger(v) && (v as number) >= min && (v as number) <= max;
-const soloClaves = (o: Record<string, unknown>, permitidas: string[]) => Object.keys(o).every((k) => permitidas.includes(k));
 
-/** null si el planeta vale; si no, por qué. Solo números y palabras de listas cerradas: ningún texto libre puede entrar. */
-export function problemaPlaneta(p: unknown): string | null {
-  if (!p || typeof p !== "object" || Array.isArray(p)) return "El planeta tiene que ser un objeto.";
-  const o = p as Record<string, unknown>;
-  if (!soloClaves(o, ["version", "dias", "pulso", "luz", "capas"])) return "El planeta solo puede llevar version, dias, pulso, luz y capas.";
-  if (o.version !== 1) return "Versión de planeta desconocida.";
-  if (!entero(o.dias, 0, 36500)) return "«dias» tiene que ser un entero entre 0 y 36500.";
-  if (!entero(o.pulso, 0, 100000)) return "«pulso» tiene que ser un entero entre 0 y 100000.";
-  if (!(LUCES as readonly string[]).includes(o.luz as string)) return `«luz» tiene que ser una de: ${LUCES.join(", ")}.`;
-  if (!Array.isArray(o.capas) || o.capas.length > 12) return "«capas» tiene que ser una lista de 12 como mucho.";
-  for (const c of o.capas) {
-    if (!c || typeof c !== "object" || Array.isArray(c) || !soloClaves(c as Record<string, unknown>, ["t", "peso"])) return "Cada capa solo lleva t y peso.";
-    const k = c as Record<string, unknown>;
-    if (k.t !== "contada" && k.t !== "callada") return "Cada capa es «contada» o «callada».";
-    if (k.peso !== 1 && k.peso !== 2 && k.peso !== 3) return "El peso de una capa es 1, 2 o 3.";
+/** null si la huella vale; si no, por qué. */
+export function problemaHuella(h: unknown): string | null {
+  if (!h || typeof h !== "object" || Array.isArray(h)) return "La huella tiene que ser un objeto.";
+  const o = h as Record<string, unknown>;
+  if (!Object.keys(o).every((k) => CLAVES_HUELLA.includes(k))) return `La huella solo puede llevar ${CLAVES_HUELLA.join(", ")}.`;
+  if (o.version !== 1) return "Versión de huella desconocida.";
+  for (const [k, max] of [["dias", 36500], ["pulso", 100000], ["decisiones", 100000], ["proyectos", 10000]] as const) {
+    if (!entero(o[k], 0, max)) return `«${k}» tiene que ser un entero entre 0 y ${max}.`;
   }
+  if (!entero(o.calladas, 0, 7)) return "«calladas» tiene que ser un entero entre 0 y 7.";
+  if (o.tono !== undefined && !entero(o.tono, 0, 359)) return "«tono» tiene que ser un entero entre 0 y 359.";
   return null;
 }
 
-/** El planeta tal cual se guarda: mismas claves, mismo orden, nada más. */
-export function planetaNormal(o: Planeta): Planeta {
-  return { version: 1, dias: o.dias, pulso: o.pulso, luz: o.luz, capas: o.capas.map((c) => ({ t: c.t, peso: c.peso })) };
+/** La huella tal cual se guarda: mismas claves, mismo orden, nada más. */
+export function huellaNormal(o: Huella): Huella {
+  const n: Huella = { version: 1, dias: o.dias, pulso: o.pulso, decisiones: o.decisiones, proyectos: o.proyectos, calladas: o.calladas };
+  if (o.tono !== undefined) n.tono = o.tono;
+  return n;
 }

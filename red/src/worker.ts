@@ -12,14 +12,14 @@
  *   GET  /v1/yo                                             tu perfil y lo que te han escrito (con la llave)
  *   POST /v1/avisos                 {estrella, tipo, texto} un aviso a una estrella (con la llave; tope por hora)
  *   GET  /v1/estrella/<n>/avisos                            los avisos de una estrella (público: es lo mismo que su página)
- *   POST /v1/planeta                {planeta: {...}}        publica o cambia el planeta de tu vault (con la llave; VV-007)
- *   POST /v1/planeta/retirar                                lo quita del cielo (con la llave)
- *   GET  /v1/planetas                                       los planetas publicados, para pintar el cielo (público)
+ *   POST /v1/huella                 {huella: {...}}         publica o cambia la huella de tu vault (con la llave; VV-007)
+ *   POST /v1/huella/retirar                                 la quita del lienzo (con la llave)
+ *   GET  /v1/huellas                                        las huellas publicadas, para pintar el lienzo (público)
  *   GET  /@<alias>                                          el perfil, solo con lo que la persona marcó como público
  *   GET  /estrella/<n>                                      la página de la estrella con sus avisos
  */
 import { leerCatalogo, ErrorDeFuente, type Catalogo } from "./catalogo.js";
-import { llaveNueva, huella, llaveDe, problemaAlias, problemaAgente, publicoDe, problemaTexto, TIPOS, RE_ESTRELLA, RE_ALIAS, problemaPlaneta, planetaNormal, type Planeta } from "./reglas.js";
+import { llaveNueva, huella, llaveDe, problemaAlias, problemaAgente, publicoDe, problemaTexto, TIPOS, RE_ESTRELLA, RE_ALIAS, problemaHuella, huellaNormal, type Huella } from "./reglas.js";
 import { paginaPerfil, paginaEstrella, paginaNoEncontrada, fechaCorta, CSP, type AvisoPublico } from "./paginas.js";
 
 export interface Entorno {
@@ -172,7 +172,7 @@ async function baja(request: Request, env: Entorno): Promise<Response> {
   await env.DB.batch([
     env.DB.prepare("UPDATE avisos SET de_perfil = NULL WHERE de_perfil = ?").bind(p.id),
     env.DB.prepare("DELETE FROM autoria WHERE perfil_id = ?").bind(p.id),
-    env.DB.prepare("DELETE FROM planetas WHERE perfil_id = ?").bind(p.id),
+    env.DB.prepare("DELETE FROM huellas WHERE perfil_id = ?").bind(p.id),
     env.DB.prepare("DELETE FROM perfiles WHERE id = ?").bind(p.id),
   ]);
   return json(200, { alias: p.alias, baja: true });
@@ -274,29 +274,29 @@ async function paginaDeEstrella(env: Entorno, nombre: string): Promise<Response>
 
 // ---------------------------------------------------------------- VV-007: el vacío se llena
 
-async function publicarPlaneta(request: Request, env: Entorno): Promise<Response> {
+async function publicarHuella(request: Request, env: Entorno): Promise<Response> {
   const p = await quien(request, env);
   const b = await cuerpo(request);
-  const mal = problemaPlaneta(b.planeta);
+  const mal = problemaHuella(b.huella);
   if (mal) return error(400, mal);
-  const planeta = planetaNormal(b.planeta as Planeta);
-  await env.DB.prepare("INSERT INTO planetas (perfil_id, datos, actualizado) VALUES (?, ?, ?) "
+  const huella = huellaNormal(b.huella as Huella);
+  await env.DB.prepare("INSERT INTO huellas (perfil_id, datos, actualizado) VALUES (?, ?, ?) "
     + "ON CONFLICT(perfil_id) DO UPDATE SET datos = excluded.datos, actualizado = excluded.actualizado")
-    .bind(p.id, JSON.stringify(planeta), Date.now()).run();
-  return json(200, { alias: p.alias, planeta });
+    .bind(p.id, JSON.stringify(huella), Date.now()).run();
+  return json(200, { alias: p.alias, huella });
 }
 
-async function retirarPlaneta(request: Request, env: Entorno): Promise<Response> {
+async function retirarHuella(request: Request, env: Entorno): Promise<Response> {
   const p = await quien(request, env);
-  await env.DB.prepare("DELETE FROM planetas WHERE perfil_id = ?").bind(p.id).run();
-  return json(200, { alias: p.alias, retirado: true });
+  await env.DB.prepare("DELETE FROM huellas WHERE perfil_id = ?").bind(p.id).run();
+  return json(200, { alias: p.alias, retirada: true });
 }
 
-/** El cielo: público, como el perfil. Solo lo que cada vault ha mandado, que ya son solo cifras. */
-async function planetas(env: Entorno): Promise<Response> {
-  const filas = (await env.DB.prepare("SELECT p.alias, pl.datos, pl.actualizado FROM planetas pl JOIN perfiles p ON p.id = pl.perfil_id "
-    + "ORDER BY pl.actualizado DESC LIMIT 500").all<{ alias: string; datos: string; actualizado: number }>()).results;
-  return json(200, { planetas: filas.map((f) => ({ alias: f.alias, planeta: JSON.parse(f.datos), actualizado: f.actualizado })) },
+/** El lienzo: público, como el perfil. Solo lo que cada vault ha mandado, que ya son solo cifras. */
+async function huellas(env: Entorno): Promise<Response> {
+  const filas = (await env.DB.prepare("SELECT p.alias, h.datos, h.actualizado FROM huellas h JOIN perfiles p ON p.id = h.perfil_id "
+    + "ORDER BY h.actualizado DESC LIMIT 500").all<{ alias: string; datos: string; actualizado: number }>()).results;
+  return json(200, { huellas: filas.map((f) => ({ alias: f.alias, huella: JSON.parse(f.datos), actualizado: f.actualizado })) },
     { "access-control-allow-origin": "*" });
 }
 
@@ -318,12 +318,12 @@ export default {
         if (ruta === "/v1/llave/cambiar") return await cambiarLlave(request, env);
         if (ruta === "/v1/baja") return await baja(request, env);
         if (ruta === "/v1/avisos") return await avisar(request, env);
-        if (ruta === "/v1/planeta") return await publicarPlaneta(request, env);
-        if (ruta === "/v1/planeta/retirar") return await retirarPlaneta(request, env);
+        if (ruta === "/v1/huella") return await publicarHuella(request, env);
+        if (ruta === "/v1/huella/retirar") return await retirarHuella(request, env);
       }
       if (m === "GET" || m === "HEAD") {
         if (ruta === "/v1/yo") return await yo(request, env);
-        if (ruta === "/v1/planetas") return await planetas(env);
+        if (ruta === "/v1/huellas") return await huellas(env);
         let r = /^\/v1\/estrella\/([^/]+)\/avisos$/.exec(ruta);
         if (r) return await avisosPublicos(env, decodificar(r[1]));
         r = /^\/@([^/]+)$/.exec(ruta);

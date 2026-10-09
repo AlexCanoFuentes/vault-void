@@ -85,39 +85,38 @@ function exige(cond, motivo) { if (!cond) throw new Falla(motivo); }
 
 // ---------------------------------------------------------------- las pruebas (cada una, un nombre)
 
-const PLANETA = { version: 1, dias: 12, pulso: 40, luz: "ambar", capas: [{ t: "contada", peso: 2 }, { t: "callada", peso: 1 }] };
+const HUELLA = { version: 1, dias: 12, pulso: 40, decisiones: 9, proyectos: 2, calladas: 1, tono: 200 };
 
 const PRUEBAS = {
-  async "planeta: solo cifras y listas cerradas, nunca texto"(w) {
+  async "huella: solo cifras, nunca texto"(w) {
     const r = await alta(w, alias()); const llave = r.datos.llave;
-    const ok = await pedir(w, "POST", "/v1/planeta", { llave, cuerpo: { planeta: PLANETA } });
-    exige(ok.estado === 200, `un planeta válido dio ${ok.estado}: ${ok.texto.slice(0, 160)}`);
-    for (const [motivo, malo] of [["una clave de más con texto", { ...PLANETA, nota: "me llamo Lucía" }],
-      ["una luz que no está en la paleta", { ...PLANETA, luz: "morado" }],
-      ["una capa con texto", { ...PLANETA, capas: [{ t: "contada", peso: 2, texto: "hola" }] }],
-      ["un número con decimales", { ...PLANETA, dias: 1.5 }], ["una capa de tipo inventado", { ...PLANETA, capas: [{ t: "secreta", peso: 1 }] }]]) {
-      const x = await pedir(w, "POST", "/v1/planeta", { llave, cuerpo: { planeta: malo } });
+    const ok = await pedir(w, "POST", "/v1/huella", { llave, cuerpo: { huella: HUELLA } });
+    exige(ok.estado === 200, `una huella válida dio ${ok.estado}: ${ok.texto.slice(0, 160)}`);
+    for (const [motivo, malo] of [["una clave de más con texto", { ...HUELLA, nota: "me llamo Lucía" }],
+      ["un tono fuera de la rueda", { ...HUELLA, tono: 400 }], ["un número con decimales", { ...HUELLA, dias: 1.5 }],
+      ["más de siete calladas", { ...HUELLA, calladas: 8 }], ["texto donde va un número", { ...HUELLA, decisiones: "muchas" }]]) {
+      const x = await pedir(w, "POST", "/v1/huella", { llave, cuerpo: { huella: malo } });
       exige(x.estado === 400, `${motivo} dio ${x.estado}, no 400`);
     }
-    const sin = await pedir(w, "POST", "/v1/planeta", { cuerpo: { planeta: PLANETA } });
+    const sin = await pedir(w, "POST", "/v1/huella", { cuerpo: { huella: HUELLA } });
     exige(sin.estado === 401, `sin llave dio ${sin.estado}, no 401`);
-    const cielo = await pedir(w, "GET", "/v1/planetas");
-    exige(cielo.cabeceras.get("access-control-allow-origin") === "*", "el cielo no se puede leer desde vaultvoid.app");
-    const mio = (cielo.datos?.planetas ?? []).find((x) => x.alias === r.datos.alias);
-    exige(mio && JSON.stringify(Object.keys(mio.planeta)) === JSON.stringify(["version", "dias", "pulso", "luz", "capas"]), "el cielo no trae el planeta, o trae algo más");
-    exige(!JSON.stringify(w.sql("SELECT * FROM planetas")).includes("Lucía"), "la base guardó texto de un planeta rechazado");
+    const lienzo = await pedir(w, "GET", "/v1/huellas");
+    exige(lienzo.cabeceras.get("access-control-allow-origin") === "*", "el lienzo no se puede leer desde vaultvoid.app");
+    const mia = (lienzo.datos?.huellas ?? []).find((x) => x.alias === r.datos.alias);
+    exige(mia && JSON.stringify(Object.keys(mia.huella)) === JSON.stringify(["version", "dias", "pulso", "decisiones", "proyectos", "calladas", "tono"]), "el lienzo no trae la huella, o trae algo más");
+    exige(!JSON.stringify(w.sql("SELECT * FROM huellas")).includes("Lucía"), "la base guardó texto de una huella rechazada");
   },
 
-  async "planeta: retirarlo o darse de baja lo quita del cielo"(w) {
+  async "huella: retirarla o darse de baja la quita del lienzo"(w) {
     const a = await alta(w, alias()), b = await alta(w, alias());
-    for (const x of [a, b]) await pedir(w, "POST", "/v1/planeta", { llave: x.datos.llave, cuerpo: { planeta: PLANETA } });
-    await pedir(w, "POST", "/v1/planeta/retirar", { llave: a.datos.llave });
+    for (const x of [a, b]) await pedir(w, "POST", "/v1/huella", { llave: x.datos.llave, cuerpo: { huella: HUELLA } });
+    await pedir(w, "POST", "/v1/huella/retirar", { llave: a.datos.llave });
     await pedir(w, "POST", "/v1/baja", { llave: b.datos.llave });
-    const quedan = (await pedir(w, "GET", "/v1/planetas")).datos.planetas.map((x) => x.alias);
-    exige(!quedan.includes(a.datos.alias), "retirado, sigue en el cielo");
-    exige(!quedan.includes(b.datos.alias), "dado de baja, su planeta sigue en el cielo");
-    exige(w.sql("SELECT COUNT(*) AS n FROM planetas pl LEFT JOIN perfiles p ON p.id = pl.perfil_id WHERE p.id IS NULL")[0].n === 0,
-      "dado de baja, su planeta no sale en el cielo pero sigue guardado en la base");
+    const quedan = (await pedir(w, "GET", "/v1/huellas")).datos.huellas.map((x) => x.alias);
+    exige(!quedan.includes(a.datos.alias), "retirada, sigue en el lienzo");
+    exige(!quedan.includes(b.datos.alias), "dado de baja, su huella sigue en el lienzo");
+    exige(w.sql("SELECT COUNT(*) AS n FROM huellas h LEFT JOIN perfiles p ON p.id = h.perfil_id WHERE p.id IS NULL")[0].n === 0,
+      "dado de baja, su huella no sale en el lienzo pero sigue guardada en la base");
   },
 
   async "alta: da una llave y la base solo guarda su huella"(w) {
@@ -289,13 +288,13 @@ async function correr(w, pruebas, nombres = Object.keys(pruebas)) {
 // ---------------------------------------------------------------- sabotajes
 
 const SABOTAJES = [
-  { nombre: "el planeta deja pasar claves de más", fichero: "src/reglas.ts",
-    buscar: "if (!soloClaves(o, [\"version\", \"dias\", \"pulso\", \"luz\", \"capas\"])) return", poner: "if (false) return",
-    pruebas: ["planeta: solo cifras y listas cerradas, nunca texto"] },
-  { nombre: "la baja deja el planeta en el cielo (sin el borrado de la baja ni el de la base en cascada)", fichero: "src/worker.ts",
-    buscar: "    env.DB.prepare(\"DELETE FROM planetas WHERE perfil_id = ?\").bind(p.id),\n", poner: "",
-    mas: [{ fichero: "migrations/0002_planetas.sql", buscar: "REFERENCES perfiles(id) ON DELETE CASCADE", poner: "" }],
-    pruebas: ["planeta: retirarlo o darse de baja lo quita del cielo"] },
+  { nombre: "la huella deja pasar claves de más", fichero: "src/reglas.ts",
+    buscar: "if (!Object.keys(o).every((k) => CLAVES_HUELLA.includes(k))) return", poner: "if (false) return",
+    pruebas: ["huella: solo cifras, nunca texto"] },
+  { nombre: "la baja deja la huella guardada (sin el borrado de la baja ni el de la base en cascada)", fichero: "src/worker.ts",
+    buscar: "    env.DB.prepare(\"DELETE FROM huellas WHERE perfil_id = ?\").bind(p.id),\n", poner: "",
+    mas: [{ fichero: "migrations/0002_huellas.sql", buscar: "REFERENCES perfiles(id) ON DELETE CASCADE", poner: "" }],
+    pruebas: ["huella: retirarla o darse de baja la quita del lienzo"] },
   { nombre: "una llave falsa entra como el primer perfil", fichero: "src/worker.ts",
     buscar: ".bind(await huella(llave)).first<Perfil>();",
     poner: ".bind(await huella(llave)).first<Perfil>() ?? await env.DB.prepare(\"SELECT id, alias, agente, publico, creado FROM perfiles\").first<Perfil>();",

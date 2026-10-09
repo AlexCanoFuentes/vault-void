@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Qué es Vault Void</title>
+<meta name="description" content="Vault Void conecta tu vault, la carpeta donde tu asistente de IA guarda tu trabajo, tus decisiones y tu criterio, con los de los demás. Tu vault se queda en tu ordenador; solo viajan las mejoras comunes. Gratis, de código abierto, para Claude Code, Codex y Antigravity.">
+<link rel="canonical" href="https://vaultvoid.app/que-es">
+<meta property="og:title" content="Qué es Vault Void">
+<meta property="og:description" content="Una carpeta en tu ordenador donde tu asistente de IA recuerda tu trabajo y tu criterio, y una red que la mejora sin que nada tuyo salga de casa.">
+<meta property="og:url" content="https://vaultvoid.app/que-es">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="es_ES">
+<meta property="og:image" content="https://vaultvoid.app/og.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Vault Void: un vacío negro con la primera estrella.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://vaultvoid.app/og.jpg">
+<link rel="icon" href="/icono.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#12110E">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/*
+  vaultvoid.app/que-es · qué es Void, para personas, buscadores y asistentes de IA. Sin JavaScript:
+  todo en el HTML. Mismo vacío negro que empezar.html; su estilo se copia de ahí.
+*/
+:root{
+  --vacio:#12110E; --tinta:#ECE7DE; --tinta-2:#B3AC9F; --tenue:#8C8578; --linea:#2B2822; --panel:#1B1915;
+  --acento:#F2A93B; --acento-2:#F8CB86;--verde:#5BE06A; --ambar:#F2A93B;
+  --serif:"Instrument Serif",Georgia,"Times New Roman",serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--vacio);color:var(--tinta);font:15px/1.7 var(--mono);-webkit-font-smoothing:antialiased}
+main{max-width:38rem;margin:0 auto;padding:56px 16px 72px}
+h1{margin:0 0 28px;font:400 clamp(44px,8vw,76px)/1 var(--serif);letter-spacing:-.02em}
+h1 em{font-style:italic;color:transparent;-webkit-text-stroke:1px var(--tinta)}
+h2{margin:56px 0 12px;font:400 32px/1.15 var(--serif);color:var(--tinta)}
+h3{margin:40px 0 10px;font:500 15px/1.4 var(--mono);color:var(--acento-2);letter-spacing:.02em}
+p,li{color:var(--tinta-2)}
+strong{color:var(--tinta);font-weight:500}
+a{color:var(--acento-2);text-underline-offset:3px}
+ul,ol{padding-left:1.4em}
+li{margin:6px 0}
+code{font:inherit;color:var(--tinta);background:var(--panel);border:1px solid var(--linea);border-radius:4px;padding:0 .3em;overflow-wrap:anywhere}
+pre{margin:14px 0;padding:14px 16px;background:var(--panel);border:1px solid var(--linea);border-left:2px solid var(--acento);border-radius:6px;overflow-x:auto}
+pre code{background:none;border:0;padding:0;white-space:pre-wrap;word-break:break-all;color:var(--tinta)}
+blockquote{margin:16px 0;padding:2px 0 2px 16px;border-left:2px solid var(--linea)}
+blockquote p,blockquote li{color:var(--tinta)}
+.persona{margin:0 0 8px;padding:18px 20px;border:1px solid var(--acento);border-radius:8px;background:rgba(242,169,59,.06)}
+.persona p{margin:0;color:var(--tinta)}
+.frase{display:block;margin:12px 0 0;font-size:17px;color:var(--acento-2)}
+.huella{display:block;margin:10px 0;padding:10px 14px;font-size:13px;color:var(--ambar);border-color:rgba(242,169,59,.4)}
+.texto{font-size:13px;color:var(--tenue)}
+hr{border:0;border-top:1px solid var(--linea);margin:44px 0}
+footer{margin-top:56px;font-size:13px;color:var(--tenue)}
+footer p{color:var(--tenue)}
+</style>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "Vault Void", "url": "https://vaultvoid.app/", "applicationCategory": "ProductivityApplication", "operatingSystem": "Windows, macOS, Linux", "inLanguage": "es", "license": "https://www.apache.org/licenses/LICENSE-2.0", "isAccessibleForFree": true, "offers": {"@type": "Offer", "price": "0", "priceCurrency": "EUR"}, "codeRepository": "https://github.com/AlexCanoFuentes/vault-void", "description": "Conecta tu vault, la carpeta donde tu asistente de IA guarda tu trabajo y tu criterio, con los de los demás, sin que nada tuyo salga de tu ordenador.", "publisher": {"@type": "Organization", "name": "LexLabs", "url": "https://alexcanofuentes.com"}}</script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "¿Cómo hago que mi asistente de IA recuerde mi proyecto entre una sesión y otra?", "acceptedAnswer": {"@type": "Answer", "text": "Con un vault: una carpeta con ficheros de texto donde tu asistente apunta al terminar qué se hizo, qué se decidió y qué queda, y que lee entera al empezar. Void te monta uno en una carpeta vacía: abre tu asistente allí y pégale «empieza mi vault: vaultvoid.app/empezar»."}}, {"@type": "Question", "name": "¿Con qué asistentes funciona?", "acceptedAnswer": {"@type": "Answer", "text": "Con los que trabajan sobre una carpeta de tu ordenador: Claude Code, Codex (también desde la app de ChatGPT) y Antigravity. El vault lleva sus reglas en AGENTS.md, que estos asistentes leen solos."}}, {"@type": "Question", "name": "¿Mis datos suben a algún sitio?", "acceptedAnswer": {"@type": "Answer", "text": "No. Tu vault vive en tu ordenador. Void solo baja las mejoras comunes (los candados, las reglas para el asistente y la herramienta void.py), comprueba cada fichero antes de escribirlo y deja un solo cambio en git que se deshace con git revert HEAD. Si eliges publicar tu huella, salen solo cifras: días, decisiones y proyectos, nunca su contenido."}}, {"@type": "Question", "name": "¿Cuánto cuesta?", "acceptedAnswer": {"@type": "Answer", "text": "Void y la plantilla del vault son gratis y de código abierto (licencia Apache-2.0). Lo que pagues por tu asistente de IA es aparte. La versión en la nube, con tu vault vivo las 24 horas, está en pruebas y todavía no abre a todo el mundo."}}, {"@type": "Question", "name": "¿Qué necesito en mi ordenador?", "acceptedAnswer": {"@type": "Answer", "text": "git y Python 3.8 o más nuevo, en Windows, Mac o Linux. Si te falta algo, tu asistente te lo dice y te pide permiso antes de instalar nada."}}, {"@type": "Question", "name": "¿Qué son las estrellas?", "acceptedAnswer": {"@type": "Answer", "text": "Herramientas que alguien hizo en su vault para resolver un fallo real y que comparte para que no le pase a nadie más. Se buscan por lo que se te ha roto, no por el nombre. Antes de entrar en el catálogo pasan una revisión estricta, y no llevan datos de quien las hizo."}}]}</script>
+</head>
+<body>
+<main>
+<h1>Qué es <em>Void</em></h1>
+
+<p><strong>Tu asistente de IA olvida todo al cerrar la sesión.</strong> Un vault lo arregla: es una carpeta en tu ordenador, con ficheros de texto, donde tu asistente apunta lo que haces, lo que decides y por qué, y que lee entera antes de trabajar contigo. Al día siguiente sigue donde lo dejasteis.</p>
+
+<p><strong>Void conecta los vaults entre sí.</strong> Cuando alguien arregla un fallo en el suyo, el arreglo llega a todos los demás. Tu vault se queda en tu casa; aquí solo viajan las piezas.</p>
+
+<div class="persona">
+<p>Para empezar, crea una carpeta vacía, abre tu asistente (Claude Code, Codex o Antigravity) dentro y pégale:</p>
+<span class="frase">«empieza mi vault: vaultvoid.app/empezar»</span>
+<p style="margin-top:12px">Si ya tienes un vault: <span class="frase" style="display:inline;font-size:15px">«conéctate a Void: vaultvoid.app/entrar»</span></p>
+</div>
+
+<h2>Cómo funciona</h2>
+<ol>
+<li><strong>Tu asistente te hace siete preguntas</strong> y monta el vault con tus respuestas: quién eres, en qué trabajas, qué no quieres que entre.</li>
+<li><strong>Cada sesión empieza leyendo el vault y termina escribiéndolo.</strong> Lo que decides queda con tus palabras, con fecha.</li>
+<li><strong>Los candados</strong> impiden que el asistente escriba fuera de la carpeta o salga a internet sin pedirte permiso.</li>
+<li><strong>Void le trae mejoras</strong> con <code>void.py</code>: comprueba cada fichero antes de escribirlo y nunca pisa lo que has cambiado tú.</li>
+<li><strong>Tu huella</strong>, si quieres, aparece en el lienzo común de Void. Solo con cifras, nunca con lo que hay dentro.</li>
+</ol>
+
+<h2>Preguntas</h2>
+<h3>¿Cómo hago que mi asistente de IA recuerde mi proyecto entre una sesión y otra?</h3>
+<p>Con un vault: una carpeta con ficheros de texto donde tu asistente apunta al terminar qué se hizo, qué se decidió y qué queda, y que lee entera al empezar. Void te monta uno en una carpeta vacía: abre tu asistente allí y pégale «empieza mi vault: vaultvoid.app/empezar».</p>
+<h3>¿Con qué asistentes funciona?</h3>
+<p>Con los que trabajan sobre una carpeta de tu ordenador: Claude Code, Codex (también desde la app de ChatGPT) y Antigravity. El vault lleva sus reglas en AGENTS.md, que estos asistentes leen solos.</p>
+<h3>¿Mis datos suben a algún sitio?</h3>
+<p>No. Tu vault vive en tu ordenador. Void solo baja las mejoras comunes (los candados, las reglas para el asistente y la herramienta void.py), comprueba cada fichero antes de escribirlo y deja un solo cambio en git que se deshace con git revert HEAD. Si eliges publicar tu huella, salen solo cifras: días, decisiones y proyectos, nunca su contenido.</p>
+<h3>¿Cuánto cuesta?</h3>
+<p>Void y la plantilla del vault son gratis y de código abierto (licencia Apache-2.0). Lo que pagues por tu asistente de IA es aparte. La versión en la nube, con tu vault vivo las 24 horas, está en pruebas y todavía no abre a todo el mundo.</p>
+<h3>¿Qué necesito en mi ordenador?</h3>
+<p>git y Python 3.8 o más nuevo, en Windows, Mac o Linux. Si te falta algo, tu asistente te lo dice y te pide permiso antes de instalar nada.</p>
+<h3>¿Qué son las estrellas?</h3>
+<p>Herramientas que alguien hizo en su vault para resolver un fallo real y que comparte para que no le pase a nadie más. Se buscan por lo que se te ha roto, no por el nombre. Antes de entrar en el catálogo pasan una revisión estricta, y no llevan datos de quien las hizo.</p>
+
+<hr>
+<p class="texto">Vault Void es un producto experimental de <a href="https://alexcanofuentes.com" rel="noopener">LexLabs</a>, hecho en Tenerife. El código está en <a href="https://github.com/AlexCanoFuentes/vault-void" rel="noopener">GitHub</a>. Para asistentes de IA: <a href="/llms.txt">llms.txt</a>.</p>
+
+<footer>
+<p><a href="/">Volver a Void</a> · <a href="/empezar">Empezar</a> · <a href="/entrar">Conectar un vault</a></p>
+</footer>
+</main>
+</body>
+</html>

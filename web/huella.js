@@ -41,32 +41,38 @@
   var FONDO = [18, 17, 14];
   var VACIO_F = 0.012, VACIO_K = 0.07; // aquí V se apaga sola: no crece nada fuera de un territorio
 
-  /* Prepara los territorios. h: [{alias, huella:{dias,pulso,decisiones,proyectos,calladas,tono?}}] */
-  function territorios(lista, N) {
+  /* Prepara los territorios. lista: [{alias, huella:{dias,pulso,decisiones,proyectos,calladas,tono?}}].
+     libres: cuántos sitios vacíos se reservan alrededor para las huellas que vendrán (se dibujan aparte, sin química). */
+  function territorios(lista, N, libres) {
     var orden = lista.slice().sort(function (a, b) { return (b.huella.dias - a.huella.dias) || (a.alias < b.alias ? -1 : 1); });
-    var n = orden.length, paso = N * 0.42 / Math.sqrt(Math.max(n, 1));
-    return orden.map(function (e, i) {
-      var h = e.huella, r = azar(semilla(e.alias));
-      // espiral de girasol: el más antiguo en el centro, los nuevos alrededor; un pequeño giro propio por alias
-      var rad = n === 1 ? 0 : paso * Math.sqrt(i + 0.5), ang = i * 2.399963 + r() * 0.6;
+    var n = orden.length, sitios = n + (libres || 0), paso = N * 0.42 / Math.sqrt(Math.max(sitios, 1));
+    function sitio(i, giro) {
+      var rad = sitios === 1 ? 0 : paso * Math.sqrt(i + 0.5), ang = i * 2.399963 + giro;
+      return [N / 2 + rad * Math.cos(ang), N / 2 + rad * Math.sin(ang)];
+    }
+    var T = orden.map(function (e, i) {
+      var h = e.huella, sem = semilla(e.alias), r = azar(sem), xy = sitio(i, r() * 0.6);
       var tam = paso * 1.3 * (0.35 + 0.65 * Math.sqrt(Math.min(h.dias, 365) / 365)); // los días: de un tercio a todo su sitio
       var lab = h.decisiones / (h.decisiones + h.proyectos + 1);
+      var tono = typeof h.tono === "number" ? h.tono : sem % 360, giro = (sem >>> 3) % 2 ? 55 : -55;
       return {
-        alias: e.alias, h: h, r: r,
-        x: N / 2 + rad * Math.cos(ang), y: N / 2 + rad * Math.sin(ang), tam: tam,
+        alias: e.alias, h: h, r: r, x: xy[0], y: xy[1], tam: tam,
         f: 0.0367 + (0.055 - 0.0367) * lab, k: 0.0649 + (0.062 - 0.0649) * lab,
         brillo: 0.3 + 0.7 * Math.min(1, h.pulso / 60),
-        col: color(e.alias, h.tono),
+        col: hsl(tono, 0.72, 0.6), col2: hsl((tono + giro + 360) % 360, 0.7, 0.62), // dos tonos: del centro al borde
         masa: Math.min(N * 0.12, (3 + 1.1 * Math.sqrt(h.decisiones + h.proyectos)) * N / 180)
       };
     });
+    var L = [];
+    for (var j = n; j < sitios; j++) { var xy = sitio(j, 0.3); L.push({ x: xy[0], y: xy[1], tam: paso * 0.55 }); }
+    return { T: T, libres: L };
   }
 
-  function crear(lista, N) {
-    var T = territorios(lista, N), M = N * N;
+  function crear(lista, N, libres) {
+    var TL = territorios(lista, N, libres), T = TL.T, M = N * N;
     var U = new Float32Array(M).fill(1), V = new Float32Array(M), U2 = new Float32Array(M), V2 = new Float32Array(M);
     var F = new Float32Array(M).fill(VACIO_F), K = new Float32Array(M).fill(VACIO_K);
-    var dueno = new Int16Array(M).fill(-1), luz = new Float32Array(M), muro = new Uint8Array(M);
+    var dueno = new Int16Array(M).fill(-1), mezcla = new Float32Array(M), muro = new Uint8Array(M);
 
     for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) {
       var mejor = -1, md = 1e9;
@@ -76,7 +82,7 @@
         dueno[i] = mejor;
         var borde = Math.min(1, (1 - md) * 4); // el territorio se funde con el vacío en su último cuarto
         F[i] = VACIO_F + (T[mejor].f - VACIO_F) * borde; K[i] = VACIO_K + (T[mejor].k - VACIO_K) * borde;
-        luz[i] = T[mejor].brillo;
+        mezcla[i] = md;
       }
     }
     T.forEach(function (t, ti) {
@@ -115,16 +121,17 @@
     }
 
     function muestra(sx, sy) {
-      if (sx < 0 || sy < 0 || sx > N - 1.001 || sy > N - 1.001) return [0, -1];
+      if (sx < 0 || sy < 0 || sx > N - 1.001 || sy > N - 1.001) return [0, -1, 0];
       var x0 = sx | 0, y0 = sy | 0, fx = sx - x0, fy = sy - y0, i = y0 * N + x0;
       var v = (V[i] * (1 - fx) + V[i + 1] * fx) * (1 - fy) + (V[i + N] * (1 - fx) + V[i + N + 1] * fx) * fy;
-      return [v, dueno[Math.round(sy) * N + Math.round(sx)]];
+      var j = Math.round(sy) * N + Math.round(sx);
+      return [v, dueno[j], mezcla[j]];
     }
 
     function pintar(ctx, gravedad) {
       var img = ctx.createImageData(N, N), d = img.data;
       for (var i = 0; i < M; i++) {
-        var v = V[i], q = dueno[i], mu = 1;
+        var v = V[i], q = dueno[i], mz = mezcla[i], mu = 1;
         if (gravedad && T.length) {
           var tx = (i % N) + .5, ty = ((i / N) | 0) + .5, bx = tx, by = ty, sombra = false, cerca = 1e9, tE = 0;
           for (var t = 0; t < T.length; t++) {
@@ -134,11 +141,12 @@
             if (r < cerca) { cerca = r; tE = T[t].masa; }
           }
           if (sombra) { v = 0; q = -1; }
-          else { var s = muestra(bx, by); v = s[0]; q = s[1]; mu = Math.min(4, 1 / Math.abs(1 - Math.pow(tE / cerca, 4))); }
+          else { var s = muestra(bx, by); v = s[0]; q = s[1]; mz = s[2]; mu = Math.min(4, 1 / Math.abs(1 - Math.pow(tE / cerca, 4))); }
         }
-        var o = i * 4, col = q >= 0 ? T[q].col : FONDO, b = q >= 0 ? T[q].brillo : 0;
+        var o = i * 4, b = q >= 0 ? T[q].brillo : 0, c1 = q >= 0 ? T[q].col : FONDO, c2 = q >= 0 ? T[q].col2 : FONDO;
         var a = Math.max(0, Math.min(1, (v - 0.08) / 0.27 * Math.sqrt(mu))) * b;
-        d[o] = FONDO[0] + (col[0] - FONDO[0]) * a; d[o + 1] = FONDO[1] + (col[1] - FONDO[1]) * a; d[o + 2] = FONDO[2] + (col[2] - FONDO[2]) * a; d[o + 3] = 255;
+        for (var ch = 0; ch < 3; ch++) d[o + ch] = FONDO[ch] + (c1[ch] + (c2[ch] - c1[ch]) * mz - FONDO[ch]) * a;
+        d[o + 3] = 255;
       }
       ctx.putImageData(img, 0, 0);
     }
@@ -148,7 +156,7 @@
       return q >= 0 ? T[q] : null;
     }
 
-    return { paso: paso, pintar: pintar, quien: quien, territorios: T, N: N };
+    return { paso: paso, pintar: pintar, quien: quien, territorios: T, libres: TL.libres, N: N };
   }
 
   window.VoidHuella = { crear: crear, color: color };

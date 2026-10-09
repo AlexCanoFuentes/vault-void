@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Vault Void</title>
-<meta name="description" content="Vault Void: donde los vaults se conectan. Tu vault se queda en tu casa; aquí solo viajan las piezas.">
+<meta name="description" content="Vault Void: el lienzo donde cada vault deja su huella. Tu vault se queda en tu casa; aquí solo viajan las piezas y unas cifras.">
 <link rel="canonical" href="https://vaultvoid.app/">
 <link rel="alternate" type="text/plain" href="/llms.txt" title="Void para asistentes de IA">
 <meta property="og:title" content="Vault Void">
-<meta property="og:description" content="Tú también puedes tener tu propio mundo. Siete cosas que cuentas se convierten en tu planeta.">
+<meta property="og:description" content="Cada vault deja una huella única hecha solo con cifras, y todas crecen juntas en el mismo lienzo.">
 <meta property="og:url" content="https://vaultvoid.app/">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="es_ES">
@@ -16,528 +16,470 @@
 <meta property="og:image:type" content="image/jpeg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Vault Void: un vacío negro con la primera estrella y el telescopio para buscar por lo que se te ha roto.">
+<meta property="og:image:alt" content="El lienzo de Vault Void: huellas de colores que crecen juntas sobre un fondo oscuro.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://vaultvoid.app/og.jpg">
 <link rel="icon" href="/icono.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="theme-color" content="#12110E">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Vault Void","url":"https://vaultvoid.app/","applicationCategory":"ProductivityApplication","operatingSystem":"Windows, macOS, Linux","inLanguage":"es","license":"https://www.apache.org/licenses/LICENSE-2.0","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"},"codeRepository":"https://github.com/AlexCanoFuentes/vault-void","description":"Conecta tu vault, la carpeta donde tu asistente de IA guarda tu trabajo y tu criterio, con los de los demás, sin que nada tuyo salga de tu ordenador."}</script>
-
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 /*
-  VOID · fase 1, la constelación [Alex, 4-oct: «al tragarse la landing, a traves de un agujero blanco llegas
-  al Void, que tendra un estilo vacio negro, al que le vamos a ir añadiendo cada seccion con su propio diseño»
-  · 5-oct: «vamos directos»].
+  VOID · el lienzo es la portada [Alex, 10-oct: «vamos a quitar el espacio (...) el lienzo es la capa que lo sustituye,
+  y lo que habia en el antiguo integrarlo en el nuevo diseño, el lienzo es toda la pantalla añadimos zoom in/out,
+  huellas clickables, muchos colores, y lo mejor quiza sea un menu interactivo flotante integrado en el lienzo»].
 
-  Un solo mundo, a propósito: Void es un vacío, así que es negro siempre (no hay modo claro).
-  Se llega por un agujero blanco que escupe la retícula que se tragó la landing. Cada capa de Void es un
-  objeto en el vacío (el mapa vive en el «Plano unificado del vault»). Hoy hay tres:
-    · la constelación: el catálogo, leído en vivo del repo público. Cada estrella, una luz.
-      Color = nivel (oficial ámbar, socio latón, comunidad blanco cálido). Tamaño = vaults que la usan.
-    · el anillo: la puerta. La liga grande vive dentro; la pequeña orbita fuera.
-    · el telescopio: buscas por lo que se te ha roto, no por el nombre, y se encienden las que lo resuelven.
-  Paleta (8-oct, paleta.md del vault): la de LinkedIn. Ámbar para actuar, verde para resaltar, nada morado y sin
-  halos: el auditor de diseño marcaba los dos como firma de interfaz hecha con IA.
+  Fuera el cielo: sin estrellas de fondo, sin agujero blanco, sin nebulosa. Toda la pantalla es el lienzo de huellas
+  (la química y la gravedad están en huella.js). Lo que había en la portada vieja vive ahora en el menú flotante:
+  la puerta (Empezar · Ya tengo vault), las piezas del catálogo con su buscador, el taller y la conexión desde tu asistente.
+  Paleta (paleta.md del vault): carbón cálido, ámbar para actuar; los colores son de las huellas, la interfaz es sobria.
+  Sin morado y sin halos.
 */
 :root{
-  --vacio:#12110E; --tinta:#ECE7DE; --tinta-2:#B3AC9F; --tenue:#8C8578; --linea:#2B2822;
-  --ambar:#F2A93B; --ambar-2:#F8CB86; --verde:#5BE06A; --laton:#B08D57; --rojo:#F0604F;
-  --serif:"Instrument Serif",Georgia,"Times New Roman",serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --vacio:#12110E; --panel:rgba(24,22,18,.92); --panel-solido:#1B1915; --tinta:#ECE7DE; --tinta-2:#B3AC9F; --tenue:#8C8578;
+  --linea:#2E2B25; --ambar:#F2A93B; --ambar-2:#F8CB86; --verde:#5BE06A;
+  --serif:"Instrument Serif",Georgia,"Times New Roman",serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
-[hidden]{display:none!important}
 html,body{height:100%}
-@media(max-width:699px){:root{--my:20%}}
-body{margin:0;background:var(--vacio);color:var(--tinta);font:15px/1.6 var(--mono);-webkit-font-smoothing:antialiased;overflow:hidden}
-#cielo{position:fixed;inset:0;width:100%;height:100%;display:block}
-/* el cielo profundo: estrellas a distintas profundidades con el color de su temperatura, y polvo en órbita (gravedad de Newton) */
-#hondo{position:fixed;inset:0;width:100%;height:100%;display:block;pointer-events:none;mix-blend-mode:screen}
-.escena{position:fixed;inset:0;padding:env(safe-area-inset-top,0px) 16px env(safe-area-inset-bottom,0px)}
+body{margin:0;background:var(--vacio);color:var(--tinta);font:14px/1.6 var(--mono);-webkit-font-smoothing:antialiased;overflow:hidden}
+[hidden]{display:none!important}
+a{color:var(--ambar-2);text-underline-offset:3px}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ambar);outline-offset:2px}
 
-.marca{position:absolute;left:0;right:0;top:var(--my,24%);transform:translateY(-50%);text-align:center;pointer-events:none}
-.marca h1{margin:0;font:400 clamp(48px,9vw,112px)/.95 var(--serif);letter-spacing:-.025em;text-wrap:balance}
-.marca h1 em{font-style:italic;color:transparent;-webkit-text-stroke:1px var(--tinta)}
-.marca p{margin:16px auto 0;max-width:32ch;font:400 clamp(13px,1.5vw,14.5px)/1.55 var(--mono);color:var(--tinta-2);letter-spacing:.02em}
-.marca p b{color:var(--tinta);font-weight:500}
-/* la puerta (9-oct): el final del acto II del cuento. Empezar sin agente, o entrar si ya tienes vault */
-.puerta{margin:20px auto 0;display:flex;gap:18px;justify-content:center;align-items:center;flex-wrap:wrap;pointer-events:auto}
-.puerta .empezar{font:500 14px var(--mono);background:var(--ambar);color:#1A1206;border-radius:999px;padding:12px 22px;text-decoration:none}
-.puerta .empezar:hover{background:var(--ambar-2)}
-.puerta .tengo{font:400 13px var(--mono);color:var(--tinta-2);background:none;border:0;border-bottom:1px solid var(--linea);padding:4px 0;cursor:pointer}
-.puerta .tengo:hover{color:var(--tinta)}
-.puerta a:focus-visible,.puerta button:focus-visible,.ir-perfil :focus-visible{outline:2px solid var(--ambar-2);outline-offset:3px}
-@media(max-width:699px){.marca{top:calc(44px + env(safe-area-inset-top,0px));transform:none}}   /* al abrir el panel, el título no se sale por arriba */
-.tengo-panel{pointer-events:auto;margin:14px auto 0;max-width:min(460px,calc(100vw - 32px));padding:14px 16px;background:rgba(27,25,21,.94);border:1px solid var(--linea);border-radius:14px;text-align:left}
-.tengo-panel p{margin:0 0 10px;font:400 13px/1.55 var(--mono);color:var(--tinta-2);max-width:none}
-.tengo-panel b{color:var(--tinta);font-weight:500}
-.ir-perfil{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font:400 13px var(--mono);color:var(--tinta-2)}
-.ir-perfil input{flex:1;min-width:120px;background:var(--vacio);color:var(--tinta);border:1px solid var(--linea);border-radius:8px;padding:8px 10px;font:inherit}
-.ir-perfil button{background:none;border:1px solid var(--linea);color:var(--tinta);border-radius:8px;padding:8px 12px;font:inherit;cursor:pointer}
-.js .marca h1,.js .marca p,.js .pie,.js .telescopio,.js .astro{opacity:0;transition:opacity 1.6s ease,transform 1.6s cubic-bezier(.2,.7,.2,1)}
-.js .marca h1{transform:scale(.96)}
-.listo .marca h1{opacity:1;transform:none}
-.listo .marca p{opacity:1;transition-delay:.4s}
-.listo .astro{opacity:var(--vis,1);transition-delay:.9s;transition-duration:1.2s}
-.listo .telescopio{opacity:1;transition-delay:1.3s}
-.listo .pie{opacity:1;transition-delay:1.7s}
-.buscando .astro{transition-delay:0s!important;transition-duration:.45s!important}
+/* el lienzo: toda la pantalla */
+#lienzo{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#lienzo.arrastrando{cursor:grabbing}
+#lienzo.sobre{cursor:pointer}
 
-/* una estrella del catálogo: una luz que se toca */
-.astro{position:absolute;left:var(--x);top:var(--y);width:56px;height:56px;margin:-28px 0 0 -28px;border:0;padding:0;
-  background:transparent;cursor:pointer;border-radius:50%;-webkit-tap-highlight-color:transparent}
-.astro .luz{position:absolute;left:50%;top:50%;width:var(--d,9px);height:var(--d,9px);transform:translate(-50%,-50%);border-radius:50%;background:#fff;
-  box-shadow:0 0 0 2px var(--c2);animation:late 3.2s ease-in-out infinite}
-@keyframes late{50%{box-shadow:0 0 0 2px var(--c2),0 0 0 6px var(--c3)}}
-.astro .rot{position:absolute;left:50%;top:calc(50% + 20px);transform:translateX(-50%);white-space:nowrap;font:500 10px var(--mono);
-  letter-spacing:.14em;text-transform:uppercase;color:var(--tinta-2);transition:color .3s}
-.astro:hover .rot,.astro:focus-visible .rot,.astro.encendida .rot{color:var(--tinta)}
-.astro:focus-visible{outline:1px solid var(--ambar-2);outline-offset:6px}
-.astro[data-nivel="oficiales"]{--c:var(--ambar);--c2:var(--ambar-2);--c3:rgba(242,169,59,.45)}
-.astro[data-nivel="socio"]{--c:var(--laton);--c2:#D9BE8F;--c3:rgba(176,141,87,.45)}
-.astro[data-nivel="comunidad"]{--c:#E9E5DC;--c2:#FFFFFF;--c3:rgba(233,229,220,.35)}
-
-/* la nebulosa: donde nacen las estrellas. Su gas es un fluido de verdad (webgl-fluid, MIT) */
-.nebulosa{position:absolute;left:var(--nx,20%);top:var(--ny,74%);width:var(--nd,300px);height:var(--nd,300px);transform:translate(-50%,-50%);
-  -webkit-mask-image:radial-gradient(circle,#000 30%,transparent 70%);mask-image:radial-gradient(circle,#000 30%,transparent 70%);z-index:1}
-.nebulosa canvas{width:100%;height:100%;display:block}
-.neb-rot{position:absolute;left:var(--nx,20%);top:calc(var(--ny,74%) + var(--nd,300px)*.28);transform:translateX(-50%);z-index:2;
-  border:0;background:transparent;cursor:pointer;font:500 10px var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--tinta-2);padding:8px}
-.neb-rot:hover,.neb-rot:focus-visible{color:var(--tinta)}
-.js .nebulosa,.js .neb-rot{opacity:0;transition:opacity 2s ease}
-.listo .nebulosa{opacity:.95;transition-delay:1.6s}
-.listo .neb-rot{opacity:1;transition-delay:2s}
-.buscando .nebulosa{opacity:.25!important;transition-delay:0s!important}
-
-/* la antena: el vacío contesta a los asistentes de IA. Emite ondas; al tocarla da la dirección para conectarla */
-.antena{position:absolute;left:var(--ax,82%);top:var(--ay,28%);width:44px;height:44px;margin:-22px 0 0 -22px;border:0;padding:0;background:transparent;
-  cursor:pointer;border-radius:50%;z-index:2;-webkit-tap-highlight-color:transparent}
-.antena .nucleo{position:absolute;left:50%;top:50%;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;background:var(--verde)}
-.antena .onda{position:absolute;left:50%;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;border:1px solid var(--verde);opacity:0;animation:onda 3.6s cubic-bezier(.2,.6,.3,1) infinite}
-.antena .onda:nth-child(3){animation-delay:1.2s}.antena .onda:nth-child(4){animation-delay:2.4s}
-@keyframes onda{0%{transform:scale(1);opacity:.7}100%{transform:scale(7);opacity:0}}
-.antena .rot{position:absolute;left:50%;top:calc(50% + 22px);transform:translateX(-50%);white-space:nowrap;font:500 10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--tinta-2)}
-.antena:hover .rot,.antena:focus-visible .rot{color:var(--tinta)}
-.js .antena{opacity:0;transition:opacity 1.6s ease}
-.listo .antena{opacity:1;transition-delay:2.2s}
-.buscando .antena{opacity:.25!important;transition-delay:0s!important}
-
-/* la ficha de una estrella */
-.ficha{position:absolute;left:var(--fx,50%);top:var(--fy,50%);width:min(360px,calc(100vw - 32px));max-height:calc(100% - 32px);overflow:auto;padding:18px 18px 16px;
-  background:rgba(27,25,21,.92);border:1px solid var(--linea);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:5;
-  opacity:0;transform:translateY(8px);pointer-events:none;transition:opacity .45s ease,transform .45s cubic-bezier(.2,.7,.2,1)}
-.ficha.abierta{opacity:1;transform:none;pointer-events:auto}
-.ficha .n{margin:0 0 4px;font:500 10px var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--ambar-2)}
-.ficha h2{margin:0 0 10px;font:400 30px/1.05 var(--serif);letter-spacing:-.01em;padding-right:24px}
-.ficha p{margin:0 0 9px;color:var(--tinta-2);font-size:13px;line-height:1.6}
-.ficha .dato{display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--linea);padding:8px 0 0;margin:10px 0 0;font-size:11.5px;color:var(--tenue)}
-.ficha .dato b{color:var(--tinta);font-weight:500}
-.ficha .orden{display:flex;align-items:stretch;gap:0;margin:12px 0 4px;border:1px solid var(--linea)}
-.ficha .orden code{flex:1;min-width:0;padding:8px 10px;font:12px var(--mono);color:var(--tinta);white-space:nowrap;overflow-x:auto}
-.ficha .orden button{border:0;border-left:1px solid var(--linea);background:transparent;color:var(--tinta-2);font:500 11px var(--mono);padding:0 12px;cursor:pointer}
-.ficha .orden button:hover{color:var(--tinta)}
-.ficha a{display:inline-block;margin-top:8px;color:var(--tinta);text-decoration:none;font:500 12.5px var(--mono);border-bottom:1px solid var(--ambar);padding-bottom:2px}
-.ficha a:hover{border-bottom-color:var(--tinta)}
-.ficha a[hidden]{display:none}
-.ficha #ficha-a{margin-right:18px}
-.ficha .cerrar{position:absolute;right:8px;top:6px;width:32px;height:32px;border:0;background:transparent;color:var(--tenue);font:400 20px var(--mono);cursor:pointer}
-.ficha .cerrar:hover{color:var(--tinta)}
-
-/* el telescopio: se busca por lo que se ha roto */
-.telescopio{position:absolute;left:50%;bottom:calc(52px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(520px,calc(100vw - 32px));z-index:4}
-.telescopio label{display:block;margin:0 0 8px;font:500 10px var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--tenue);text-align:center}
-.telescopio .lente{display:flex;align-items:center;gap:10px;border:1px solid var(--linea);background:rgba(27,25,21,.8);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
-  padding:0 14px;border-radius:999px;transition:border-color .3s}
-.telescopio .lente:focus-within{border-color:var(--ambar)}
-.telescopio .ojo{width:10px;height:10px;border-radius:50%;border:1.5px solid var(--tinta-2);flex:none}
-.telescopio input{flex:1;min-width:0;background:transparent;border:0;outline:0;color:var(--tinta);font:400 14px var(--mono);padding:12px 0}
-.telescopio input::placeholder{color:var(--tenue)}
-.telescopio .eco{margin:8px 0 0;min-height:1.6em;text-align:center;font-size:12px;color:var(--tinta-2)}
-.telescopio .eco a{color:var(--tinta);text-decoration:none;border-bottom:1px solid var(--ambar)}
-
-.pie{position:absolute;left:16px;right:16px;bottom:calc(14px + env(safe-area-inset-bottom,0px));display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
-  font:400 11px var(--mono);letter-spacing:.06em;color:var(--tenue)}
-.ficha.abierta ~ .pie{opacity:0!important;transition-delay:0s!important}
+/* el menú flotante */
+.menu{position:fixed;left:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));width:min(360px,calc(100% - 32px));max-height:calc(100% - 32px - env(safe-area-inset-bottom,0px) - env(safe-area-inset-top,0px));
+  display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--linea);border-radius:14px;z-index:5;overflow:hidden}
+.menu .cab{padding:18px 18px 12px;display:grid;gap:6px}
+.menu .fila{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.menu h1{margin:0;font:400 38px/1 var(--serif);letter-spacing:-.01em}
+.menu h1 em{font-style:italic;color:transparent;-webkit-text-stroke:1px var(--tinta)}
+.menu .lema{margin:0;color:var(--tinta-2);font-size:13px}
+.plegar{background:none;border:1px solid var(--linea);border-radius:8px;width:32px;height:32px;cursor:pointer;color:var(--tinta-2);flex:none}
+.plegar:hover{color:var(--tinta);border-color:var(--tinta-2)}
+.acciones{display:flex;gap:8px;flex-wrap:wrap;padding:0 18px 14px}
+.primario{display:inline-flex;align-items:center;justify-content:center;background:var(--ambar);color:#1A1407;text-decoration:none;font-weight:500;border-radius:999px;padding:9px 18px}
+.primario:hover{background:var(--ambar-2)}
+.secundario{background:none;border:1px solid var(--linea);border-radius:999px;padding:8px 16px;cursor:pointer;color:var(--tinta)}
+.secundario:hover,.secundario[aria-expanded="true"]{border-color:var(--ambar)}
+.tengo{margin:0 18px 14px;padding:12px 14px;border:1px solid var(--linea);border-radius:10px;font-size:13px;color:var(--tinta-2);display:grid;gap:10px}
+.tengo b{color:var(--tinta);font-weight:500}
+.tengo form{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.tengo input{flex:1;min-width:120px;background:var(--vacio);border:1px solid var(--linea);border-radius:8px;color:var(--tinta);font:inherit;padding:7px 9px}
+.tengo button{background:none;border:1px solid var(--ambar);border-radius:8px;padding:6px 12px;cursor:pointer}
+.secciones{overflow-y:auto;border-top:1px solid var(--linea);min-height:0}
+details{border-bottom:1px solid var(--linea)}
+summary{list-style:none;cursor:pointer;padding:12px 18px;display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+summary::-webkit-details-marker{display:none}
+summary .t{color:var(--tinta)}
+summary .n{color:var(--tenue);font-size:12px;margin-left:auto}
+summary::after{content:"+";color:var(--tenue)}
+details[open] summary::after{content:"−"}
+.cuerpo{padding:0 18px 16px;display:grid;gap:10px;font-size:13px;color:var(--tinta-2)}
+.cuerpo p{margin:0}
+.busca{display:flex;align-items:center;gap:8px;border:1px solid var(--linea);border-radius:999px;padding:0 12px;background:var(--vacio)}
+.busca:focus-within{border-color:var(--ambar)}
+.busca input{flex:1;min-width:0;background:none;border:0;outline:0;color:var(--tinta);font:inherit;padding:8px 0}
+.busca input::placeholder{color:var(--tenue)}
+.eco{min-height:1.4em;font-size:12px}
+.lista{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.lista button{width:100%;text-align:left;background:none;border:0;border-radius:8px;padding:8px 10px;cursor:pointer;display:grid;gap:2px}
+.lista button:hover,.lista button[aria-expanded="true"]{background:rgba(242,169,59,.08)}
+.lista .tt{color:var(--tinta)}
+.lista .ss{color:var(--tenue);font-size:12px}
+.lista .apagada{opacity:.35}
+.punto{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px;vertical-align:baseline}
+.detalle{border-left:2px solid var(--ambar);padding:4px 0 4px 12px;display:grid;gap:8px}
+.detalle h3{margin:0;font:400 22px/1.15 var(--serif);color:var(--tinta)}
+.orden{display:flex;gap:6px;align-items:stretch}
+.orden code{flex:1;min-width:0;background:var(--vacio);border:1px solid var(--linea);border-radius:6px;padding:6px 8px;color:var(--tinta);font:12px/1.4 var(--mono);overflow-wrap:anywhere}
+.orden button{background:none;border:1px solid var(--linea);border-radius:6px;padding:0 10px;cursor:pointer;font-size:12px}
+.orden button:hover{border-color:var(--ambar)}
+.dato{display:flex;gap:14px;font-size:12px;color:var(--tenue)}
+.dato b{color:var(--tinta);font-weight:500}
+.pie{padding:10px 18px 14px;font-size:11px;color:var(--tenue);display:flex;flex-wrap:wrap;gap:4px 12px}
 .pie a{color:var(--tinta-2);text-decoration:none;border-bottom:1px solid var(--linea)}
-.pie a:hover{color:var(--tinta)}
-.saltar{position:absolute;right:16px;top:calc(14px + env(safe-area-inset-top,0px));font:400 11px var(--mono);letter-spacing:.08em;color:var(--tenue);
-  background:none;border:0;cursor:pointer;transition:opacity .6s}
-.listo .saltar{opacity:0;pointer-events:none}
-.lienzo-puerta{position:absolute;left:var(--lx,16%);top:var(--ly,30%);width:72px;height:72px;margin:-36px 0 0 -36px;z-index:2;display:block;text-decoration:none;border-radius:50%}
-.lienzo-puerta canvas{display:block;width:72px;height:72px;border-radius:50%;opacity:.9}
-.lienzo-puerta .rot{position:absolute;left:50%;top:calc(100% + 8px);transform:translateX(-50%);white-space:nowrap;font:500 10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--tinta-2)}
-.lienzo-puerta:hover .rot,.lienzo-puerta:focus-visible .rot{color:var(--tinta)}
-.lienzo-puerta:focus-visible{outline:1px solid var(--ambar);outline-offset:4px}
-.js .lienzo-puerta{opacity:0;transition:opacity 2s ease}
-.listo .lienzo-puerta{opacity:1;transition-delay:2.4s}
-html:not(.js) .lienzo-puerta{display:none}
-@media (max-width:600px){.lienzo-puerta{--lx:13%;--ly:53%}}
-.sinjs{display:none}
+.menu.plegado .tengo,.menu.plegado .secciones,.menu.plegado .pie,.menu.plegado .lema{display:none!important}
+.menu.plegado .acciones{padding:0 14px 12px}
+.menu.plegado .cab{padding:12px 14px}
+.menu.plegado h1{font-size:26px}
 
-html:not(.js) body{overflow:auto}
-html:not(.js) .escena{position:static;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:40px;padding:48px 16px}
-html:not(.js) .marca,html:not(.js) .pie{position:static;transform:none}
-html:not(.js) #cielo,html:not(.js) .saltar,html:not(.js) .telescopio,html:not(.js) .ficha{display:none}
-html:not(.js) .sinjs{display:block;max-width:420px;color:var(--tinta-2);font-size:13px}
-html:not(.js) .sinjs a{color:var(--tinta)}
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+/* los mandos del lienzo */
+.mandos{position:fixed;right:16px;top:calc(16px + env(safe-area-inset-top,0px));display:flex;gap:6px;align-items:center;z-index:4;flex-wrap:wrap;justify-content:flex-end}
+.mandos button,.mandos label{background:var(--panel);border:1px solid var(--linea);border-radius:10px;height:36px;min-width:36px;padding:0 10px;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;color:var(--tinta-2);font-size:12px}
+.mandos button:hover,.mandos label:hover{color:var(--tinta);border-color:var(--tinta-2)}
+.mandos input{accent-color:var(--ambar);margin:0}
+.mandos .cuantas{color:var(--tenue);font-size:12px;padding:0 4px}
+.pista{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:3;font-size:11px;color:var(--tenue);max-width:280px;text-align:right;transition:opacity .8s}
+.pista.fuera{opacity:0}
+
+/* la ficha de una huella: flota sobre el lienzo, junto a donde la tocaste */
+.ficha{position:fixed;z-index:6;width:min(300px,calc(100% - 32px));background:var(--panel-solido);border:1px solid var(--linea);border-radius:12px;padding:14px 16px;display:grid;gap:8px;font-size:13px;color:var(--tinta-2)}
+.ficha .alias{font:400 24px/1.1 var(--serif);color:var(--tinta)}
+.ficha .cerrar{position:absolute;right:8px;top:6px;background:none;border:0;color:var(--tenue);font-size:18px;cursor:pointer;padding:4px 8px}
+.ficha .cifras{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;font-variant-numeric:tabular-nums}
+.ficha .cifras b{color:var(--tinta);font-weight:500;text-align:right}
+
+@media (max-width:700px){
+  .menu{left:12px;right:12px;width:auto;bottom:calc(12px + env(safe-area-inset-bottom,0px));max-height:62%}
+  .menu h1{font-size:30px}
+  .pista{display:none}
+  .mandos{right:12px;top:calc(12px + env(safe-area-inset-top,0px))}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
-<script>document.documentElement.classList.add("js");</script>
 </head>
 <body>
-<canvas id="cielo" aria-hidden="true"></canvas>
-<canvas id="hondo" aria-hidden="true"></canvas>
-<main class="escena" id="escena">
-  <div class="marca">
-    <h1>Vault <em>Void</em></h1>
-    <p>Tú también puedes tener tu propio mundo.</p>
-    <div class="puerta" id="puerta">
-      <a class="empezar" href="/tu-planeta">Empezar tu planeta</a>
-      <button class="tengo" id="tengo" type="button" aria-expanded="false" aria-controls="tengo-panel">Ya tengo vault</button>
+<canvas id="lienzo" aria-label="El lienzo de Void: la huella de cada vault. Arrastra para moverte, acércate con la rueda o pellizcando, y toca una huella para ver de quién es."></canvas>
+
+<div class="mandos" role="toolbar" aria-label="Mandos del lienzo">
+  <span class="cuantas" id="cuantas"></span>
+  <button type="button" id="alejar" aria-label="Alejar">−</button>
+  <button type="button" id="acercar" aria-label="Acercar">+</button>
+  <button type="button" id="encuadrar" aria-label="Ver todas las huellas">todas</button>
+  <label for="grav"><input type="checkbox" id="grav"> gravedad</label>
+</div>
+
+<nav class="menu" id="menu" aria-label="Void">
+  <div class="cab">
+    <div class="fila">
+      <h1>Vault <em>Void</em></h1>
+      <button class="plegar" id="plegar" type="button" aria-expanded="true" aria-controls="menu" aria-label="Plegar el menú">–</button>
     </div>
-    <div class="tengo-panel" id="tengo-panel" hidden>
-      <p>Si tu agente lo lleva, pégale: <b>«conéctate a Void: vaultvoid.app/entrar»</b></p>
-      <form class="ir-perfil" id="ir-perfil"><label for="alias">Tu sitio: vaultvoid.app/@</label><input id="alias" autocomplete="off" spellcheck="false" placeholder="tu-alias" pattern="[a-z0-9-]{3,24}"><button type="submit">Ir</button></form>
-    </div>
+    <p class="lema">Tu asistente de IA olvida todo al cerrar la sesión; tu vault no. Cada vault deja aquí su huella, hecha solo con cifras.</p>
   </div>
-
-  <div id="estrellas" aria-label="Las estrellas del catálogo"></div>
-  <div class="nebulosa" id="nebulosa" aria-hidden="true"><canvas id="gas"></canvas></div>
-  <button class="antena" id="antena" type="button" aria-controls="ficha" aria-expanded="false" aria-label="La antena: pregúntale a Void desde tu asistente">
-    <span class="nucleo" aria-hidden="true"></span><span class="onda" aria-hidden="true"></span><span class="onda" aria-hidden="true"></span><span class="onda" aria-hidden="true"></span>
-    <span class="rot">la antena</span></button>
-  <button class="neb-rot" id="neb-rot" type="button" aria-controls="ficha" aria-expanded="false">la nebulosa · el taller</button>
-
-  <a class="lienzo-puerta" id="lienzo-puerta" href="/lienzo" aria-label="El lienzo: las huellas de todos los vaults"><canvas id="lienzo-mini" width="96" height="96" aria-hidden="true"></canvas><span class="rot">el lienzo</span></a>
-  <section class="ficha" id="ficha" aria-live="polite" aria-labelledby="ficha-t">
-    <button class="cerrar" id="cerrar" type="button" aria-label="Cerrar">×</button>
-    <p class="n" id="ficha-n"></p>
-    <h2 id="ficha-t"></h2>
-    <p id="ficha-r"></p>
-    <p id="ficha-o"></p>
-    <div class="orden"><code id="ficha-c"></code><button type="button" id="copiar">copiar</button></div>
-    <p class="dato"><span id="ficha-d1"></span><span id="ficha-d2"></span></p>
-    <a id="ficha-a" href="https://github.com/AlexCanoFuentes/vault-void" rel="noopener">Ver la plantilla →</a>
-    <a id="ficha-v" href="/estrella/candados">Lo que le han escrito →</a>
-  </section>
-
-  <div class="telescopio" id="telescopio">
-    <label for="busca">el telescopio</label>
-    <div class="lente"><span class="ojo" aria-hidden="true"></span>
-      <input id="busca" type="search" autocomplete="off" spellcheck="false" placeholder="¿Qué se te ha roto?" aria-describedby="eco"></div>
-    <p class="eco" id="eco" aria-live="polite"></p>
+  <div class="acciones">
+    <a class="primario" href="/tu-planeta">Empezar</a>
+    <button class="secundario" id="tengo" type="button" aria-expanded="false" aria-controls="tengo-panel">Ya tengo vault</button>
   </div>
+  <div class="tengo" id="tengo-panel" hidden>
+    <p>Abre tu asistente en la carpeta de tu vault y pégale: <b>«conéctate a Void: vaultvoid.app/entrar»</b></p>
+    <form id="ir-perfil"><label for="alias">Tu sitio: vaultvoid.app/@</label><input id="alias" autocomplete="off" spellcheck="false" placeholder="tu-alias" pattern="[a-z0-9-]{3,24}"><button type="submit">Ir</button></form>
+  </div>
+  <div class="secciones">
+    <details id="sec-piezas" open>
+      <summary><span class="t">Piezas</span><span class="n" id="n-piezas"></span></summary>
+      <div class="cuerpo">
+        <p>Herramientas que ya funcionaron en el vault de alguien y que tu asistente puede traer al tuyo. Se buscan por lo que se te ha roto.</p>
+        <div class="busca"><input id="busca" type="search" autocomplete="off" spellcheck="false" placeholder="¿Qué se te ha roto?" aria-describedby="eco" aria-label="Buscar una pieza por lo que se te ha roto"></div>
+        <p class="eco" id="eco" aria-live="polite"></p>
+        <ul class="lista" id="lista-piezas"></ul>
+        <div class="detalle" id="detalle" hidden aria-live="polite">
+          <h3 id="d-t"></h3>
+          <p id="d-r"></p>
+          <p id="d-o"></p>
+          <div class="orden"><code id="d-c"></code><button type="button" class="copiar" data-de="d-c">copiar</button></div>
+          <p class="dato"><span id="d-k"></span><span id="d-u"></span></p>
+          <p><a id="d-a" href="https://github.com/AlexCanoFuentes/vault-void" rel="noopener">Ver la plantilla →</a> · <a id="d-v" href="/estrella/candados">Lo que le han escrito →</a></p>
+        </div>
+      </div>
+    </details>
+    <details id="sec-huellas">
+      <summary><span class="t">Huellas</span><span class="n" id="n-huellas"></span></summary>
+      <div class="cuerpo">
+        <ul class="lista" id="lista-huellas"><li><span class="ss">Cargando…</span></li></ul>
+        <p>Para poner la tuya, pídele a tu asistente: <b>«publica mi huella en Void»</b>. Antes de mandar nada te enseña las cifras.</p>
+      </div>
+    </details>
+    <details>
+      <summary><span class="t">Desde tu asistente</span><span class="n">gratis</span></summary>
+      <div class="cuerpo">
+        <p>Añade esta dirección como conector en Claude, ChatGPT o el asistente que uses. Podrás preguntarle «¿hay algo para esto?» y te dirá qué pieza lo resuelve y cómo traerla. Solo lee: no instala nada y no guarda lo que preguntas.</p>
+        <div class="orden"><code id="antena-c">https://antena.vaultvoid.app/mcp</code><button type="button" class="copiar" data-de="antena-c">copiar</button></div>
+      </div>
+    </details>
+    <details>
+      <summary><span class="t">Comparte lo tuyo</span><span class="n">el taller</span></summary>
+      <div class="cuerpo">
+        <p>Trae algo que te haya funcionado en tu vault. El taller le quita lo tuyo (nombres, correos, claves), lo prueba en un vault vacío, le escribe la ficha y te dice qué le falta para entrar en el catálogo, en palabras normales.</p>
+        <div class="orden"><code id="taller-c">python taller.py tu-carpeta</code><button type="button" class="copiar" data-de="taller-c">copiar</button></div>
+        <p><a href="https://github.com/AlexCanoFuentes/vault-void/blob/main/taller.py" rel="noopener">Ver el taller →</a></p>
+      </div>
+    </details>
+  </div>
+  <div class="pie">
+    <a href="/que-es">Qué es</a><a href="https://github.com/AlexCanoFuentes/vault-void" rel="noopener">El código</a>
+    <span>Experimental · de <a href="https://alexcanofuentes.com" rel="noopener">LexLabs</a> · Tenerife</span>
+  </div>
+</nav>
 
-  <p class="sinjs">La primera estrella: <a href="https://github.com/AlexCanoFuentes/vault-void/tree/main/estrellas/oficiales/candados">candados para dos IA</a>, para que dos asistentes de IA trabajen en el mismo proyecto sin pisarse.</p>
+<div class="ficha" id="ficha" role="dialog" aria-labelledby="f-alias" hidden>
+  <button class="cerrar" id="f-cerrar" type="button" aria-label="Cerrar">×</button>
+  <div class="alias" id="f-alias"></div>
+  <div class="cifras" id="f-cifras"></div>
+  <p id="f-texto"></p>
+  <a id="f-enlace" href="/">Ver su sitio →</a>
+</div>
 
-  <button class="saltar" id="saltar" type="button">saltar</button>
-  <footer class="pie">
-    <span>Vault Void · experimental · de <a href="https://alexcanofuentes.com" rel="noopener">LexLabs</a></span>
-    <span><a href="/que-es">qué es</a> · <a href="https://github.com/AlexCanoFuentes/vault-void" rel="noopener">el repo</a> · Tenerife</span>
-  </footer>
-</main>
+<p class="pista" id="pista">Arrastra para moverte · rueda o pellizca para acercarte · toca una huella</p>
+<noscript><p style="position:fixed;inset:auto 16px 16px;max-width:30rem">Para ver el lienzo hace falta JavaScript. Qué es Void: <a href="/que-es">vaultvoid.app/que-es</a>.</p></noscript>
 
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/SplitText.min.js"></script>
-<script>
-(function(){
-  var red=matchMedia("(prefers-reduced-motion: reduce)").matches;
-  var G=!red&&window.gsap?window.gsap:null; if(G&&window.SplitText) G.registerPlugin(SplitText);
-  var root=document.documentElement, cv=document.getElementById("cielo"), capa=document.getElementById("estrellas"),
-      ficha=document.getElementById("ficha"), busca=document.getElementById("busca"), eco=document.getElementById("eco");
-  var REPO="https://github.com/AlexCanoFuentes/vault-void";
-  // Se lee del repo público en vivo: lo que hay en main es lo que se ve. Si GitHub no contesta, esta copia mínima.
-  var CATALOGO="https://raw.githubusercontent.com/AlexCanoFuentes/vault-void/main/catalogo.json";
-  var RESPALDO={estrellas:{candados:{titulo:"Candados para agentes",nivel:"oficiales",liga:"grande",autor:"AlexCanoFuentes",
-    resuelve:{frase:"Claude Code y Codex trabajan en el mismo repositorio con los mismos candados: sin pisarse el trabajo, sin meter claves en un commit y sin reescribir lo que solo crece."},
-    nacio_de:[{que_paso:"Dos agentes de IA en el mismo repositorio, con los candados escritos solo para uno de ellos."}],
-    kernel:{total:85},uso:{vaults:0},ruta:"estrellas/oficiales/candados",buscar:"candados para agentes dos agentes se pisan claude code codex"}}};
-  var NIVEL={oficiales:"oficial",socio:"socio",comunidad:"comunidad"};
-  // Cómo se cuenta cada estrella a quien no programa [Alex, 5-oct: «usamos siempre lenguaje llano»].
-  // El catálogo guarda la versión técnica; aquí va la que entiende cualquiera. Sin entrada, sale la del catálogo.
-  var LLANO={candados:{titulo:"Candados para dos IA",
-    frase:"Cuando dos asistentes de IA trabajan en el mismo proyecto, se pisan. Esta plantilla les pone los mismos candados a los dos.",
-    origen:"Las protecciones solo valían para una de las dos IA. La otra podía borrar sin querer el trabajo de la primera, o guardar una contraseña donde no debe."},
-    nebulosa:{n:"La nebulosa · gratis",titulo:"Aquí nacen las estrellas",
-      frase:"Trae algo que te haya funcionado en tu vault. La nebulosa le quita lo tuyo (nombres, correos, claves), lo prueba en un vault vacío, le escribe la ficha y le pasa la puerta.",
-      origen:"Al final te dice qué le falta para entrar en el catálogo, en palabras normales.",
-      orden:"python taller.py tu-carpeta",enlace:"/blob/main/taller.py",enlaceTexto:"Ver el taller →",sinDato:true,sinPrefijo:true},
-    antena:{n:"La antena · gratis",titulo:"Pregúntale a Void desde tu asistente",
-      frase:"Añade esta dirección como conector en Claude, ChatGPT o el asistente que uses. Podrás preguntarle «¿hay algo para esto?» y te dirá qué estrella lo resuelve y cómo traerla.",
-      origen:"Solo lee: no instala nada y no guarda lo que preguntas.",
-      orden:"https://antena.vaultvoid.app/mcp",enlace:"/tree/main/antena",enlaceTexto:"Ver la antena →",sinDato:true,sinPrefijo:true}};
-  var lista=[], abierta=null;
-
-  function sinTildes(s){return String(s||"").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g,"");}
-  function h(s){var x=2166136261;for(var i=0;i<s.length;i++){x^=s.charCodeAt(i);x=Math.imul(x,16777619);}return (x>>>0)/4294967295;}
-
-  // ── el anillo y dónde vive cada estrella: el sitio sale de su nombre, así no salta entre visitas
-  var A={x:0,y:0,r:0};
-  var NEB={id:"nebulosa",d:{},x:0,y:0,el:null}, ANT={id:"antena",d:{},x:0,y:0,el:null};
-  function geometria(){
-    var w=innerWidth, hh=innerHeight, movil=w<700;
-    A.x=w*.5; A.y=hh*(movil?.47:.55); A.r=Math.min(w*(movil?.4:.26),hh*(movil?.17:.2));
-    lista.forEach(function(e){
-      var a=h(e.id)*Math.PI*2, f=e.liga==="grande"?.32+.5*h(e.id+"r"):1.25+.25*h(e.id+"r");
-      if(lista.length===1) {a=-.35; f=.55;}
-      e.x=A.x+Math.cos(a)*A.r*f*(movil?1:1.5); e.y=A.y+Math.sin(a)*A.r*f;
-      e.el.style.setProperty("--x",e.x+"px"); e.el.style.setProperty("--y",e.y+"px");
-    });
-    var nx=movil?w*.3:w*.2, ny=movil?hh*.735:hh*.74, nd=movil?130:Math.min(340,w*.24);
-    root.style.setProperty("--nx",nx+"px"); root.style.setProperty("--ny",ny+"px"); root.style.setProperty("--nd",nd+"px");
-    NEB.x=nx; NEB.y=ny+(movil?nd*.28:nd*.28);
-    var ax=movil?w*.8:w*.82, ay=movil?hh*.69:hh*.3;   /* en el móvil, a la derecha y bajo el anillo: arriba tapaba el título (9-oct) */
-    root.style.setProperty("--ax",ax+"px"); root.style.setProperty("--ay",ay+"px"); ANT.x=ax; ANT.y=ay;
-    if(hondo) hondo.polvoDe(lista);   // el polvo nace en órbita alrededor de donde estén ahora las estrellas
-    if(abierta) coloca(abierta);
-  }
-
-  // ── la ficha
-  function coloca(e){
-    var w=innerWidth, hh=innerHeight, movil=w<700, fw=Math.min(360,w-32), fx, fy;
-    var fh=ficha.offsetHeight||420;   // con su altura real: que el enlace del final nunca quede fuera de la pantalla
-    if(movil){fx=(w-fw)/2; fy=Math.max(16,Math.min(hh-fh-16,e.y+40));}
-    else if(e.id==="antena"){fx=Math.max(16,Math.min(w-fw-16,e.x-fw/2)); fy=Math.min(hh-fh-16,e.y+46);}   // la antena está arriba: su ficha cuelga debajo
-    else{fx=e.x>w/2?e.x-fw-90:e.x+90; fx=Math.max(16,Math.min(w-fw-16,fx)); fy=Math.max(16,Math.min(hh-fh-16,e.y-150));}
-    ficha.style.setProperty("--fx",fx+"px"); ficha.style.setProperty("--fy",fy+"px");
-  }
-  function abre(e){
-    if(!e){ficha.classList.remove("abierta"); if(abierta) abierta.el.setAttribute("aria-expanded","false"); abierta=null; return;}
-    var d=e.d, k=(d.kernel&&d.kernel.total)!=null?d.kernel.total:"—", usos=(d.uso&&d.uso.vaults)||0, L0=LLANO[e.id]||{};
-    document.getElementById("ficha-n").textContent=L0.n||("Estrella "+NIVEL[d.nivel]+" · gratis");
-    var L=LLANO[e.id]||{};
-    document.getElementById("ficha-t").textContent=L.titulo||d.titulo;
-    document.getElementById("ficha-r").textContent=L.frase||(d.resuelve&&d.resuelve.frase)||"";
-    var o=L.origen||(d.nacio_de&&d.nacio_de[0]&&d.nacio_de[0].que_paso)||"";
-    document.getElementById("ficha-o").textContent=o?(L.sinPrefijo?o:"Nació de esto: "+o):"";
-    document.getElementById("ficha-c").textContent=L.orden||("python herramientas/void.py traer "+e.id);
-    document.querySelector(".ficha .dato").hidden=!!L.sinDato;
-    document.getElementById("ficha-d1").innerHTML="La puerta: <b>"+k+"</b> de 100";
-    document.getElementById("ficha-d2").innerHTML="En <b>"+usos+"</b> vault"+(usos===1?"":"s");
-    var av=document.getElementById("ficha-v"); av.hidden=!!L.sinDato; av.href="/estrella/"+encodeURIComponent(e.id);   // la página de la estrella, con sus avisos (la sirve red/)
-    var en=document.getElementById("ficha-a"); en.href=REPO+(L.enlace||("/tree/main/"+(d.ruta||""))); en.textContent=L.enlaceTexto||"Ver la plantilla →";
-    if(abierta&&abierta!==e) abierta.el.setAttribute("aria-expanded","false");
-    abierta=e; e.el.setAttribute("aria-expanded","true"); coloca(e); ficha.classList.add("abierta");
-    if(G) G.fromTo(ficha,{clipPath:"inset(0 0 100% 0)"},{clipPath:"inset(0 0 0% 0)",duration:.6,ease:"expo.out",clearProps:"clipPath"});
-    if(G) G.from(ficha.querySelectorAll(".n,h2,p,.orden,a"),{y:10,opacity:0,duration:.5,ease:"power3.out",stagger:.04,delay:.12});
-  }
-  document.getElementById("cerrar").addEventListener("click",function(){var e=abierta; abre(null); if(e) e.el.focus();});
-  addEventListener("keydown",function(ev){if(ev.key==="Escape"&&abierta){var e=abierta; abre(null); e.el.focus();}});
-  document.getElementById("copiar").addEventListener("click",function(){
-    var b=this, t=document.getElementById("ficha-c").textContent;
-    function hecho(){b.textContent="copiada"; setTimeout(function(){b.textContent="copiar";},1600);}
-    if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(hecho,function(){sel();}); else sel();
-    function sel(){var r=document.createRange(); r.selectNodeContents(document.getElementById("ficha-c")); var s=getSelection(); s.removeAllRanges(); s.addRange(r);}
-  });
-
-  // ── el telescopio: se busca por lo que se ha roto. Cada palabra tiene que estar en lo que describe el error.
-  function mira(){
-    var q=sinTildes(busca.value).trim(), pal=q.split(/\s+/).filter(function(p){return p.length>1;});
-    root.classList.toggle("buscando",pal.length>0);
-    var n=0;
-    lista.forEach(function(e){var ok=!pal.length||pal.every(function(p){return e.texto.indexOf(p)>=0;});
-      var antes=e.el.classList.contains("encendida");
-      e.vis=ok?1:.12; e.el.style.setProperty("--vis",e.vis); e.el.classList.toggle("encendida",ok&&pal.length>0); if(ok) n++;
-      if(G&&ok&&pal.length&&!antes) G.fromTo(e.el.querySelector(".luz"),{scale:2.4},{scale:1,duration:.9,ease:"expo.out"});});
-    if(!pal.length) eco.textContent="";
-    else if(n) eco.textContent=n===1?"Una estrella lo resuelve. Tócala.":n+" estrellas lo resuelven.";
-    else eco.innerHTML='Ninguna estrella lo resuelve todavía. <a href="https://alexcanofuentes.com" rel="noopener">Cuéntamelo</a> y quizá sea la siguiente.';
-  }
-  busca.addEventListener("input",mira);
-
-  // ── las estrellas, desde el catálogo
-  function monta(cat){
-    capa.innerHTML=""; lista=[];
-    Object.keys(cat.estrellas||{}).forEach(function(id){
-      var d=cat.estrellas[id], b=document.createElement("button"), usos=(d.uso&&d.uso.vaults)||0;
-      b.type="button"; b.className="astro"; b.dataset.nivel=d.nivel||"comunidad"; b.setAttribute("aria-expanded","false"); b.setAttribute("aria-controls","ficha");
-      b.style.setProperty("--d",(9+Math.min(10,Math.sqrt(usos)*2.4)).toFixed(1)+"px");
-      b.innerHTML='<span class="luz" aria-hidden="true"></span><span class="rot"></span>';
-      b.querySelector(".rot").textContent=(LLANO[id]&&LLANO[id].titulo)||d.titulo;
-      b.setAttribute("aria-label",d.titulo+", estrella "+NIVEL[d.nivel]);
-      var e={id:id,d:d,el:b,liga:d.liga,vis:1,texto:sinTildes((d.buscar||"")+" "+d.titulo)};
-      b.addEventListener("click",function(){abre(abierta===e?null:e);});
-      capa.appendChild(b); lista.push(e);
-    });
-    geometria(); mira();
-  }
-  monta(RESPALDO);
-  ANT.el=document.getElementById("antena");
-  ANT.el.addEventListener("click",function(){abre(abierta===ANT?null:ANT);});
-  NEB.el=document.getElementById("neb-rot");
-  NEB.el.addEventListener("click",function(){abre(abierta===NEB?null:NEB);});
-  (function(){
-    var cv=document.getElementById("gas"); if(red||!cv) return;
-    function arranca(){ var sc=document.createElement("script"); sc.src="https://cdn.jsdelivr.net/npm/webgl-fluid@0.4.0/dist/webgl-fluid.umd.js";
-      sc.onload=function(){ try{ var r=cv.getBoundingClientRect(); cv.width=Math.round(r.width); cv.height=Math.round(r.height);
-        window.WebGLFluid(cv,{TRIGGER:"hover",IMMEDIATE:true,AUTO:true,INTERVAL:2600,SPLAT_COUNT:3,SIM_RESOLUTION:64,DYE_RESOLUTION:256,CAPTURE_RESOLUTION:128,
-          DENSITY_DISSIPATION:.45,VELOCITY_DISSIPATION:.25,CURL:28,SPLAT_RADIUS:.32,SPLAT_FORCE:2200,PRESSURE:.8,
-          COLORFUL:false,SPLAT_COLOR:{r:.40,g:.25,b:.06},SHADING:true,TRANSPARENT:true,BACK_COLOR:{r:0,g:0,b:0},
-          BLOOM:false,SUNRAYS:false} /* gas ámbar y sin resplandor (8-oct: nada morado, sin halos) */); }catch(x){console.warn(x);} };
-      document.head.appendChild(sc); }
-    setTimeout(arranca,1800);   // después de la llegada: primero el agujero blanco, luego el gas
-  })();
-  fetch(CATALOGO,{cache:"no-cache"}).then(function(r){return r.ok?r.json():null;}).then(function(c){if(c&&c.estrellas) monta(c);}).catch(function(){});
-
-  // ── el cielo profundo [Alex, 5-oct: «Cielo profundo de verdad» · «fisica real»]
-  //  · cada estrella tiene una temperatura (más rojizas y frías que azules y calientes, como en la vecindad del Sol)
-  //    y su color es el de un cuerpo negro a esa temperatura; su brillo sigue una ley de potencias de magnitudes
-  //  · están a distintas profundidades: se mueven con paralaje al mover el puntero o el dedo
-  //  · alrededor de cada estrella del catálogo orbita polvo con gravedad de Newton (integración leapfrog)
-  var hondo=(function(){
-    var cv=document.getElementById("hondo"), cx=cv.getContext("2d"), W2=0, H2=0, dp=1, est=[], polvo=[], px2=0, py2=0, tx=0, ty=0, t1=performance.now();
-    function kelvin(T){ // color de un cuerpo negro (aproximación de Tanner Helland a la curva de Planck), 1000-40000 K
-      var t=T/100, r, g, b;
-      r=t<=66?255:329.698727446*Math.pow(t-60,-.1332047592);
-      g=t<=66?99.4708025861*Math.log(t)-161.1195681661:288.1221695283*Math.pow(t-60,-.0755148492);
-      b=t>=66?255:(t<=19?0:138.5177312231*Math.log(t-10)-305.0447927307);
-      return [r,g,b].map(function(x){return Math.max(0,Math.min(255,Math.round(x)));});
-    }
-    function siembra(){
-      var n=Math.round(Math.min(900,W2*H2/1800)); est=[];
-      for(var i=0;i<n;i++){
-        var u=Math.random(), T=u<.76?2600+Math.random()*2600:(u<.96?5200+Math.random()*2800:8000+Math.random()*22000); // M, K-G, F-A-B
-        var mag=Math.pow(Math.random(),3.2), z=.15+Math.random()*.85;
-        est.push({x:Math.random()*W2,y:Math.random()*H2,z:z,c:kelvin(T),a:.18+.82*mag,r:.4+1.5*mag*z,f:Math.random()*6.28,v:.4+Math.random()*1.6});
-      }
-    }
-    function tam(){W2=innerWidth;H2=innerHeight;dp=Math.min(devicePixelRatio||1,2);cv.width=Math.round(W2*dp);cv.height=Math.round(H2*dp);cx.setTransform(dp,0,0,dp,0,0);siembra();}
-    // polvo: partículas de prueba en órbita casi circular alrededor de cada estrella, sintiendo a todas (G·M ajustado a píxeles)
-    function polvoDe(lista){
-      polvo=[]; lista.forEach(function(e){ for(var i=0;i<140;i++){
-        var r=18+Math.pow(Math.random(),.7)*95, a=Math.random()*6.283, GM=2.2e4, v=Math.sqrt(GM/r)*(.92+Math.random()*.12);
-        polvo.push({x:e.x+Math.cos(a)*r,y:e.y+Math.sin(a)*r,vx:-Math.sin(a)*v,vy:Math.cos(a)*v,a:.15+Math.random()*.45}); } });
-    }
-    function paso(dt,lista){
-      var GM=2.2e4, s2=60;
-      for(var k=0;k<polvo.length;k++){ var q=polvo[k], ax=0, ay=0;
-        for(var j=0;j<lista.length;j++){ var dx=lista[j].x-q.x, dy=lista[j].y-q.y, d2=dx*dx+dy*dy+s2, inv=GM/(d2*Math.sqrt(d2)); ax+=dx*inv; ay+=dy*inv; }
-        q.vx+=ax*dt; q.vy+=ay*dt; q.x+=q.vx*dt; q.y+=q.vy*dt; }
-    }
-    function pinta(now,e,lista){
-      var dt=Math.min(.033,(now-t1)/1000); t1=now;
-      px2+=(tx-px2)*.06; py2+=(ty-py2)*.06;
-      cx.clearRect(0,0,W2,H2); if(e<=0) return;
-      cx.globalCompositeOperation="lighter";
-      for(var i=0;i<est.length;i++){ var s=est[i], tw=.75+.25*Math.sin(now/1000*s.v+s.f);
-        var x=s.x+px2*28*s.z, y=s.y+py2*20*s.z; x=((x%W2)+W2)%W2; y=((y%H2)+H2)%H2;
-        cx.fillStyle="rgba("+s.c[0]+","+s.c[1]+","+s.c[2]+","+(s.a*tw*e).toFixed(3)+")";
-        cx.beginPath(); cx.arc(x,y,s.r,0,6.283); cx.fill(); }
-      if(lista.length&&polvo.length){ for(var n=0;n<2;n++) paso(dt/2,lista);
-        cx.fillStyle="rgba(233,229,220,1)";
-        for(var k=0;k<polvo.length;k++){ var q=polvo[k]; cx.globalAlpha=q.a*e*.8; cx.fillRect(q.x,q.y,1.2,1.2); }
-        cx.globalAlpha=1; }
-      cx.globalCompositeOperation="source-over";
-    }
-    addEventListener("pointermove",function(ev){tx=ev.clientX/innerWidth-.5;ty=ev.clientY/innerHeight-.5;},{passive:true});
-    tam(); addEventListener("resize",tam,{passive:true});
-    return {pinta:pinta, polvoDe:polvoDe};
-  })();
-  hondo.polvoDe(lista);
-
-  // ── el cielo: agujero blanco al llegar, el vacío, el anillo de la puerta y el halo de cada estrella
-  var gl=null, U={}, t0=performance.now(), dpr=1, W=0, H=0, raf=0, mx=.5, my=.5, salto=0, N=16;
-  var FS="precision highp float;uniform vec2 S,M;uniform vec3 Ani;uniform vec3 E[16];uniform vec3 C[16];uniform float t,dpr,salto;uniform sampler2D Al;"+
-    "float h21(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}"+
-    "float cov(float p,float Q){float q=mod(p+.5,Q);float d=min(q,Q-q);return 1.-smoothstep(.5-.7/dpr,.5+.7/dpr,d);}"+
-    "void main(){vec2 f=vec2(gl_FragCoord.x,S.y*dpr-gl_FragCoord.y)/dpr;vec2 c=vec2(S.x*.5,S.y*.3);vec2 d=f-c;float r=length(d);"+
-    "float m=min(S.x,S.y);float a=clamp(max(t/3.2,salto),0.,1.);float e=1.-pow(1.-a,3.);"+
-    "vec3 col=vec3(.0706,.0667,.0549);"+
-
-    // FÍSICA REAL: el agujero blanco es el negro con el tiempo al revés. Fuera, la luz se curva igual (desvío de
-    // Schwarzschild, tabla Al calculada al cargar); dentro del radio crítico, en vez de sombra, sale luz.
-    // Se va cerrando (Rs → 0) mientras escupe la retícula que se tragó la landing.
-    "float Rs=max(m*.075*(1.-e),.5);float b=r/Rs;vec2 dir=d/max(r,1e-3);"+
-    "float al=b<16.?(texture2D(Al,vec2(b/16.,.5)).r*255.+texture2D(Al,vec2(b/16.,.5)).g)/256.*1.5:2./b;"+
-    "float ret=0.;if(b>2.75&&al<1.45){vec2 sc=c+dir*(b-6.*tan(al))*Rs;sc=mix(sc,f,smoothstep(m*.25,m*.9,r));"+
-      "float g1=max(cov(sc.x,24.),cov(sc.y,24.)),g2=max(cov(sc.x,120.),cov(sc.y,120.));"+
-      "ret=(g1*.35+g2*.65)*(1.-e)*(1.-smoothstep(m*.3,m*(.6+1.4*e),r));}"+
-    "col+=mix(vec3(1.,.86,.62),vec3(.95,.66,.23),e)*ret*.55;"+
-    "float dentro=1.-smoothstep(2.45,2.75,b);float anillo=exp(-pow((b-2.62)/.08,2.));"+
-    "col+=vec3(1.)*(dentro*2.6+anillo*1.4)*(1.-e*.97)+vec3(1.,.9,.74)*exp(-r/(Rs*5.))*(1.-e)*1.2+vec3(.97,.8,.55)*exp(-r/(Rs*16.))*(1.-e)*.35;"+
-    "float ondas=pow(.5+.5*sin(r/m*38.-t*7.),6.)*exp(-r/(m*.45))*(1.-e)*.45;col+=vec3(.97,.8,.55)*ondas;"+
-    "col+=vec3(1.)*max(0.,1.-t*2.4)*(1.-salto);"+
-    // el anillo de la puerta: una elipse tenue, con un brillo que la recorre despacio
-    "vec2 q=(f-Ani.xy)/vec2(Ani.z*(S.x<700.?1.:1.5),Ani.z);float an=atan(q.y,q.x);"+
-    "float ani=exp(-pow((length(q)-1.)*Ani.z/1.6,2.))*(.10+.18*pow(.5+.5*cos(an-t*.25),8.));col+=vec3(.95,.66,.23)*ani*smoothstep(.6,1.,e);"+
-    // sin halo alrededor de cada estrella (8-oct): la estrella la dibuja su punto; aquí solo una mancha mínima,
-    // la dispersión de un punto de luz, para que la búsqueda pueda apagar las que no casan
-    "for(int i=0;i<16;i++){float de=length(f-E[i].xy);col+=C[i]*exp(-de/(m*.006))*.18*E[i].z*smoothstep(.55,1.,e);}"+
-    "gl_FragColor=vec4(col,1.);}";
-  function llega(){
-    if(!G) return;
-    if(window.SplitText){ var sp=SplitText.create(".marca h1",{type:"chars"});
-      G.from(sp.chars,{opacity:0,filter:"blur(12px)",y:18,duration:1.1,ease:"expo.out",stagger:.045}); }
-    G.from(".astro .luz",{scale:0,duration:1.3,ease:"expo.out",stagger:.12,delay:.9});
-  }
-  function inicia(){
-    try{gl=cv.getContext("webgl",{antialias:false,depth:false,stencil:false,powerPreference:"low-power"});}catch(x){gl=null;}
-    if(!gl) return false;
-    function sh(tp,src){var x=gl.createShader(tp);gl.shaderSource(x,src);gl.compileShader(x);if(!gl.getShaderParameter(x,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(x));return x;}
-    try{var hp=gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER,gl.HIGH_FLOAT);var fs=hp&&hp.precision>0?FS:FS.replace("highp","mediump");
-      var p=gl.createProgram();gl.attachShader(p,sh(gl.VERTEX_SHADER,"attribute vec2 q;void main(){gl_Position=vec4(q,0.,1.);}"));gl.attachShader(p,sh(gl.FRAGMENT_SHADER,fs));gl.linkProgram(p);
-      if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));gl.useProgram(p);
-      var b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
-      var aq=gl.getAttribLocation(p,"q");gl.enableVertexAttribArray(aq);gl.vertexAttribPointer(aq,2,gl.FLOAT,false,0,0);
-      ["S","M","Ani","E","C","t","dpr","salto","Al"].forEach(function(n){U[n]=gl.getUniformLocation(p,n);});
-      var tab=new Uint8Array(256*4), h=.01, f=function(u,w){return [w,-u+1.5*u*u];};   // u'' = −u + 1,5·u², radio de Schwarzschild = 1
-      for(var i=0;i<256;i++){ var bb=(i+.5)/256*16, D=60, u=1/D, w=Math.sqrt(Math.max(0,1/(bb*bb)-u*u*(1-u))), ph0=Math.asin(Math.min(1,bb*u)), ph=ph0, esc=false;
-        for(var n=0;n<6000;n++){ var k1=f(u,w),k2=f(u+h/2*k1[0],w+h/2*k1[1]),k3=f(u+h/2*k2[0],w+h/2*k2[1]),k4=f(u+h*k3[0],w+h*k3[1]);
-          u+=h/6*(k1[0]+2*k2[0]+2*k3[0]+k4[0]); w+=h/6*(k1[1]+2*k2[1]+2*k3[1]+k4[1]); ph+=h; if(u>1) break; if(u<1/D&&w<0){esc=true;break;} }
-        var al=esc?Math.max(0,Math.min(1.5,ph-Math.PI+ph0)):1.5, q=Math.round(al/1.5*65535);
-        tab[i*4]=q>>8; tab[i*4+1]=q&255; }
-      var tx=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,tx); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,256,1,0,gl.RGBA,gl.UNSIGNED_BYTE,tab);
-      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
-      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
-    }catch(x){console.warn(x);gl=null;return false;}
-    return true;
-  }
-  var COLOR={oficiales:[.95,.66,.23],socio:[.69,.55,.34],comunidad:[.91,.9,.86]}, vis={};
-  function tam(){W=innerWidth;H=innerHeight;dpr=Math.min(devicePixelRatio||1,(navigator.hardwareConcurrency||4)<=4?1:1.5);
-    cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);if(gl)gl.viewport(0,0,cv.width,cv.height);geometria();}
-  function pinta(now){raf=0; if(document.hidden) return;
-    var t=red?10:(now-t0)/1000;
-    if(gl){
-      var E=new Float32Array(N*3), C=new Float32Array(N*3);
-      lista.slice(0,N).forEach(function(e,i){vis[e.id]=(vis[e.id]==null?e.vis:vis[e.id]+(e.vis-vis[e.id])*.12);
-        E[i*3]=e.x;E[i*3+1]=e.y;E[i*3+2]=vis[e.id]; var c=COLOR[e.d.nivel]||COLOR.comunidad; C[i*3]=c[0];C[i*3+1]=c[1];C[i*3+2]=c[2];});
-      gl.uniform2f(U.S,W,H);gl.uniform2f(U.M,mx,my);gl.uniform3f(U.Ani,A.x,A.y,A.r);gl.uniform3fv(U.E,E);gl.uniform3fv(U.C,C);
-      gl.uniform1f(U.t,t);gl.uniform1f(U.dpr,dpr);gl.uniform1f(U.salto,salto);gl.uniform1i(U.Al,0);gl.drawArrays(gl.TRIANGLES,0,3);}
-    var ee=Math.max(0,Math.min(1,(red?1:Math.max(t/3.2,salto)))); hondo.pinta(now,Math.max(0,(ee-.45)/.55),lista);
-    if((t>2.6||salto)&&!root.classList.contains("listo")){ root.classList.add("listo"); llega(); }
-    if(!red) raf=requestAnimationFrame(pinta);}
-  if(!inicia()){cv.style.background="radial-gradient(circle at 50% 30%,#1F1C16 0,#12110E 60%)"; root.classList.add("listo"); llega();}
-  tam(); addEventListener("resize",tam,{passive:true});
-  addEventListener("pointermove",function(ev){mx=ev.clientX/W;my=ev.clientY/H;},{passive:true});
-  document.addEventListener("visibilitychange",function(){if(!document.hidden&&!raf) raf=requestAnimationFrame(pinta);});
-  document.getElementById("saltar").addEventListener("click",function(){salto=1;});
-  if(red) root.classList.add("listo");
-  raf=requestAnimationFrame(pinta);
-})();
-</script>
-<script>
-/* la puerta: «Ya tengo vault» abre la frase para el agente y el camino a tu sitio */
-(function(){var b=document.getElementById("tengo"),p=document.getElementById("tengo-panel"),f=document.getElementById("ir-perfil"),a=document.getElementById("alias");
-  if(!b||!p) return;
-  b.addEventListener("click",function(){var abierto=p.hidden; p.hidden=!abierto; b.setAttribute("aria-expanded",abierto?"true":"false"); if(abierto) a.focus();});
-  f.addEventListener("submit",function(e){e.preventDefault(); var v=(a.value||"").trim().toLowerCase(); if(/^[a-z0-9-]{3,24}$/.test(v)) location.href="/@"+v;});
-})();
-</script>
 <script src="/huella.js"></script>
 <script>
-/* La puerta al lienzo (VV-007): un trozo del lienzo de verdad, creciendo, con las huellas que ya hay. Si la red no
-   contesta o no hay huellas, la puerta se queda como enlace con su rótulo y nada más. */
-(function(){
-  var cv=document.getElementById("lienzo-mini"); if(!cv||!window.VoidHuella) return;
-  var ctx=cv.getContext("2d"), quieto=matchMedia("(prefers-reduced-motion: reduce)").matches;
-  fetch("https://red.vaultvoid.app/v1/huellas").then(function(r){return r.ok?r.json():{huellas:[]};}).then(function(d){
-    var l=(d&&d.huellas)||[]; if(!l.length) return;
-    var c=VoidHuella.crear(l,96), n=0;
-    if(quieto){c.paso(2500);c.pintar(ctx,false);return;}
-    (function b(){ if(n<2500){c.paso(10);n+=10;c.pintar(ctx,false);requestAnimationFrame(b);} })();
-  }).catch(function(){});
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var quieto = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); };
+  var sinTildes = function (s) { return String(s || "").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, ""); };
+
+  /* ── el lienzo */
+  var N = 360, LIBRES = 6, TOTAL = 4200;
+  var cv = $("lienzo"), ctx = cv.getContext("2d"), off = document.createElement("canvas"), octx;
+  off.width = off.height = N; octx = off.getContext("2d");
+  var campo = null, hechos = 0, W = 0, H = 0, dpr = 1, vista = { x: N / 2, y: N / 2, s: 1 }, ajuste = 1, sel = null, sucio = true;
+
+  function tam() {
+    W = innerWidth; H = innerHeight; dpr = Math.min(devicePixelRatio || 1, 2);
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); encuadrar(true); sucio = true;
+  }
+  function caja() { // lo que hay que ver: huellas y sitios libres
+    if (!campo) return { x0: N * .3, y0: N * .3, x1: N * .7, y1: N * .7 };
+    var x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    campo.territorios.concat(campo.libres).forEach(function (t) { x0 = Math.min(x0, t.x - t.tam); y0 = Math.min(y0, t.y - t.tam); x1 = Math.max(x1, t.x + t.tam); y1 = Math.max(y1, t.y + t.tam); });
+    return { x0: x0, y0: y0, x1: x1, y1: y1 };
+  }
+  function encuadrar(sinAnimar) {
+    var c = caja(), movil = W < 700, menu = $("menu"), alto = movil ? Math.max(H * .45, H - menu.offsetHeight - 24) : H, izq = movil ? 0 : Math.min(392, W * .35);
+    var s = Math.min((W - izq) * .86 / (c.x1 - c.x0), alto * .86 / (c.y1 - c.y0));
+    ajuste = s;
+    // el centro visual, a la derecha del menú en escritorio y encima de él en el móvil
+    var cxPant = izq + (W - izq) / 2, cyPant = movil ? alto / 2 + 8 : H / 2;
+    var meta = { s: s, x: (c.x0 + c.x1) / 2 - (cxPant - W / 2) / s, y: (c.y0 + c.y1) / 2 - (cyPant - H / 2) / s };
+    if (sinAnimar || quieto) { vista = meta; sucio = true; } else vuela(meta);
+  }
+  var vuelo = null;
+  function vuela(meta) { vuelo = { de: { x: vista.x, y: vista.y, s: vista.s }, a: meta, t0: performance.now() }; }
+  function zoom(f, px, py) {
+    var s2 = Math.max(ajuste * .5, Math.min(ajuste * 10, vista.s * f));
+    if (px == null) { px = W / 2; py = H / 2; }
+    var wx = vista.x + (px - W / 2) / vista.s, wy = vista.y + (py - H / 2) / vista.s;
+    vista.s = s2; vista.x = wx - (px - W / 2) / s2; vista.y = wy - (py - H / 2) / s2; sucio = true;
+  }
+  function aMundo(px, py) { return { x: vista.x + (px - W / 2) / vista.s, y: vista.y + (py - H / 2) / vista.s }; }
+  function aPantalla(x, y) { return { x: W / 2 + (x - vista.x) * vista.s, y: H / 2 + (y - vista.y) * vista.s }; }
+
+  function dibuja() {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = "#12110E"; ctx.fillRect(0, 0, W, H);
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+    var o = aPantalla(0, 0);
+    if (campo) ctx.drawImage(off, o.x, o.y, N * vista.s, N * vista.s);
+    // los sitios libres: donde crecerán las huellas que vienen
+    if (campo) {
+      ctx.setLineDash([2, 6]); ctx.lineWidth = 1; ctx.strokeStyle = "rgba(236,231,222,.16)";
+      campo.libres.forEach(function (l) { var p = aPantalla(l.x, l.y); ctx.beginPath(); ctx.arc(p.x, p.y, l.tam * vista.s * .7, 0, 6.2832); ctx.stroke(); });
+      ctx.setLineDash([]);
+    }
+    if (sel && sel.x != null) { var p = aPantalla(sel.x, sel.y); ctx.strokeStyle = "rgba(242,169,59,.8)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(p.x, p.y, sel.tam * vista.s * 1.04, 0, 6.2832); ctx.stroke(); }
+  }
+
+  function bucle(now) {
+    if (vuelo) {
+      var k = Math.min(1, (now - vuelo.t0) / 650), e = 1 - Math.pow(1 - k, 3);
+      vista.x = vuelo.de.x + (vuelo.a.x - vuelo.de.x) * e; vista.y = vuelo.de.y + (vuelo.a.y - vuelo.de.y) * e; vista.s = vuelo.de.s + (vuelo.a.s - vuelo.de.s) * e;
+      sucio = true; if (k >= 1) vuelo = null;
+    }
+    if (campo && hechos < TOTAL) {
+      var t0 = performance.now();
+      do { campo.paso(4); hechos += 4; } while (performance.now() - t0 < 9 && hechos < TOTAL);
+      campo.pintar(octx, $("grav").checked); sucio = true;
+    }
+    if (sucio) { dibuja(); sucio = false; }
+    requestAnimationFrame(bucle);
+  }
+
+  /* ── tocar, arrastrar, pellizcar */
+  var punteros = {}, arrastre = null, pellizco = null, movido = 0;
+  cv.addEventListener("pointerdown", function (e) {
+    cv.setPointerCapture(e.pointerId); punteros[e.pointerId] = { x: e.clientX, y: e.clientY }; movido = 0; fueraPista();
+    var ids = Object.keys(punteros);
+    if (ids.length === 1) arrastre = { x: e.clientX, y: e.clientY, vx: vista.x, vy: vista.y };
+    if (ids.length === 2) { var a = punteros[ids[0]], b = punteros[ids[1]]; pellizco = { d: Math.hypot(a.x - b.x, a.y - b.y), s: vista.s }; arrastre = null; }
+  });
+  cv.addEventListener("pointermove", function (e) {
+    if (punteros[e.pointerId]) { punteros[e.pointerId].x = e.clientX; punteros[e.pointerId].y = e.clientY; }
+    var ids = Object.keys(punteros);
+    if (pellizco && ids.length === 2) {
+      var a = punteros[ids[0]], b = punteros[ids[1]], d = Math.hypot(a.x - b.x, a.y - b.y);
+      zoom(pellizco.s * (d / pellizco.d) / vista.s, (a.x + b.x) / 2, (a.y + b.y) / 2); movido = 99; return;
+    }
+    if (arrastre) {
+      var dx = e.clientX - arrastre.x, dy = e.clientY - arrastre.y; movido = Math.max(movido, Math.abs(dx) + Math.abs(dy));
+      if (movido > 4) { cv.classList.add("arrastrando"); vista.x = arrastre.vx - dx / vista.s; vista.y = arrastre.vy - dy / vista.s; vuelo = null; sucio = true; }
+      return;
+    }
+    if (campo && e.pointerType === "mouse") { var m = aMundo(e.clientX, e.clientY); cv.classList.toggle("sobre", !!(campo.quien(m.x, m.y) || libreEn(m))); }
+  });
+  function suelta(e) {
+    delete punteros[e.pointerId]; cv.classList.remove("arrastrando");
+    if (arrastre && movido <= 4) toca(e.clientX, e.clientY);
+    arrastre = null; if (Object.keys(punteros).length < 2) pellizco = null;
+  }
+  cv.addEventListener("pointerup", suelta); cv.addEventListener("pointercancel", suelta);
+  cv.addEventListener("wheel", function (e) { e.preventDefault(); fueraPista(); zoom(Math.exp(-e.deltaY * .0015), e.clientX, e.clientY); }, { passive: false });
+  $("acercar").addEventListener("click", function () { zoom(1.4); });
+  $("alejar").addEventListener("click", function () { zoom(1 / 1.4); });
+  $("encuadrar").addEventListener("click", function () { cierraFicha(); encuadrar(); });
+  $("grav").addEventListener("change", function () { if (campo) { campo.pintar(octx, $("grav").checked); sucio = true; } });
+  addEventListener("keydown", function (e) {
+    if (e.target.closest && e.target.closest("input,textarea")) return;
+    if (e.key === "+" || e.key === "=") zoom(1.3); else if (e.key === "-") zoom(1 / 1.3); else if (e.key === "0") encuadrar();
+    else if (e.key === "Escape") cierraFicha();
+    else if (/^Arrow/.test(e.key)) { var d = 60 / vista.s; if (e.key === "ArrowLeft") vista.x -= d; if (e.key === "ArrowRight") vista.x += d; if (e.key === "ArrowUp") vista.y -= d; if (e.key === "ArrowDown") vista.y += d; sucio = true; }
+  });
+  function fueraPista() { $("pista").classList.add("fuera"); }
+
+  function libreEn(m) {
+    if (!campo) return null;
+    for (var i = 0; i < campo.libres.length; i++) { var l = campo.libres[i]; if (Math.hypot(m.x - l.x, m.y - l.y) < l.tam * .7) return l; }
+    return null;
+  }
+  function cifras(h) {
+    return [["días con su vault", h.dias], ["guardados el último mes", h.pulso], ["decisiones", h.decisiones], ["proyectos", h.proyectos], ["preguntas sin contestar", h.calladas]];
+  }
+  function toca(px, py) {
+    if (!campo) return;
+    var m = aMundo(px, py), t = campo.quien(m.x, m.y);
+    if (t) return abreHuella(t, px, py);
+    var l = libreEn(m);
+    if (l) return abreLibre(l, px, py);
+    cierraFicha();
+  }
+  function colocaFicha(px, py) {
+    var f = $("ficha"); f.hidden = false;
+    var w = f.offsetWidth, h = f.offsetHeight, x = px + 18, y = py - h / 2;
+    if (x + w > W - 16) x = px - w - 18;
+    x = Math.max(16, Math.min(W - w - 16, x)); y = Math.max(16, Math.min(H - h - 16, y));
+    f.style.left = x + "px"; f.style.top = y + "px";
+  }
+  function abreHuella(t, px, py) {
+    sel = t; sucio = true;
+    var c = t.col;
+    $("f-alias").innerHTML = '<span class="punto" style="background:rgb(' + c[0] + "," + c[1] + "," + c[2] + ')"></span>@' + esc(t.alias);
+    $("f-cifras").innerHTML = cifras(t.h).map(function (r) { return "<span>" + r[0] + "</span><b>" + r[1] + "</b>"; }).join("");
+    $("f-texto").textContent = "Su forma sale solo de estas cifras: nada de lo que hay dentro de su vault.";
+    var a = $("f-enlace"); a.hidden = false; a.href = "/@" + encodeURIComponent(t.alias); a.textContent = "Ver su sitio →";
+    if (px == null) { var p = aPantalla(t.x, t.y); px = p.x; py = p.y; }
+    colocaFicha(px, py);
+  }
+  function abreLibre(l, px, py) {
+    sel = { x: l.x, y: l.y, tam: l.tam * .7 }; sucio = true;
+    $("f-alias").textContent = "Un sitio libre";
+    $("f-cifras").innerHTML = "";
+    $("f-texto").textContent = "Aquí puede crecer la huella de tu vault. Saldrá de tus cifras y no habrá otra igual.";
+    var a = $("f-enlace"); a.hidden = false; a.href = "/tu-planeta"; a.textContent = "Empezar mi vault →";
+    colocaFicha(px, py);
+  }
+  function cierraFicha() { $("ficha").hidden = true; sel = null; sucio = true; }
+  $("f-cerrar").addEventListener("click", cierraFicha);
+
+  function arranca(lista) {
+    $("cuantas").textContent = lista.length === 1 ? "1 huella" : lista.length + " huellas";
+    $("n-huellas").textContent = String(lista.length);
+    campo = VoidHuella.crear(lista, N, LIBRES); hechos = 0;
+    if (quieto) { campo.paso(TOTAL); hechos = TOTAL; campo.pintar(octx, false); }
+    var lh = $("lista-huellas");
+    lh.innerHTML = campo.territorios.length ? campo.territorios.map(function (t, i) {
+      var c = t.col;
+      return '<li><button type="button" data-i="' + i + '"><span class="tt"><span class="punto" style="background:rgb(' + c[0] + "," + c[1] + "," + c[2] + ')"></span>@' + esc(t.alias) + '</span><span class="ss">' + t.h.dias + " días · " + t.h.decisiones + " decisiones · " + t.h.proyectos + " proyectos</span></button></li>";
+    }).join("") : '<li><span class="ss">Todavía no hay ninguna. La primera puede ser la tuya.</span></li>';
+    lh.querySelectorAll("button").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var t = campo.territorios[+b.dataset.i], s = Math.max(vista.s, ajuste * 2.2);
+        var movil = W < 700, cy = movil ? H * .28 : H / 2, cx = movil ? W / 2 : Math.min(392, W * .35) + (W - Math.min(392, W * .35)) / 2;
+        vuela({ s: s, x: t.x - (cx - W / 2) / s, y: t.y - (cy - H / 2) / s });
+        setTimeout(function () { abreHuella(t, cx, cy); }, quieto ? 0 : 680);
+      });
+    });
+    encuadrar(true);
+  }
+
+  /* ── el menú */
+  $("plegar").addEventListener("click", function () {
+    var m = $("menu"), p = m.classList.toggle("plegado");
+    this.setAttribute("aria-expanded", String(!p)); this.textContent = p ? "+" : "–"; this.setAttribute("aria-label", p ? "Abrir el menú" : "Plegar el menú");
+    if (W < 700) encuadrar();
+  });
+  if (innerWidth < 700) { $("menu").classList.add("plegado"); $("plegar").textContent = "+"; $("plegar").setAttribute("aria-expanded", "false"); $("plegar").setAttribute("aria-label", "Abrir el menú"); }
+  $("tengo").addEventListener("click", function () { var p = $("tengo-panel"), abre = p.hidden; p.hidden = !abre; this.setAttribute("aria-expanded", String(abre)); if (abre) $("alias").focus(); });
+  $("ir-perfil").addEventListener("submit", function (e) { e.preventDefault(); var v = ($("alias").value || "").trim().toLowerCase(); if (/^[a-z0-9-]{3,24}$/.test(v)) location.href = "/@" + v; });
+  document.querySelectorAll(".copiar").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var el = $(b.dataset.de), t = el.textContent;
+      function hecho() { b.textContent = "copiada"; setTimeout(function () { b.textContent = "copiar"; }, 1600); }
+      function marca() { var r = document.createRange(); r.selectNodeContents(el); var s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(hecho, marca); else marca();
+    });
+  });
+
+  /* ── las piezas, desde el catálogo (lo que hay en main del repo público es lo que se ve) */
+  var REPO = "https://github.com/AlexCanoFuentes/vault-void";
+  var CATALOGO = "https://raw.githubusercontent.com/AlexCanoFuentes/vault-void/main/catalogo.json";
+  var RESPALDO = { estrellas: { candados: { titulo: "Candados para agentes", nivel: "oficiales", liga: "grande", resuelve: { frase: "" }, kernel: { total: 85 }, uso: { vaults: 0 }, ruta: "estrellas/oficiales/candados", buscar: "candados para agentes dos agentes se pisan claude code codex" } } };
+  // Cómo se cuenta cada pieza a quien no programa [Alex, 5-oct: «usamos siempre lenguaje llano»]
+  var LLANO = { candados: { titulo: "Candados para dos IA",
+    frase: "Cuando dos asistentes de IA trabajan en el mismo proyecto, se pisan. Esta plantilla les pone los mismos candados a los dos.",
+    origen: "Las protecciones solo valían para una de las dos IA. La otra podía borrar sin querer el trabajo de la primera, o guardar una contraseña donde no debe." } };
+  var NIVEL = { oficiales: "oficial", socio: "de un socio", comunidad: "de la comunidad" };
+  var piezas = [];
+  function montaPiezas(cat) {
+    piezas = Object.keys(cat.estrellas || {}).map(function (id) { var d = cat.estrellas[id]; return { id: id, d: d, texto: sinTildes((d.buscar || "") + " " + d.titulo + " " + ((LLANO[id] || {}).frase || "")) }; });
+    $("n-piezas").textContent = String(piezas.length);
+    var ul = $("lista-piezas");
+    ul.innerHTML = piezas.map(function (p, i) {
+      var L = LLANO[p.id] || {};
+      return '<li><button type="button" aria-expanded="false" aria-controls="detalle" data-i="' + i + '"><span class="tt">' + esc(L.titulo || p.d.titulo) + '</span><span class="ss">Pieza ' + (NIVEL[p.d.nivel] || "") + " · en " + (((p.d.uso || {}).vaults) || 0) + " vaults</span></button></li>";
+    }).join("");
+    ul.querySelectorAll("button").forEach(function (b) { b.addEventListener("click", function () { abrePieza(+b.dataset.i, b); }); });
+    mira();
+  }
+  function abrePieza(i, boton) {
+    var det = $("detalle"), abierta = boton.getAttribute("aria-expanded") === "true";
+    $("lista-piezas").querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-expanded", "false"); });
+    if (abierta) { det.hidden = true; return; }
+    var p = piezas[i], d = p.d, L = LLANO[p.id] || {}, usos = (d.uso && d.uso.vaults) || 0;
+    $("d-t").textContent = L.titulo || d.titulo;
+    $("d-r").textContent = L.frase || (d.resuelve && d.resuelve.frase) || "";
+    var o = L.origen || (d.nacio_de && d.nacio_de[0] && d.nacio_de[0].que_paso) || "";
+    $("d-o").textContent = o ? "Nació de esto: " + o : "";
+    $("d-c").textContent = "python herramientas/void.py traer " + p.id;
+    $("d-k").innerHTML = "La puerta: <b>" + ((d.kernel && d.kernel.total) != null ? d.kernel.total : "—") + "</b> de 100";
+    $("d-u").innerHTML = "En <b>" + usos + "</b> vault" + (usos === 1 ? "" : "s");
+    $("d-a").href = REPO + "/tree/main/" + (d.ruta || "");
+    $("d-v").href = "/estrella/" + encodeURIComponent(p.id);
+    boton.setAttribute("aria-expanded", "true"); det.hidden = false;
+  }
+  function mira() {
+    var q = sinTildes($("busca").value).trim(), pal = q.split(/\s+/).filter(function (p) { return p.length > 1; }), n = 0;
+    $("lista-piezas").querySelectorAll("button").forEach(function (b) {
+      var p = piezas[+b.dataset.i], ok = !pal.length || pal.every(function (w) { return p.texto.indexOf(w) >= 0; });
+      b.classList.toggle("apagada", !ok); if (ok) n++;
+    });
+    var eco = $("eco");
+    if (!pal.length) eco.textContent = "";
+    else if (n) eco.textContent = n === 1 ? "Una pieza lo resuelve." : n + " piezas lo resuelven.";
+    else eco.innerHTML = 'Ninguna pieza lo resuelve todavía. <a href="https://alexcanofuentes.com" rel="noopener">Cuéntamelo</a> y quizá sea la siguiente.';
+  }
+  $("busca").addEventListener("input", mira);
+  montaPiezas(RESPALDO);
+  fetch(CATALOGO, { cache: "no-cache" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (c) { if (c && c.estrellas) montaPiezas(c); }).catch(function () {});
+
+  /* ── arranque */
+  tam(); addEventListener("resize", tam, { passive: true });
+  requestAnimationFrame(bucle);
+  fetch("https://red.vaultvoid.app/v1/huellas", { headers: { accept: "application/json" } })
+    .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function (d) { arranca((d && d.huellas) || []); })
+    .catch(function () { arranca([]); $("lista-huellas").innerHTML = '<li><span class="ss">No he podido traer las huellas. Vuelve a cargar en un momento.</span></li>'; });
 })();
 </script>
 </body>

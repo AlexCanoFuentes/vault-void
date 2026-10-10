@@ -85,6 +85,9 @@ function exige(cond, motivo) { if (!cond) throw new Falla(motivo); }
 
 // ---------------------------------------------------------------- las pruebas (cada una, un nombre)
 
+// Una clave X25519 cualquiera (32 bytes en base64) y un sobre opaco: la red no descifra nada, así que basta con eso.
+const CLAVE = Buffer.alloc(32, 7).toString("base64");
+const SOBRE = Buffer.from("sobre cifrado de prueba, opaco para la red").toString("base64");
 const HUELLA = { version: 1, dias: 12, pulso: 40, decisiones: 9, proyectos: 2, calladas: 1, tono: 200 };
 
 const PRUEBAS = {
@@ -117,6 +120,59 @@ const PRUEBAS = {
     exige(!quedan.includes(b.datos.alias), "dado de baja, su huella sigue en el lienzo");
     exige(w.sql("SELECT COUNT(*) AS n FROM huellas h LEFT JOIN perfiles p ON p.id = h.perfil_id WHERE p.id IS NULL")[0].n === 0,
       "dado de baja, su huella no sale en el lienzo pero sigue guardada en la base");
+  },
+
+  async "mensajes: el remitente lo pone la llave, la red solo guarda el sobre, y recoger lo borra"(w) {
+    const a = await alta(w, alias()), b = await alta(w, alias());
+    const sinClave = await pedir(w, "POST", "/v1/mensajes", { llave: a.datos.llave, cuerpo: { para: b.datos.alias, tipo: "AVISO", enc: CLAVE, sobre: SOBRE } });
+    exige(sinClave.estado === 409, `a quien no ha publicado su clave se le pudo escribir (${sinClave.estado})`);
+    for (const x of [a, b]) exige((await pedir(w, "POST", "/v1/clave", { llave: x.datos.llave, cuerpo: { clave: CLAVE } })).estado === 200, "no se pudo publicar la clave");
+    const pub = await pedir(w, "GET", `/v1/clave/${b.datos.alias}`);
+    exige(pub.estado === 200 && pub.datos.clave === CLAVE, "la clave pública no se puede leer");
+    const ok = await pedir(w, "POST", "/v1/mensajes", { llave: a.datos.llave, cuerpo: { para: "@" + b.datos.alias, tipo: "PETICION", enc: CLAVE, sobre: SOBRE, de: "otro" } });
+    exige(ok.estado === 201, `mandar dio ${ok.estado}: ${ok.texto.slice(0, 160)}`);
+    const orden = await pedir(w, "POST", "/v1/mensajes", { llave: a.datos.llave, cuerpo: { para: b.datos.alias, tipo: "ORDEN", enc: CLAVE, sobre: SOBRE } });
+    exige(orden.estado === 400, `el tipo ORDEN entró (${orden.estado})`);
+    const texto = await pedir(w, "POST", "/v1/mensajes", { llave: a.datos.llave, cuerpo: { para: b.datos.alias, tipo: "AVISO", enc: CLAVE, sobre: "hola, esto va sin cifrar" } });
+    exige(texto.estado === 400, `un sobre que no es base64 entró (${texto.estado})`);
+    const sin = await pedir(w, "GET", "/v1/mensajes");
+    exige(sin.estado === 401, `la bandeja sin llave dio ${sin.estado}`);
+    const bandeja = await pedir(w, "GET", "/v1/mensajes", { llave: b.datos.llave });
+    const m = (bandeja.datos?.mensajes ?? [])[0];
+    exige(m && m.de === a.datos.alias, `el remitente no es el de la llave (${m && m.de})`);
+    exige(m.sobre === SOBRE && m.enc === CLAVE, "el sobre no llega tal cual");
+    exige(JSON.stringify(Object.keys(w.sql("SELECT * FROM mensajes")[0]).sort()) === JSON.stringify(["caduca", "creado", "de_perfil", "enc", "id", "para_perfil", "sobre", "tipo"]),
+      "la tabla de mensajes guarda algo más que el sobre y los datos de entrega");
+    const ajeno = await pedir(w, "POST", `/v1/mensajes/${m.id}/recogido`, { llave: a.datos.llave });
+    exige(ajeno.estado === 404, `el remitente pudo borrar un mensaje que no es suyo (${ajeno.estado})`);
+    const r = await pedir(w, "POST", `/v1/mensajes/${m.id}/recogido`, { llave: b.datos.llave });
+    exige(r.estado === 200, `recoger dio ${r.estado}`);
+    exige(w.sql(`SELECT COUNT(*) AS n FROM mensajes WHERE id = ${m.id}`)[0].n === 0, "recogido, el mensaje sigue en la red");
+  },
+
+  async "mensajes: el bloqueado no entrega y no se entera; la baja lo borra todo"(w) {
+    const a = await alta(w, alias()), b = await alta(w, alias());
+    for (const x of [a, b]) await pedir(w, "POST", "/v1/clave", { llave: x.datos.llave, cuerpo: { clave: CLAVE } });
+    await pedir(w, "POST", "/v1/bloquear", { llave: b.datos.llave, cuerpo: { alias: a.datos.alias } });
+    const r = await pedir(w, "POST", "/v1/mensajes", { llave: a.datos.llave, cuerpo: { para: b.datos.alias, tipo: "AVISO", enc: CLAVE, sobre: SOBRE } });
+    exige(r.estado === 201, `al bloqueado se le dice que está bloqueado (${r.estado})`);
+    exige((await pedir(w, "GET", "/v1/mensajes", { llave: b.datos.llave })).datos.mensajes.length === 0, "el bloqueado entregó un mensaje");
+    await pedir(w, "POST", "/v1/desbloquear", { llave: b.datos.llave, cuerpo: { alias: a.datos.alias } });
+    await pedir(w, "POST", "/v1/mensajes", { llave: a.datos.llave, cuerpo: { para: b.datos.alias, tipo: "AVISO", enc: CLAVE, sobre: SOBRE } });
+    exige((await pedir(w, "GET", "/v1/mensajes", { llave: b.datos.llave })).datos.mensajes.length === 1, "desbloqueado, no llega");
+    await pedir(w, "POST", "/v1/baja", { llave: a.datos.llave });
+    exige(w.sql("SELECT COUNT(*) AS n FROM mensajes m LEFT JOIN perfiles p ON p.id = m.de_perfil WHERE p.id IS NULL")[0].n === 0,
+      "dado de baja, sus mensajes siguen en la red");
+    exige(w.sql("SELECT COUNT(*) AS n FROM contactos c LEFT JOIN perfiles p ON p.id = c.de_perfil WHERE p.id IS NULL")[0].n === 0,
+      "dado de baja, sigue apuntado a quién escribió");
+  },
+
+  async "mensajes: 429 al pasar de 20 por hora"(w) {
+    const a = await alta(w, alias()), b = await alta(w, alias());
+    for (const x of [a, b]) await pedir(w, "POST", "/v1/clave", { llave: x.datos.llave, cuerpo: { clave: CLAVE } });
+    let ultimo;
+    for (let i = 0; i < 21; i++) ultimo = await pedir(w, "POST", "/v1/mensajes", { llave: a.datos.llave, cuerpo: { para: b.datos.alias, tipo: "AVISO", enc: CLAVE, sobre: SOBRE } });
+    exige(ultimo.estado === 429, `el mensaje 21 dio ${ultimo.estado}, no 429`);
   },
 
   async "alta: da una llave y la base solo guarda su huella"(w) {
@@ -314,6 +370,20 @@ const SABOTAJES = [
   { nombre: "sin tope de altas", fichero: "src/worker.ts",
     buscar: "if (n >= max) {\n    throw new Rechazo(error(429", poner: "if (false) {\n    throw new Rechazo(error(429",
     pruebas: ["límite de altas: 429 al pasar del tope por conexión y hora"], altas: true },
+  { nombre: "el remitente sale del cuerpo y no de la llave", fichero: "src/worker.ts",
+    buscar: ".bind(p.id, dest.id, b.tipo, b.enc, b.sobre, ahora, ahora + VIDA_MENSAJE).run();",
+    poner: ".bind(typeof b.de === \"string\" ? dest.id : p.id, dest.id, b.tipo, b.enc, b.sobre, ahora, ahora + VIDA_MENSAJE).run();",
+    pruebas: ["mensajes: el remitente lo pone la llave, la red solo guarda el sobre, y recoger lo borra"] },
+  { nombre: "recoger no borra el mensaje", fichero: "src/worker.ts",
+    buscar: "const r = await env.DB.prepare(\"DELETE FROM mensajes WHERE id = ? AND para_perfil = ?\").bind(id, p.id).run();",
+    poner: "const r = { meta: { changes: 1 } };",
+    pruebas: ["mensajes: el remitente lo pone la llave, la red solo guarda el sobre, y recoger lo borra"] },
+  { nombre: "el bloqueo no para los mensajes", fichero: "src/worker.ts",
+    buscar: "  if (!bloqueado) {\n    await env.DB.prepare(\"INSERT INTO mensajes", poner: "  if (true) {\n    await env.DB.prepare(\"INSERT INTO mensajes",
+    pruebas: ["mensajes: el bloqueado no entrega y no se entera; la baja lo borra todo"] },
+  { nombre: "sin tope de mensajes", fichero: "src/worker.ts",
+    buscar: "if (n >= max) {\n    return error(429, `Ya has mandado ${n} mensajes", poner: "if (false) {\n    return error(429, `Ya has mandado ${n} mensajes",
+    pruebas: ["mensajes: 429 al pasar de 20 por hora"] },
   { nombre: "el aviso entra en la página sin escapar", fichero: "src/paginas.ts",
     buscar: "<p>${esc(a.texto)}</p>", poner: "<p>${a.texto}</p>",
     pruebas: ["avisos: una etiqueta en el texto sale como texto"] },

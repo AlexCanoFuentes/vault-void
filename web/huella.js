@@ -44,19 +44,21 @@
   /* Prepara los territorios. lista: [{alias, huella:{dias,pulso,decisiones,proyectos,calladas,tono?}}].
      libres: cuántos sitios vacíos se reservan alrededor para las huellas que vendrán (se dibujan aparte, sin química). */
   function territorios(lista, N, libres) {
-    var orden = lista.slice().sort(function (a, b) { return (b.huella.dias - a.huella.dias) || (a.alias < b.alias ? -1 : 1); });
+    // La semilla de cada huella: la que manda la red (la del cuento, si su vault la heredó), o el alias.
+    var sem0 = function (e) { return String(e.semilla || e.alias || ("cuento:" + e.cuento)); };
+    var orden = lista.slice().sort(function (a, b) { return (b.huella.dias - a.huella.dias) || (sem0(a) < sem0(b) ? -1 : 1); });
     var n = orden.length, sitios = n + (libres || 0), paso = N * 0.42 / Math.sqrt(Math.max(sitios, 1));
     function sitio(i, giro) {
       var rad = sitios === 1 ? 0 : paso * Math.sqrt(i + 0.5), ang = i * 2.399963 + giro;
       return [N / 2 + rad * Math.cos(ang), N / 2 + rad * Math.sin(ang)];
     }
     var T = orden.map(function (e, i) {
-      var h = e.huella, sem = semilla(e.alias), r = azar(sem), xy = sitio(i, r() * 0.6);
+      var h = e.huella, sem = semilla(sem0(e)), r = azar(sem), xy = sitio(i, r() * 0.6);
       var tam = paso * 1.3 * (0.35 + 0.65 * Math.sqrt(Math.min(h.dias, 365) / 365)); // los días: de un tercio a todo su sitio
       var lab = h.decisiones / (h.decisiones + h.proyectos + 1);
       var tono = typeof h.tono === "number" ? h.tono : sem % 360, giro = (sem >>> 3) % 2 ? 55 : -55;
       return {
-        alias: e.alias, h: h, r: r, x: xy[0], y: xy[1], tam: tam,
+        alias: e.alias, cuento: !e.alias, h: h, r: r, x: xy[0], y: xy[1], tam: tam,
         f: 0.0367 + (0.055 - 0.0367) * lab, k: 0.0649 + (0.062 - 0.0649) * lab,
         brillo: 0.3 + 0.7 * Math.min(1, h.pulso / 60),
         col: hsl(tono, 0.72, 0.6), col2: hsl((tono + giro + 360) % 360, 0.7, 0.62), // dos tonos: del centro al borde

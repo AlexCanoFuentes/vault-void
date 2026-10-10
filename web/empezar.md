@@ -81,14 +81,14 @@ Antes de bajar nada, dile a la persona, en llano, algo así:
 
 La huella (sha256) de `void.py` que publica esta página es:
 
-`cbac9e5dfaf278cb2c9498697b4a138269adfa86c69e058051e2f16c28788376`
+`7b98239d7bec134596715d5188ca97ec6977f4ba94e120ea78e0328d745b6d17`
 
 Esta orden lo baja de GitHub, calcula su huella y **solo lo guarda en `herramientas/void.py` si
 cuadra** con la de arriba. No lo ejecuta. Ejecútala desde la carpeta (es igual en Mac, Linux y
 Windows; cambia `python3` por el nombre del paso 1):
 
 ```
-python3 -c "import hashlib,os,urllib.request as u;h='cbac9e5dfaf278cb2c9498697b4a138269adfa86c69e058051e2f16c28788376';d=u.urlopen('https://raw.githubusercontent.com/AlexCanoFuentes/vault-void/main/void.py',timeout=30).read();r=hashlib.sha256(d).hexdigest();ok=r==h;ok and (os.makedirs('herramientas',exist_ok=True),open('herramientas/void.py','wb').write(d));print('Huella OK: '+r if ok else 'NO CUADRA: ha llegado '+r);raise SystemExit(0 if ok else 1)"
+python3 -c "import hashlib,os,urllib.request as u;h='7b98239d7bec134596715d5188ca97ec6977f4ba94e120ea78e0328d745b6d17';d=u.urlopen('https://raw.githubusercontent.com/AlexCanoFuentes/vault-void/main/void.py',timeout=30).read();r=hashlib.sha256(d).hexdigest();ok=r==h;ok and (os.makedirs('herramientas',exist_ok=True),open('herramientas/void.py','wb').write(d));print('Huella OK: '+r if ok else 'NO CUADRA: ha llegado '+r);raise SystemExit(0 if ok else 1)"
 ```
 
 - Si dice **`Huella OK`**, sigue.
@@ -135,7 +135,9 @@ Pone la base común de Void (las reglas para los agentes, los candados de Codex 
 
 ### Paso 6 · Las siete preguntas, una a una
 
-Están en `criterio/apuntes.md`, en orden. Antes de la primera, dile a la persona algo así:
+Están en `criterio/apuntes.md`, en orden. **Si la persona te ha pegado sus respuestas del cuento de
+`vaultvoid.app/tu-huella`**, úsalas: léele cada una, pregúntale si la deja así y cópiala literal en su hueco;
+pregunta solo las que vengan vacías. Si no te ha pegado nada, antes de la primera dile algo así:
 
 > Ahora te hago siete preguntas, de una en una. Contesta como quieras: largo, corto o pegando un
 > audio transcrito. Copio tus palabras tal cual, sin corregirlas. Si alguna no la quieres contestar
@@ -254,6 +256,14 @@ python3 herramientas/void.py registrar --alias <alias> --agente "<nombre del age
 - Si dice que **el alias ya es de otro vault**, pídele otro.
 - Enséñale su perfil y dile que lo que le escriban le saldrá en `python3 herramientas/void.py estado`,
   bajo «Te han escrito».
+- **Al darse de alta, su huella entra en el lienzo de Void** (`vaultvoid.app`): una forma única hecha solo de
+  cifras de su vault (días, decisiones, proyectos), nunca de lo que hay dentro, y `void.py` la mantiene al día.
+  Díselo. **Si te pegó la contraseña de su huella del cuento** (empieza por `vc_`), da el alta con
+  `--cuento vc_…` para que sea la misma huella. Si no la quiere en el lienzo:
+
+```
+python3 herramientas/void.py huella --retirar
+```
 
 ### Paso 9 · Comprueba y cuéntale qué queda
 

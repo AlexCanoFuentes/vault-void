@@ -268,7 +268,7 @@ function inicio() {
 }
 function tresCosas() {
   decir("", "Antes de empezar, <em>tres cosas</em>.", "");
-  abajo.innerHTML = `<div class="tres"><p>Lo que escribas aquí no sale de esta pantalla.</p>
+  abajo.innerHTML = `<div class="tres"><p>Lo que escribas aquí no sale de esta pantalla. Tu huella sí entra en el lienzo de Void, y se queda: solo su forma, hecha de cifras.</p>
     <p>Cuando tu vault despierte en la nube, lo que guarde es tuyo: te lo llevas o lo borras cuando quieras.</p>
     <p>Mientras tu asistente trabaje, nuestra máquina lo tendrá abierto. Y antes de cobrarte nada, te preguntamos.</p></div>
     <div class="fila"><button class="principal" id="sigamos">Sigamos</button></div>`;
@@ -304,8 +304,32 @@ function soltar(texto) {
   }
   setTimeout(() => { i++; if (i < 7) contar(); else formada(); }, quieto ? 600 : (texto ? 3200 : 1600));
 }
+/* La huella del cuento entra en el lienzo y se queda [Alex, 10-oct: «cada huella creada va de forma persistente y al
+   dia al lienzo»]. Solo viajan cifras: cuántas respuestas, cuántas calladas, cuánto se contó y el color; nunca las
+   palabras. El navegador guarda su contraseña (token) para actualizarla, y el vault la hereda al nacer. */
+let token = null;
+try { token = localStorage.getItem("void-huella-cuento"); } catch (e) {}
+function cifrasDelCuento() {
+  const dichas = respuestas.filter(r => r).length, letras = respuestas.reduce((n, r) => n + (r ? r.length : 0), 0);
+  const primera = respuestas.findIndex(r => r);
+  return {version: 1, dias: 0, pulso: dichas * 8, decisiones: Math.min(100000, Math.round(letras / 15)), proyectos: dichas,
+          calladas: 7 - dichas, tono: primera >= 0 ? CAPAS[primera].h : 30};
+}
+let guardada = null; /* null: aún no; true: está en el lienzo; false: no se pudo */
+function guardarEnElLienzo() {
+  return fetch("https://red.vaultvoid.app/v1/huella/cuento", {method: "POST", headers: {"content-type": "application/json"},
+      body: JSON.stringify(token ? {huella: cifrasDelCuento(), token} : {huella: cifrasDelCuento()})})
+    .then(r => r.json().then(d => ({ok: r.ok, d})))
+    .then(({ok, d}) => {
+      if (!ok || !d.token) throw new Error(d.error || "no");
+      token = d.token; guardada = true;
+      try { localStorage.setItem("void-huella-cuento", token); } catch (e) {}
+    })
+    .catch(() => { guardada = false; });
+}
 function formada() {
   paso = "formada"; const n = nombre();
+  guardarEnElLienzo();
   decir("", n ? `Ya existe. Es la huella de <em>${esc(n)}</em>.` : "Ya <em>existe</em>.", "Hecha con tus palabras, tal cual. Cada color es una de tus respuestas; los huecos, lo que no contaste.");
   abajo.innerHTML = `<div class="fila"><button class="principal" id="seguir">Seguir</button><button id="dentro">Mírala por dentro</button></div>`;
   document.getElementById("dentro").onclick = porDentro;
@@ -340,12 +364,36 @@ function despertar(seQueda) {
   (function subir() { luz = Math.max(0.01, Math.min(1, (performance.now() - arranque - 1200) / 1400)); if (luz < 1) requestAnimationFrame(subir); })();
   setTimeout(viva, quieto ? 400 : 3200);
 }
+function textoParaAsistente() {
+  /* Las siete respuestas, tal cual, para pegárselas al asistente en una carpeta vacía: /empezar las usa en vez de volver a
+     preguntar (y pregunta solo las que vengan vacías). No sale de esta pantalla hasta que la persona lo pega. */
+  const lineas = CAPAS.map((k, j) => `${j + 1}. ${k.pregunta}\n   ${respuestas[j] ? respuestas[j].replace(/\s+/g, " ").trim() : "[sin contestar]"}`);
+  return "empieza mi vault: vaultvoid.app/empezar\n\nMis respuestas a las siete preguntas (las escribí en el cuento de Void, úsalas tal cual):\n\n"
+    + lineas.join("\n") + (propuesta ? `\n\nEn el cuento dije que sí a esta herramienta: ${propuesta}.` : "")
+    + (token ? `\n\nMi huella ya está en el lienzo de Void: es el principio de la de mi vault. Cuando me des de alta en la red, publica mi huella con «--cuento ${token}» para que sea la misma.` : "\n\nCuando el vault esté, publica mi huella en el lienzo de Void.");
+}
 function viva() {
   paso = "viva"; luz = 1;
-  decir("", "Tu huella ya <em>existe</em>.", "Así entrará en el lienzo cuando tu vault despierte. Se enciende de verdad cuando la nube abra para los primeros.");
-  abajo.innerHTML = `<div class="fila"><button class="principal" id="guardar">Guardar la imagen de tu huella</button><a class="boton" href="/">Ver el lienzo</a></div>
-    <p class="pista">¿Ya usas Claude Code o Codex? Pégale «empieza mi vault: vaultvoid.app/empezar» y tu vault despierta hoy, en tu ordenador.</p>
+  const dice = guardada === false ? "No he podido guardarla en el lienzo ahora mismo; vuelve a intentarlo en un momento con «Empezar otra vez»." :
+    "Ya está en el lienzo de Void, y se queda. Es el principio de la huella de tu vault: cuando exista, crecerá con tu trabajo.";
+  decir("", "Tu huella ya <em>existe</em>.", dice + " Si usas Claude Code, Codex o Antigravity, llévate tus respuestas y tu asistente monta tu vault con ellas.");
+  abajo.innerHTML = `<div class="fila"><button class="principal" id="copiar">Copiar mis respuestas para mi asistente</button></div>
+    <p class="pista" id="pista-copia">Ábrelo en una carpeta vacía y pégaselo. Montará tu vault con tus palabras, tal cual, y tu huella seguirá siendo la misma.</p>
+    <div class="fila"><a class="boton" href="/">Verla en el lienzo</a><button id="guardar">Guardar la imagen</button></div>
     <div class="fila"><button class="texto" id="otra">Empezar otra vez</button></div>`;
+  document.getElementById("copiar").onclick = () => {
+    const t = textoParaAsistente(), b = document.getElementById("copiar"), pista = document.getElementById("pista-copia");
+    const hecho = () => { b.textContent = "Copiado. Ahora pégaselo a tu asistente"; };
+    const aMano = () => {
+      hoja.innerHTML = `<div class="hoja" role="dialog" aria-label="Tus respuestas para tu asistente"><h3>Cópialo y pégaselo</h3>
+        <textarea id="para-copiar" readonly style="width:100%;height:220px;border-radius:12px">${esc(t)}</textarea>
+        <div class="fila" style="margin-top:14px"><button class="principal" id="cerrar">Hecho</button></div></div>`;
+      const ta = document.getElementById("para-copiar"); ta.focus(); ta.select();
+      document.getElementById("cerrar").onclick = () => { hoja.innerHTML = ""; };
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(hecho, aMano); else aMano();
+    pista.textContent = "Se ha copiado en tu ordenador, no se ha mandado a ningún sitio.";
+  };
   document.getElementById("guardar").onclick = () => {
     cv.toBlob(b => {
       if (!b) return;

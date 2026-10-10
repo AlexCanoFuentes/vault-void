@@ -364,10 +364,19 @@ details[open] summary::after{content:"−"}
   function abreHuella(t, px, py) {
     sel = t; sucio = true;
     var c = t.col;
-    $("f-alias").innerHTML = '<span class="punto" style="background:rgb(' + c[0] + "," + c[1] + "," + c[2] + ')"></span>@' + esc(t.alias);
-    $("f-cifras").innerHTML = cifras(t.h).map(function (r) { return "<span>" + r[0] + "</span><b>" + r[1] + "</b>"; }).join("");
-    $("f-texto").textContent = "Su forma sale solo de estas cifras: nada de lo que hay dentro de su vault.";
-    var a = $("f-enlace"); a.hidden = false; a.href = "/@" + encodeURIComponent(t.alias); a.textContent = "Ver su sitio →";
+    var punto = '<span class="punto" style="background:rgb(' + c[0] + "," + c[1] + "," + c[2] + ')"></span>';
+    var a = $("f-enlace");
+    if (t.cuento) {
+      $("f-alias").innerHTML = punto + "Una huella que empieza";
+      $("f-cifras").innerHTML = "";
+      $("f-texto").textContent = "Nació en el cuento de Void. Cuando su vault exista, esta misma huella crecerá con su trabajo.";
+      a.hidden = false; a.href = "/tu-huella"; a.textContent = "Crear la tuya →";
+    } else {
+      $("f-alias").innerHTML = punto + "@" + esc(t.alias);
+      $("f-cifras").innerHTML = cifras(t.h).map(function (r) { return "<span>" + r[0] + "</span><b>" + r[1] + "</b>"; }).join("");
+      $("f-texto").textContent = "Su forma sale solo de estas cifras: nada de lo que hay dentro de su vault.";
+      a.hidden = false; a.href = "/@" + encodeURIComponent(t.alias); a.textContent = "Ver su sitio →";
+    }
     if (px == null) { var p = aPantalla(t.x, t.y); px = p.x; py = p.y; }
     colocaFicha(px, py);
   }
@@ -390,7 +399,9 @@ details[open] summary::after{content:"−"}
     var lh = $("lista-huellas");
     lh.innerHTML = campo.territorios.length ? campo.territorios.map(function (t, i) {
       var c = t.col;
-      return '<li><button type="button" data-i="' + i + '"><span class="tt"><span class="punto" style="background:rgb(' + c[0] + "," + c[1] + "," + c[2] + ')"></span>@' + esc(t.alias) + '</span><span class="ss">' + t.h.dias + " días · " + t.h.decisiones + " decisiones · " + t.h.proyectos + " proyectos</span></button></li>";
+      var nombre = t.cuento ? "una huella que empieza" : "@" + esc(t.alias);
+      var detalle = t.cuento ? "nació en el cuento; su vault aún no existe" : t.h.dias + " días · " + t.h.decisiones + " decisiones · " + t.h.proyectos + " proyectos";
+      return '<li><button type="button" data-i="' + i + '"><span class="tt"><span class="punto" style="background:rgb(' + c[0] + "," + c[1] + "," + c[2] + ')"></span>' + nombre + '</span><span class="ss">' + detalle + "</span></button></li>";
     }).join("") : '<li><span class="ss">Todavía no hay ninguna. La primera puede ser la tuya.</span></li>';
     lh.querySelectorAll("button").forEach(function (b) {
       b.addEventListener("click", function () {

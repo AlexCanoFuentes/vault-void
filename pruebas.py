@@ -2002,6 +2002,7 @@ class RedFalsa:
         self.autoria = {}       # estrella -> alias
         self.vistas = []        # (método, ruta, llave o None)
         self.huellas = {}       # alias -> huella tal cual llegó
+        self.cuentos_reclamados = []   # contraseñas de huellas del cuento que ha mandado un vault
         red = self
 
         class Manejador(http.server.BaseHTTPRequestHandler):
@@ -2068,7 +2069,9 @@ class RedFalsa:
                     return self.responder(200, {"alias": alias, "llave": nueva})
                 if self.path == "/v1/huella":
                     red.huellas[alias] = b["huella"]
-                    return self.responder(200, {"alias": alias, "huella": b["huella"]})
+                    if b.get("cuento"):
+                        red.cuentos_reclamados.append(b["cuento"])
+                    return self.responder(200, {"alias": alias, "huella": b["huella"], "reclamada": bool(b.get("cuento"))})
                 if self.path == "/v1/huella/retirar":
                     red.huellas.pop(alias, None)
                     return self.responder(200, {"alias": alias, "retirada": True})
@@ -2114,25 +2117,36 @@ class RedDeVoid(Caso):
         self.assertEqual(codigo, 0, err)
         return out
 
-    def test_huella_solo_cifras_y_solo_si_se_pide(self):
-        """VV-007: la huella sale del vault como cifras. Sin --publicar no se manda nada; con él, solo números y
-        ningún texto del vault, aunque el vault esté lleno de nombres."""
+    def test_huella_al_darse_de_alta_solo_cifras_y_al_dia(self):
+        """VV-007 y 10-oct: al darse de alta, la huella entra en el lienzo, solo con cifras aunque el vault esté lleno de
+        nombres; «estado» la pone al día; --retirar la quita y deja de ponerla al día; --cuento hereda la del cuento."""
         v = self.conectado({"README.md": b"# Mi vault\n", "criterio/apuntes.md": "- **Elegí** · negocio · Lucía Pérez\n- **[sin contestar]** · algo\n".encode("utf-8"),
                             "proyectos/taller.md": "# Taller de Lucía\n".encode("utf-8"), "proyectos/_plantilla.md": b"# plantilla\n"})
         self.alta(v)
-        codigo, out, err = correr("huella", "--vault", v)
-        self.assertEqual(codigo, 0, err)
-        self.assertIn("1 decisiones", out); self.assertIn("1 proyectos", out); self.assertIn("1 preguntas sin contestar", out)
-        self.assertEqual(self.red.huellas, {}, "sin --publicar ha mandado la huella")
-        codigo, out, err = correr("huella", "--publicar", "--tono", "200", "--vault", v)
-        self.assertEqual(codigo, 0, err)
         h = self.red.huellas["nube"]
-        self.assertEqual(sorted(h), sorted(["version", "dias", "pulso", "decisiones", "proyectos", "calladas", "tono"]))
+        self.assertEqual(sorted(h), sorted(["version", "dias", "pulso", "decisiones", "proyectos", "calladas"]))
         self.assertTrue(all(isinstance(x, int) for x in h.values()), "la huella lleva algo que no es un número")
         self.assertNotIn("Lucía", json.dumps(h), "la huella lleva texto del vault")
+        _, seguidos = git(v, "ls-files")
+        self.assertNotIn(".void", seguidos, "la marca de la huella ha entrado en git")
+        self.red.huellas.clear()
+        codigo, out, err = correr("estado", "--vault", v)
+        self.assertEqual(codigo, 0, err)
+        self.assertIn("nube", self.red.huellas, "«estado» no pone al día la huella")
+        self.assertIn("al día", out)
         codigo, out, err = correr("huella", "--retirar", "--vault", v)
         self.assertEqual(codigo, 0, err)
         self.assertNotIn("nube", self.red.huellas)
+        correr("estado", "--vault", v)
+        self.assertNotIn("nube", self.red.huellas, "retirada, «estado» la vuelve a publicar")
+        codigo, out, err = correr("huella", "--vault", v)
+        self.assertNotIn("nube", self.red.huellas, "sin --publicar ha mandado la huella")
+        token = "vc_" + "a" * 64
+        codigo, out, err = correr("huella", "--publicar", "--tono", "200", "--cuento", token, "--vault", v)
+        self.assertEqual(codigo, 0, err)
+        self.assertEqual(self.red.huellas["nube"]["tono"], 200)
+        self.assertEqual(self.red.cuentos_reclamados, [token], "no manda la contraseña de la huella del cuento")
+        self.assertEqual(correr("huella", "--publicar", "--cuento", "no-vale", "--vault", v)[0], 1, "un --cuento roto no se para")
         self.assertEqual(correr("huella", "--publicar", "--tono", "999", "--vault", v)[0], 1, "un tono fuera de la rueda no se para")
 
     def test_registrar_guarda_la_llave_y_la_deja_fuera_de_git(self):

@@ -14,6 +14,7 @@
  *   GET  /v1/estrella/<n>/avisos                            los avisos de una estrella (público: es lo mismo que su página)
  *   POST /v1/huella                 {huella: {...}}         publica o cambia la huella de tu vault (con la llave; VV-007)
  *   POST /v1/huella/retirar                                 la quita del lienzo (con la llave)
+ *   POST /v1/huella/cuento          {huella, token?}        la huella del cuento, sin vault: se queda en el lienzo (tope por conexión)
  *   GET  /v1/huellas                                        las huellas publicadas, para pintar el lienzo (público)
  *   POST /v1/clave                  {clave}                 publica la clave pública de mensajes de tu vault (con la llave; VV-008)
  *   GET  /v1/clave/<alias>                                  la clave pública de otro vault (público: sirve para cifrarle)
@@ -40,6 +41,8 @@ export interface Entorno {
   TOPE_MENSAJES_HORA?: string;
   /** Destinatarios nuevos por vault y día. Por defecto 5. */
   TOPE_NUEVOS_DIA?: string;
+  /** Huellas nuevas del cuento por conexión y hora. Por defecto 5. */
+  TOPE_CUENTO_HORA?: string;
 }
 
 const MAX_CUERPO = 8 * 1024;
@@ -402,10 +405,60 @@ async function publicarHuella(request: Request, env: Entorno): Promise<Response>
   const mal = problemaHuella(b.huella);
   if (mal) return error(400, mal);
   const huella = huellaNormal(b.huella as Huella);
-  await env.DB.prepare("INSERT INTO huellas (perfil_id, datos, actualizado) VALUES (?, ?, ?) "
-    + "ON CONFLICT(perfil_id) DO UPDATE SET datos = excluded.datos, actualizado = excluded.actualizado")
-    .bind(p.id, JSON.stringify(huella), Date.now()).run();
-  return json(200, { alias: p.alias, huella });
+  const previa = await env.DB.prepare("SELECT datos, semilla FROM huellas WHERE perfil_id = ?").bind(p.id).first<{ datos: string; semilla: string | null }>();
+  let semilla: string | null = previa?.semilla ?? null;
+  // El color se conserva aunque el vault no lo mande: el que eligió (o el que heredó del cuento) sigue siendo el suyo.
+  if (huella.tono === undefined && previa) { const t = (JSON.parse(previa.datos) as Huella).tono; if (t !== undefined) huella.tono = t; }
+  // Si trae el token de su huella del cuento, la reclama: es la misma huella, que ahora crece con las cifras del vault.
+  let reclamada = false;
+  if (typeof b.cuento === "string" && RE_TOKEN_CUENTO.test(b.cuento)) {
+    const c = await env.DB.prepare("SELECT id, datos FROM huellas_cuento WHERE token_hash = ?").bind(await huella_de(b.cuento)).first<{ id: number; datos: string }>();
+    if (c) {
+      semilla = `cuento:${c.id}`;
+      const t = (JSON.parse(c.datos) as Huella).tono;
+      if (huella.tono === undefined && t !== undefined) huella.tono = t;
+      const r = await env.DB.prepare("DELETE FROM huellas_cuento WHERE id = ?").bind(c.id).run();
+      reclamada = !!r.meta.changes;
+    }
+  }
+  await env.DB.prepare("INSERT INTO huellas (perfil_id, datos, actualizado, semilla) VALUES (?, ?, ?, ?) "
+    + "ON CONFLICT(perfil_id) DO UPDATE SET datos = excluded.datos, actualizado = excluded.actualizado, semilla = excluded.semilla")
+    .bind(p.id, JSON.stringify(huella), Date.now(), semilla).run();
+  return json(200, { alias: p.alias, huella, reclamada });
+}
+
+const RE_TOKEN_CUENTO = /^vc_[0-9a-f]{64}$/;
+const huella_de = (t: string) => huella(t);   // sha256 en hex, la misma que se usa para la llave
+
+/** La huella del cuento: sin llave. Con un token que ya existe, la actualiza; si no, crea otra (con tope por conexión). */
+async function huellaCuento(request: Request, env: Entorno): Promise<Response> {
+  const b = await cuerpo(request);
+  const mal = problemaHuella(b.huella);
+  if (mal) return error(400, mal);
+  const datos = JSON.stringify(huellaNormal(b.huella as Huella)), ahora = Date.now();
+  if (typeof b.token === "string" && RE_TOKEN_CUENTO.test(b.token)) {
+    const r = await env.DB.prepare("UPDATE huellas_cuento SET datos = ?, actualizado = ? WHERE token_hash = ?")
+      .bind(datos, ahora, await huella_de(b.token)).run();
+    if (r.meta.changes) return json(200, { token: b.token, nueva: false }, { "access-control-allow-origin": "*" });
+  }
+  const ip = request.headers.get("cf-connecting-ip") ?? "local";
+  const clave = "cuento:" + (await huella((await sal(env)) + ip));
+  await env.DB.prepare("DELETE FROM ritmo WHERE creado < ?").bind(ahora - 2 * HORA).run();
+  const n = (await env.DB.prepare("SELECT COUNT(*) AS n FROM ritmo WHERE clave = ? AND creado > ?").bind(clave, ahora - HORA).first<{ n: number }>())!.n;
+  const max = tope(env.TOPE_CUENTO_HORA, 5);
+  if (n >= max) {
+    return error(429, `Desde esta conexión ya se han creado ${n} huellas en la última hora (tope ${max}). Prueba dentro de una hora.`,
+      { "retry-after": "3600", "access-control-allow-origin": "*" });
+  }
+  const total = (await env.DB.prepare("SELECT COUNT(*) AS n FROM huellas_cuento").first<{ n: number }>())!.n;
+  if (total >= 2000) return error(503, "El lienzo está lleno de huellas sin vault. Prueba más tarde.", { "access-control-allow-origin": "*" });
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  const token = "vc_" + [...bytes].map((x) => x.toString(16).padStart(2, "0")).join("");
+  await env.DB.prepare("INSERT INTO ritmo (clave, creado) VALUES (?, ?)").bind(clave, ahora).run();
+  await env.DB.prepare("INSERT INTO huellas_cuento (token_hash, datos, creado, actualizado) VALUES (?, ?, ?, ?)")
+    .bind(await huella_de(token), datos, ahora, ahora).run();
+  return json(201, { token, nueva: true }, { "access-control-allow-origin": "*" });
 }
 
 async function retirarHuella(request: Request, env: Entorno): Promise<Response> {
@@ -416,10 +469,15 @@ async function retirarHuella(request: Request, env: Entorno): Promise<Response> 
 
 /** El lienzo: público, como el perfil. Solo lo que cada vault ha mandado, que ya son solo cifras. */
 async function huellas(env: Entorno): Promise<Response> {
-  const filas = (await env.DB.prepare("SELECT p.alias, h.datos, h.actualizado FROM huellas h JOIN perfiles p ON p.id = h.perfil_id "
-    + "ORDER BY h.actualizado DESC LIMIT 500").all<{ alias: string; datos: string; actualizado: number }>()).results;
-  return json(200, { huellas: filas.map((f) => ({ alias: f.alias, huella: JSON.parse(f.datos), actualizado: f.actualizado })) },
-    { "access-control-allow-origin": "*" });
+  const filas = (await env.DB.prepare("SELECT p.alias, h.datos, h.actualizado, h.semilla FROM huellas h JOIN perfiles p ON p.id = h.perfil_id "
+    + "ORDER BY h.actualizado DESC LIMIT 500").all<{ alias: string; datos: string; actualizado: number; semilla: string | null }>()).results;
+  const delCuento = (await env.DB.prepare("SELECT id, datos, actualizado FROM huellas_cuento ORDER BY actualizado DESC LIMIT 1500")
+    .all<{ id: number; datos: string; actualizado: number }>()).results;
+  return json(200, { huellas: [
+    ...filas.map((f) => ({ alias: f.alias, semilla: f.semilla ?? f.alias, huella: JSON.parse(f.datos), actualizado: f.actualizado })),
+    // sin alias: nacieron en el cuento y su vault aún no existe; el «id» solo sirve para dibujarlas siempre igual
+    ...delCuento.map((f) => ({ alias: null, cuento: f.id, semilla: `cuento:${f.id}`, huella: JSON.parse(f.datos), actualizado: f.actualizado })),
+  ] }, { "access-control-allow-origin": "*" });
 }
 
 // ---------------------------------------------------------------- entrada
@@ -433,6 +491,10 @@ export default {
     const url = new URL(request.url);
     const ruta = url.pathname.replace(/\/+$/, "");
     const m = request.method;
+    if (m === "OPTIONS" && ruta === "/v1/huella/cuento") {
+      return new Response(null, { status: 204, headers: { "access-control-allow-origin": "*", "access-control-allow-methods": "POST",
+        "access-control-allow-headers": "content-type", "access-control-max-age": "86400" } });
+    }
     try {
       if (m === "POST") {
         if (ruta === "/v1/registrar") return await registrar(request, env);
@@ -442,6 +504,7 @@ export default {
         if (ruta === "/v1/avisos") return await avisar(request, env);
         if (ruta === "/v1/huella") return await publicarHuella(request, env);
         if (ruta === "/v1/huella/retirar") return await retirarHuella(request, env);
+        if (ruta === "/v1/huella/cuento") return await huellaCuento(request, env);
         if (ruta === "/v1/clave") return await publicarClave(request, env);
         if (ruta === "/v1/mensajes") return await mandar(request, env);
         if (ruta === "/v1/bloquear") return await bloquear(request, env, true);

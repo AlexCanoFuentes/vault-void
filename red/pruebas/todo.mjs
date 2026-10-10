@@ -175,6 +175,36 @@ const PRUEBAS = {
     exige(ultimo.estado === 429, `el mensaje 21 dio ${ultimo.estado}, no 429`);
   },
 
+  async "huella del cuento: se queda en el lienzo, el token la actualiza y el vault la reclama"(w) {
+    const r = await pedir(w, "POST", "/v1/huella/cuento", { cuerpo: { huella: HUELLA } });
+    exige(r.estado === 201 && /^vc_[0-9a-f]{64}$/.test(r.datos.token || ""), `crear la huella del cuento dio ${r.estado}: ${r.texto.slice(0, 160)}`);
+    const token = r.datos.token;
+    exige(r.cabeceras.get("access-control-allow-origin") === "*", "el cuento no puede guardar su huella desde vaultvoid.app");
+    const conTexto = await pedir(w, "POST", "/v1/huella/cuento", { cuerpo: { huella: { ...HUELLA, nota: "me llamo Lucía" } } });
+    exige(conTexto.estado === 400, `una huella del cuento con texto entró (${conTexto.estado})`);
+    const cuantas = () => w.sql("SELECT COUNT(*) AS n FROM huellas_cuento")[0].n;
+    const antes = cuantas();
+    const otra = await pedir(w, "POST", "/v1/huella/cuento", { cuerpo: { huella: { ...HUELLA, dias: 3, tono: 120 }, token } });
+    exige(otra.estado === 200 && otra.datos.token === token, `con su token no la actualizó (${otra.estado})`);
+    exige(cuantas() === antes, "con su token creó otra huella en vez de actualizar la suya");
+    exige(!JSON.stringify(w.sql("SELECT * FROM huellas_cuento")).includes(token), "la base guarda el token en vez de su huella");
+    const lienzo = await pedir(w, "GET", "/v1/huellas");
+    exige((lienzo.datos.huellas || []).some((x) => x.alias === null && x.cuento && x.huella.dias === 3), "la huella del cuento no está en el lienzo, o no al día");
+    const v = await alta(w, alias());
+    const pub = await pedir(w, "POST", "/v1/huella", { llave: v.datos.llave, cuerpo: { huella: (({ tono, ...h }) => h)(HUELLA), cuento: token } });
+    exige(pub.estado === 200 && pub.datos.reclamada === true, `el vault no pudo reclamar su huella del cuento (${pub.estado})`);
+    exige(cuantas() === antes - 1, "reclamada por su vault, la huella del cuento sigue en el lienzo");
+    const suya = (await pedir(w, "GET", "/v1/huellas")).datos.huellas.find((x) => x.alias === v.datos.alias);
+    exige(suya && /^cuento:\d+$/.test(suya.semilla || ""), `la huella del vault no hereda la semilla de la del cuento (${suya && suya.semilla})`);
+    exige(suya.huella.tono === 120, `la huella del vault no hereda el color de la del cuento (${suya.huella.tono})`);
+  },
+
+  async "huella del cuento: 429 al pasar de 5 nuevas por conexión y hora"(w) {
+    let ultimo;
+    for (let i = 0; i < 6; i++) ultimo = await pedir(w, "POST", "/v1/huella/cuento", { cuerpo: { huella: HUELLA } });
+    exige(ultimo.estado === 429, `la sexta huella del cuento dio ${ultimo.estado}, no 429`);
+  },
+
   async "alta: da una llave y la base solo guarda su huella"(w) {
     const a = alias();
     const r = await alta(w, a);
@@ -384,6 +414,13 @@ const SABOTAJES = [
   { nombre: "sin tope de mensajes", fichero: "src/worker.ts",
     buscar: "if (n >= max) {\n    return error(429, `Ya has mandado ${n} mensajes", poner: "if (false) {\n    return error(429, `Ya has mandado ${n} mensajes",
     pruebas: ["mensajes: 429 al pasar de 20 por hora"] },
+  { nombre: "sin tope de huellas del cuento", fichero: "src/worker.ts",
+    buscar: "if (n >= max) {\n    return error(429, `Desde esta conexión ya se han creado", poner: "if (false) {\n    return error(429, `Desde esta conexión ya se han creado",
+    pruebas: ["huella del cuento: 429 al pasar de 5 nuevas por conexión y hora"] },
+  { nombre: "el vault no reclama su huella del cuento", fichero: "src/worker.ts",
+    buscar: "const r = await env.DB.prepare(\"DELETE FROM huellas_cuento WHERE id = ?\").bind(c.id).run();",
+    poner: "const r = { meta: { changes: 1 } };",
+    pruebas: ["huella del cuento: se queda en el lienzo, el token la actualiza y el vault la reclama"] },
   { nombre: "el aviso entra en la página sin escapar", fichero: "src/paginas.ts",
     buscar: "<p>${esc(a.texto)}</p>", poner: "<p>${a.texto}</p>",
     pruebas: ["avisos: una etiqueta en el texto sale como texto"] },

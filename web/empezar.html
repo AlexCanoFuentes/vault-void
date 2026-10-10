@@ -125,9 +125,9 @@ footer p{color:var(--tenue)}
 <section>
 <h3>Paso 3 · Baja <code>void.py</code> y comprueba su huella</h3>
 <p>La huella (sha256) de <code>void.py</code> que publica esta página es:</p>
-<p><code class="huella" id="huella">cbac9e5dfaf278cb2c9498697b4a138269adfa86c69e058051e2f16c28788376</code></p>
+<p><code class="huella" id="huella">7b98239d7bec134596715d5188ca97ec6977f4ba94e120ea78e0328d745b6d17</code></p>
 <p>Esta orden lo baja de GitHub, calcula su huella y <strong>solo lo guarda en <code>herramientas/void.py</code> si cuadra</strong> con la de arriba. No lo ejecuta. Ejecútala desde la carpeta (es igual en Mac, Linux y Windows; cambia <code>python3</code> por el nombre del paso 1):</p>
-<pre><code>python3 -c "import hashlib,os,urllib.request as u;h='cbac9e5dfaf278cb2c9498697b4a138269adfa86c69e058051e2f16c28788376';d=u.urlopen('https://raw.githubusercontent.com/AlexCanoFuentes/vault-void/main/void.py',timeout=30).read();r=hashlib.sha256(d).hexdigest();ok=r==h;ok and (os.makedirs('herramientas',exist_ok=True),open('herramientas/void.py','wb').write(d));print('Huella OK: '+r if ok else 'NO CUADRA: ha llegado '+r);raise SystemExit(0 if ok else 1)"</code></pre>
+<pre><code>python3 -c "import hashlib,os,urllib.request as u;h='7b98239d7bec134596715d5188ca97ec6977f4ba94e120ea78e0328d745b6d17';d=u.urlopen('https://raw.githubusercontent.com/AlexCanoFuentes/vault-void/main/void.py',timeout=30).read();r=hashlib.sha256(d).hexdigest();ok=r==h;ok and (os.makedirs('herramientas',exist_ok=True),open('herramientas/void.py','wb').write(d));print('Huella OK: '+r if ok else 'NO CUADRA: ha llegado '+r);raise SystemExit(0 if ok else 1)"</code></pre>
 <ul>
 <li>Si dice <strong><code>Huella OK</code></strong>, sigue.</li>
 <li>Si dice <strong><code>NO CUADRA</code></strong>, <strong>para</strong>. No ejecutes nada y dile a la persona que lo descargado no es lo que publica Void, que no se ha guardado nada y que vuelva a probar en unos minutos (GitHub tarda hasta cinco minutos en servir una versión nueva). Si se repite, que avise a quien le pasó Void.</li>
@@ -159,7 +159,7 @@ footer p{color:var(--tenue)}
 
 <section>
 <h3>Paso 6 · Las siete preguntas, una a una</h3>
-<p>Están en <code>criterio/apuntes.md</code>, en orden. Antes de la primera, dile a la persona algo así:</p>
+<p>Están en <code>criterio/apuntes.md</code>, en orden. <strong>Si la persona te ha pegado sus respuestas del cuento de <code>vaultvoid.app/tu-huella</code></strong>, úsalas: léele cada una, pregúntale si la deja así y cópiala literal en su hueco; pregunta solo las que vengan vacías. Si no te ha pegado nada, antes de la primera dile algo así:</p>
 <blockquote>
 <p>Ahora te hago siete preguntas, de una en una. Contesta como quieras: largo, corto o pegando un audio transcrito. Copio tus palabras tal cual, sin corregirlas. Si alguna no la quieres contestar o no lo sabes, dilo y pasamos a la siguiente: se queda «sin contestar» y la puedes contestar otro día.</p>
 </blockquote>
@@ -220,6 +220,8 @@ python3 herramientas/revisar.py</code></pre>
 <li>Guarda la <strong>llave del vault</strong> en <code>.void/llave</code>, que el <code>.gitignore</code> de la plantilla ya deja fuera de git. <strong>No enseñes la llave, no la copies y no la pegues en ningún sitio</strong>: es lo que demuestra que el vault es de la persona.</li>
 <li>Si dice que <strong>el alias ya es de otro vault</strong>, pídele otro.</li>
 <li>Enséñale su perfil y dile que lo que le escriban le saldrá en <code>python3 herramientas/void.py estado</code>, bajo «Te han escrito».</li>
+<li><strong>Al darse de alta, su huella entra en el lienzo de Void</strong> (<code>vaultvoid.app</code>): una forma única hecha solo de cifras de su vault (días, decisiones, proyectos), nunca de lo que hay dentro, y <code>void.py</code> la mantiene al día. Díselo. <strong>Si te pegó la contraseña de su huella del cuento</strong> (empieza por <code>vc_</code>), da el alta con <code>--cuento vc_…</code> para que sea la misma huella. Si no la quiere en el lienzo:
+<pre><code>python3 herramientas/void.py huella --retirar</code></pre></li>
 </ul>
 </section>
 

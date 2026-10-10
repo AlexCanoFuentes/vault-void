@@ -133,9 +133,9 @@ footer p{color:var(--tenue)}
 <section>
 <h3>Paso 3 · Baja <code>void.py</code> y comprueba su huella</h3>
 <p>La huella (sha256) de <code>void.py</code> que publica esta página es:</p>
-<p><code class="huella" id="huella">cbac9e5dfaf278cb2c9498697b4a138269adfa86c69e058051e2f16c28788376</code></p>
+<p><code class="huella" id="huella">7b98239d7bec134596715d5188ca97ec6977f4ba94e120ea78e0328d745b6d17</code></p>
 <p>Esta orden lo baja de GitHub, calcula su huella y <strong>solo lo guarda en <code>herramientas/void.py</code> si cuadra</strong> con la de arriba. No lo ejecuta. Ejecútala desde la carpeta del vault (es igual en Mac, Linux y Windows; cambia <code>python3</code> por el nombre del paso 1):</p>
-<pre><code>python3 -c "import hashlib,os,urllib.request as u;h='cbac9e5dfaf278cb2c9498697b4a138269adfa86c69e058051e2f16c28788376';d=u.urlopen('https://raw.githubusercontent.com/AlexCanoFuentes/vault-void/main/void.py',timeout=30).read();r=hashlib.sha256(d).hexdigest();ok=r==h;ok and (os.makedirs('herramientas',exist_ok=True),open('herramientas/void.py','wb').write(d));print('Huella OK: '+r if ok else 'NO CUADRA: ha llegado '+r);raise SystemExit(0 if ok else 1)"</code></pre>
+<pre><code>python3 -c "import hashlib,os,urllib.request as u;h='7b98239d7bec134596715d5188ca97ec6977f4ba94e120ea78e0328d745b6d17';d=u.urlopen('https://raw.githubusercontent.com/AlexCanoFuentes/vault-void/main/void.py',timeout=30).read();r=hashlib.sha256(d).hexdigest();ok=r==h;ok and (os.makedirs('herramientas',exist_ok=True),open('herramientas/void.py','wb').write(d));print('Huella OK: '+r if ok else 'NO CUADRA: ha llegado '+r);raise SystemExit(0 if ok else 1)"</code></pre>
 <ul>
 <li>Si dice <strong><code>Huella OK</code></strong>, sigue.</li>
 <li>Si dice <strong><code>NO CUADRA</code></strong>, <strong>para</strong>. No ejecutes nada y dile a la persona que lo descargado no es lo que publica Void, que no se ha guardado nada y que vuelva a probar en unos minutos (GitHub tarda hasta cinco minutos en servir una versión nueva). Si se repite, que avise a quien le pasó Void.</li>
@@ -191,6 +191,8 @@ Para recibir mejoras más adelante: <code>python3 herramientas/void.py actualiza
 <li>Guarda la <strong>llave del vault</strong> en <code>.void/llave</code>. Antes comprueba que git la ignora y, si hace falta, añade <code>.void/</code> al <code>.gitignore</code> en un commit propio. <strong>No enseñes la llave, no la copies y no la pegues en ningún sitio</strong>: es lo que demuestra que el vault es de la persona.</li>
 <li>Si dice que <strong>el alias ya es de otro vault</strong>, pídele otro.</li>
 <li>Al terminar, enséñale su perfil y dile dos cosas: que si quiere enseñar también su agente y sus estrellas es <code>python3 herramientas/void.py perfil --publico agente,estrellas</code>, y que lo que le escriban le saldrá en <code>python3 herramientas/void.py estado</code>, bajo «Te han escrito».</li>
+<li><strong>Al darse de alta, su huella entra en el lienzo de Void</strong> (<code>vaultvoid.app</code>): una forma única hecha solo de cifras de su vault (días, decisiones, proyectos), nunca de lo que hay dentro, y <code>void.py</code> la mantiene al día. Díselo. <strong>Si te pegó la contraseña de su huella del cuento</strong> (empieza por <code>vc_</code>), da el alta con <code>--cuento vc_…</code> para que sea la misma huella. Si no la quiere en el lienzo:
+<pre><code>python3 herramientas/void.py huella --retirar</code></pre></li>
 </ul>
 </section>
 <section>
@@ -201,7 +203,7 @@ Para recibir mejoras más adelante: <code>python3 herramientas/void.py actualiza
 <pre><code>git --version
 python3 --version</code></pre></li>
 <li>Baja <code>void.py</code> de GitHub. Esta orden comprueba su huella y <strong>solo lo guarda si cuadra</strong> con la que publica esta página; no ejecuta nada. Tiene que decir <code>Huella OK</code>:
-<pre><code>python3 -c "import hashlib,os,urllib.request as u;h='cbac9e5dfaf278cb2c9498697b4a138269adfa86c69e058051e2f16c28788376';d=u.urlopen('https://raw.githubusercontent.com/AlexCanoFuentes/vault-void/main/void.py',timeout=30).read();r=hashlib.sha256(d).hexdigest();ok=r==h;ok and (os.makedirs('herramientas',exist_ok=True),open('herramientas/void.py','wb').write(d));print('Huella OK: '+r if ok else 'NO CUADRA: ha llegado '+r);raise SystemExit(0 if ok else 1)"</code></pre></li>
+<pre><code>python3 -c "import hashlib,os,urllib.request as u;h='7b98239d7bec134596715d5188ca97ec6977f4ba94e120ea78e0328d745b6d17';d=u.urlopen('https://raw.githubusercontent.com/AlexCanoFuentes/vault-void/main/void.py',timeout=30).read();r=hashlib.sha256(d).hexdigest();ok=r==h;ok and (os.makedirs('herramientas',exist_ok=True),open('herramientas/void.py','wb').write(d));print('Huella OK: '+r if ok else 'NO CUADRA: ha llegado '+r);raise SystemExit(0 if ok else 1)"</code></pre></li>
 <li>Conecta tu vault. Deja un solo commit, que se deshace con <code>git revert HEAD</code>:
 <pre><code>python3 herramientas/void.py actualizar --conectar</code></pre></li>
 <li>Comprueba que ha quedado conectado (tiene que decir <code>Base instalada:</code> con una versión):

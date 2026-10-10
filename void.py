@@ -16,7 +16,8 @@ Un vault nuevo, en una carpeta vacía (lo guía vaultvoid.app/empezar, que publi
                                     pone la plantilla de Void en un commit; después, «actualizar --conectar»
 
 La red de Void (opcional: nada de esto sube nada de tu vault):
-  python herramientas/void.py registrar --alias <alias> --agente <nombre de tu agente>
+  python herramientas/void.py registrar --alias <alias> --agente <nombre de tu agente> [--cuento vc_…]
+                                                (tu huella entra en el lienzo; con --cuento, la misma que hiciste en el cuento)
                                     da de alta el vault y guarda su llave en .void/llave, fuera de git
   python herramientas/void.py perfil --publico agente,estrellas   qué enseña vaultvoid.app/@alias además
                                     del alias («--publico nada»: solo el alias)
@@ -27,7 +28,8 @@ La red de Void (opcional: nada de esto sube nada de tu vault):
 
 Tu huella en el lienzo de Void (opcional; solo cifras, nunca nada de dentro del vault):
   python herramientas/void.py huella            te enseña las cifras que saldrían, sin mandar nada
-  python herramientas/void.py huella --publicar [--tono 0-359]   las manda; Void dibuja con ellas tu huella
+  python herramientas/void.py huella --publicar [--tono 0-359] [--cuento vc_…]   las manda; Void dibuja con ellas tu huella
+                                                y la mantiene al día en cada «estado» y «actualizar»
   python herramientas/void.py huella --retirar  la quita del lienzo
 
 Opciones:
@@ -96,6 +98,7 @@ RED = "https://red.vaultvoid.app"
 WEB = "https://vaultvoid.app"
 CARPETA_VOID = ".void"
 LLAVE = ".void/llave"
+RE_TOKEN_CUENTO = re.compile(r"vc_[0-9a-f]{64}")
 RE_LLAVE = re.compile(r"vv_[A-Za-z0-9_-]{43}")
 RE_ALIAS = re.compile(r"[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){2,23}")
 TIPOS_AVISO = ("fallo", "mejora", "gracias")
@@ -1102,7 +1105,7 @@ def fecha(ms):
         return "?"
 
 
-def orden_registrar(vault, alias, agente):
+def orden_registrar(vault, alias, agente, cuento=None):
     vault_conectado(vault)
     if not alias or not RE_ALIAS.fullmatch(alias):
         raise Fallo("El alias va en minúsculas, de 3 a 24 letras o cifras (sin tildes ni eñes), y puede llevar "
@@ -1120,6 +1123,13 @@ def orden_registrar(vault, alias, agente):
               "agente,estrellas")
         print("La llave del vault está en {}, fuera de git: es lo que demuestra que eres tú. No la compartas "
               "con nadie. Si se te escapa: python herramientas/void.py llave cambiar".format(LLAVE))
+        try:   # al darse de alta, su huella entra en el lienzo (solo cifras); si trae la del cuento, es la misma
+            h, rh = publicar_huella(vault, r.get("llave"), None, cuento if cuento and RE_TOKEN_CUENTO.fullmatch(cuento) else None)
+            print("Tu huella ya está en el lienzo de Void{}: {} días · {} decisiones · {} proyectos. Solo cifras, nada de "
+                  "dentro del vault. Para quitarla: python herramientas/void.py huella --retirar".format(
+                      " (la misma que nació en el cuento)" if rh.get("reclamada") else "", h["dias"], h["decisiones"], h["proyectos"]))
+        except Fallo as e:
+            print("No he podido poner tu huella en el lienzo: {} Pruébalo luego con: python herramientas/void.py huella --publicar".format(e))
     else:
         print("Este vault ya estaba en la red como @{}: no he creado otro perfil.".format(r.get("alias", alias)))
         print("Tu perfil: {}/@{}".format(WEB, r.get("alias", alias)))
@@ -1210,14 +1220,58 @@ def cifras_huella(vault, tono=None):
     return h
 
 
-def orden_huella(vault, publicar, retirar, tono):
+MARCA_HUELLA = ".void/huella"   # existe si la huella está en el lienzo: guarda el color, y void.py la mantiene al día
+
+
+def ruta_marca_huella(vault):
+    return vault.joinpath(*PurePosixPath(MARCA_HUELLA).parts)
+
+
+def publicar_huella(vault, llave, tono=None, cuento=None):
+    """Manda las cifras de la huella a la red y deja la marca para mantenerla al día. Devuelve (huella, respuesta)."""
+    h = cifras_huella(vault, tono)
+    datos = {"huella": h}
+    if cuento:
+        datos["cuento"] = cuento
+    _, r = pedir_red("POST", "/v1/huella", llave, datos)
+    marca = ruta_marca_huella(vault)
+    if dentro(vault, marca.parent) and not marca.is_symlink() and llave_ignorada(vault):
+        marca.parent.mkdir(exist_ok=True)
+        marca.write_text(json.dumps({"tono": (r.get("huella") or {}).get("tono", tono)}) + "\n", encoding="utf-8")
+    return h, r
+
+
+def huella_al_dia(vault):
+    """Si la huella está en el lienzo, la pone al día con las cifras de hoy [Alex, 10-oct: «cada huella creada va de forma
+    persistente y al dia al lienzo»]. Solo cifras; si no hay red, lo dice en una línea y sigue."""
+    marca, llave = ruta_marca_huella(vault), leer_llave(vault)
+    if not llave or not marca.is_file() or marca.is_symlink():
+        return
+    try:
+        tono = json.loads(marca.read_text(encoding="utf-8")).get("tono")
+    except (ValueError, AttributeError):
+        tono = None
+    try:
+        h, r = publicar_huella(vault, llave, tono if isinstance(tono, int) else None)
+        print("Tu huella en el lienzo, al día: {} días · {} en el último mes · {} decisiones · {} proyectos.".format(
+            h["dias"], h["pulso"], h["decisiones"], h["proyectos"]))
+    except Fallo as e:
+        print("No he podido poner al día tu huella en el lienzo: {}".format(str(e).split(". ")[0]))
+
+
+def orden_huella(vault, publicar, retirar, tono, cuento=None):
     vault_conectado(vault)
     if tono is not None:
         if not re.fullmatch(r"\d{1,3}", tono) or int(tono) > 359:
             raise Fallo("El tono es un número de 0 a 359 (la rueda de colores).")
         tono = int(tono)
+    if cuento is not None and not RE_TOKEN_CUENTO.fullmatch(cuento):
+        raise Fallo("«--cuento» es la contraseña de tu huella del cuento: empieza por vc_ y la da vaultvoid.app/tu-huella.")
     if retirar:
         _, r = pedir_red("POST", "/v1/huella/retirar", la_llave(vault))
+        marca = ruta_marca_huella(vault)
+        if marca.is_file() and not marca.is_symlink():
+            marca.unlink()
         print("Hecho: la huella de @{} ya no está en el lienzo.".format(r.get("alias", "?")))
         return 0
     h = cifras_huella(vault, tono)
@@ -1227,8 +1281,10 @@ def orden_huella(vault, publicar, retirar, tono):
     if not publicar:
         print("No he mandado nada. Para ponerla en el lienzo de Void: python herramientas/void.py huella --publicar")
         return 0
-    _, r = pedir_red("POST", "/v1/huella", la_llave(vault), {"huella": h})
-    print("Tu huella ya está en el lienzo de Void: {}/@{}".format(WEB, r.get("alias", "?")))
+    _, r = publicar_huella(vault, la_llave(vault), tono, cuento)
+    print("Tu huella ya está en el lienzo de Void ({}), y void.py la mantiene al día cada vez que miras «estado» o actualizas.".format(WEB))
+    if r.get("reclamada"):
+        print("Es la misma que nació en el cuento: ahora crece con tu vault.")
     print("Para quitarla: python herramientas/void.py huella --retirar")
     return 0
 
@@ -1333,6 +1389,7 @@ def orden_estado(vault, desde):
         for r in nuevas:
             print("  " + r)
     estado_red(vault)
+    huella_al_dia(vault)
     return 0
 
 
@@ -1371,6 +1428,8 @@ def orden_actualizar(vault, desde, conectar):
         print("Para deshacerlo: git revert HEAD")
     for a in avisos:
         print("OJO: " + a)
+    if actual is not None:
+        huella_al_dia(vault)
     return 0
 
 
@@ -1608,9 +1667,9 @@ def main(argv):
     opciones = {}
     sueltos = []
     conectar = si = False
-    con_valor = ("--vault", "--desde") + (("--alias", "--agente") if orden == "registrar" else ()) + \
+    con_valor = ("--vault", "--desde") + (("--alias", "--agente", "--cuento") if orden == "registrar" else ()) + \
         (("--publico",) if orden == "perfil" else ()) + (("--huella",) if orden == "empezar" else ()) + \
-        (("--tono",) if orden == "huella" else ())
+        (("--tono", "--cuento") if orden == "huella" else ())
     cuantos = {"traer": 1, "avisar": 3, "llave": 1}.get(orden, 0)
     i = 0
     while i < len(resto):
@@ -1650,7 +1709,7 @@ def main(argv):
                 return 2
             return orden_traer(vault, sueltos[0], desde, conectar)
         if orden == "registrar":
-            return orden_registrar(vault, opciones.get("--alias"), opciones.get("--agente"))
+            return orden_registrar(vault, opciones.get("--alias"), opciones.get("--agente"), opciones.get("--cuento"))
         if orden == "perfil":
             return orden_perfil(vault, opciones.get("--publico"))
         if orden == "avisar":
@@ -1664,7 +1723,7 @@ def main(argv):
         if orden == "baja":
             return orden_baja(vault, si)
         if orden == "huella":
-            return orden_huella(vault, opciones.get("--publicar"), opciones.get("--retirar"), opciones.get("--tono"))
+            return orden_huella(vault, opciones.get("--publicar"), opciones.get("--retirar"), opciones.get("--tono"), opciones.get("--cuento"))
     except Fallo as e:
         print(str(e), file=sys.stderr)
         return 1

@@ -48,27 +48,31 @@ npm run sabotaje    # rompe el Worker a propósito, un candado cada vez: los 7 t
 npm run typecheck
 ```
 
-## Desplegar (lo hace Alex; nada de esto se ha ejecutado contra la cuenta de verdad)
+## Desplegar una actualización
 
-Desde la carpeta `red/`, con la sesión de wrangler de la cuenta de Alex:
+La D1 y las rutas ya están configuradas. No se crea otra base de datos. Desde `red/`, usa la
+configuración explícita de la cuenta propia de Alex:
 
 ```
-npm install
-npx wrangler d1 create vault-void-red
-#   → copia el "database_id" que imprime y ponlo en wrangler.jsonc, en lugar de 00000000-0000-0000-0000-000000000000
-npx wrangler d1 migrations apply DB --remote
-#   → crea las tablas en la D1 de verdad (contesta que sí cuando pregunte)
+npx wrangler d1 migrations list DB --remote --config wrangler.jsonc
+npx wrangler d1 migrations apply DB --remote --config wrangler.jsonc
+npm run typecheck
 npm test
-npx wrangler deploy
-#   → red.vaultvoid.app y las rutas vaultvoid.app/@* y vaultvoid.app/estrella/*
+npx wrangler deploy --config wrangler.jsonc
 ```
 
-Después, en este orden, porque la página de entrar publica la huella del `void.py` que sirve GitHub:
+Con autorización de Alex, guarda y sube los cambios a `main` antes de desplegar la web. Desde la
+raíz, `red/node_modules/.bin/wrangler deploy --config wrangler.toml`. Las páginas de entrada
+publican las huellas del cliente y la plantilla de GitHub: comprueba que los archivos remotos y
+los manifiestos coinciden. La antena se despliega por separado si cambia su código.
 
-1. Fusionar la rama `red` en `main` y subirla (`void.py` nuevo en GitHub).
-2. Desde la raíz del repo: `npx wrangler deploy` (la web: `entrar` con la huella nueva y el enlace a los avisos en
-   la ficha de cada estrella). GitHub tarda hasta cinco minutos en servir el `void.py` nuevo: en ese rato, un agente
-   que entre puede ver `NO CUADRA` y la página le dice que vuelva a probar.
-3. Desde `antena/`: `npx wrangler deploy` (la herramienta `ver_avisos`).
-4. Comprobar en vivo: `https://red.vaultvoid.app/` y `https://vaultvoid.app/estrella/candados`, y que se comparten
-   bien con `bash 04-infra/revisar-web.sh <url>` (en el vault de Alex).
+## Mensajes, revisión del 10-oct-2026
+
+La red conserva solo el sobre cifrado y sus metadatos. El contenido, `autoriza`, `devuelve` y
+`responde_a` van dentro del sobre y los valida el cliente. El servidor no puede verificar la
+aprobación humana ni el mensaje original de una respuesta. El cliente exige el original guardado
+y el destinatario correcto antes de enviar. La migración 0005 conserva los mensajes existentes
+y hace que los números no se reutilicen después de recogerlos.
+
+Información de datos: https://vaultvoid.app/privacidad. Prueba integral local:
+`python3 pruebas_recorrido.py` desde la raíz, con dos vaults de prueba, Worker real y D1 temporal.

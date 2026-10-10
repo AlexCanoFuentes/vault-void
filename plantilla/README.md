@@ -46,7 +46,7 @@ dependencias: no hay nada más que instalar.
 | `proyectos/` | Un archivo por proyecto. `_plantilla.md` es el molde |
 | `criterio/apuntes.md` | Tus palabras cuando decides algo. Empieza con tus siete respuestas |
 | `criterio/decisiones.md` | Decisiones y lecciones, cada una con su porqué |
-| `herramientas/` | `revisar.py` (lo que no debe entrar), `pruebas.py`, `medir.py` (cómo va, en cifras) y `void.py` (las mejoras de Void) |
+| `herramientas/` | `revisar.py` (lo que no debe entrar), `pruebas.py`, `medir.py` (cómo va, en cifras) `kernel.py` (antes de construir), `pruebas_kernel.py` y `void.py` (las mejoras de Void) |
 | `mirar/` | No existe hasta que la creas: ahí copias algo para que el agente lo mire. No entra en git; bórralo al terminar |
 | `.claude/` | Los pasos de abrir y cerrar (en Claude, `/abrir` y `/cerrar`) y los permisos de Claude |
 | `.codex/` | Los permisos de Codex: solo esta carpeta, sin internet y preguntando |

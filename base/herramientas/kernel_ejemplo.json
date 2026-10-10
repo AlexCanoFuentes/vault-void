@@ -1,0 +1,34 @@
+{
+  "objeto": "Ejemplo pendiente de concretar, no es una aprobación",
+  "alcance": "Falta escribir inclusiones y exclusiones del encargo real",
+  "fuentes": "Falta enlazar su ticket y evidencia",
+  "cambios": [
+    "construccion"
+  ],
+  "dimensiones": {
+    "clarity": {
+      "nota": 0,
+      "porque": "No hay evidencia de esta dimensión en el ejemplo; sustituir por la evaluación del encargo real"
+    },
+    "scope": {
+      "nota": 0,
+      "porque": "No hay evidencia de esta dimensión en el ejemplo; sustituir por la evaluación del encargo real"
+    },
+    "context": {
+      "nota": 0,
+      "porque": "No hay evidencia de esta dimensión en el ejemplo; sustituir por la evaluación del encargo real"
+    },
+    "risk": {
+      "nota": 0,
+      "porque": "No hay evidencia de esta dimensión en el ejemplo; sustituir por la evaluación del encargo real"
+    },
+    "validation": {
+      "nota": 0,
+      "porque": "No hay evidencia de esta dimensión en el ejemplo; sustituir por la evaluación del encargo real"
+    },
+    "priority": {
+      "nota": 0,
+      "porque": "No hay evidencia de esta dimensión en el ejemplo; sustituir por la evaluación del encargo real"
+    }
+  }
+}

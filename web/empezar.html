@@ -80,6 +80,7 @@ footer p{color:var(--tenue)}
 
 <article>
 <h2>Para el agente que lee esto</h2>
+<p><strong>Datos de la red:</strong> antes de ofrecerla, explica <a href="/privacidad">qué se guarda y cómo retirarlo</a>. El vault local no se sube; la huella publica cifras, los avisos son públicos y los mensajes elegidos viajan cifrados con sus metadatos.</p>
 <p>La persona te ha pedido que le montes un <strong>vault</strong>: una carpeta de texto con su trabajo, sus proyectos y su criterio, guardada en git, que tú (o cualquier otro agente) lees al empezar cada sesión. Sigue estos pasos en orden. <strong>Habla con la persona en su idioma y en llano</strong>: nada de jerga si no la pide. Tú haces el trabajo; ella solo contesta y dice que sí o que no.</p>
 <p>Lo que tienes que saber antes de empezar:</p>
 <ul>
@@ -125,9 +126,9 @@ footer p{color:var(--tenue)}
 <section>
 <h3>Paso 3 · Baja <code>void.py</code> y comprueba su huella</h3>
 <p>La huella (sha256) de <code>void.py</code> que publica esta página es:</p>
-<p><code class="huella" id="huella">7b98239d7bec134596715d5188ca97ec6977f4ba94e120ea78e0328d745b6d17</code></p>
+<p><code class="huella" id="huella">db2171d8bd772cad7b2946398c72d1f33ab82f03f66857353350466451a72a63</code></p>
 <p>Esta orden lo baja de GitHub, calcula su huella y <strong>solo lo guarda en <code>herramientas/void.py</code> si cuadra</strong> con la de arriba. No lo ejecuta. Ejecútala desde la carpeta (es igual en Mac, Linux y Windows; cambia <code>python3</code> por el nombre del paso 1):</p>
-<pre><code>python3 -c "import hashlib,os,urllib.request as u;h='7b98239d7bec134596715d5188ca97ec6977f4ba94e120ea78e0328d745b6d17';d=u.urlopen('https://raw.githubusercontent.com/AlexCanoFuentes/vault-void/main/void.py',timeout=30).read();r=hashlib.sha256(d).hexdigest();ok=r==h;ok and (os.makedirs('herramientas',exist_ok=True),open('herramientas/void.py','wb').write(d));print('Huella OK: '+r if ok else 'NO CUADRA: ha llegado '+r);raise SystemExit(0 if ok else 1)"</code></pre>
+<pre><code>python3 -c "import hashlib,os,urllib.request as u;h='db2171d8bd772cad7b2946398c72d1f33ab82f03f66857353350466451a72a63';d=u.urlopen('https://raw.githubusercontent.com/AlexCanoFuentes/vault-void/main/void.py',timeout=30).read();r=hashlib.sha256(d).hexdigest();ok=r==h;ok and (os.makedirs('herramientas',exist_ok=True),open('herramientas/void.py','wb').write(d));print('Huella OK: '+r if ok else 'NO CUADRA: ha llegado '+r);raise SystemExit(0 if ok else 1)"</code></pre>
 <ul>
 <li>Si dice <strong><code>Huella OK</code></strong>, sigue.</li>
 <li>Si dice <strong><code>NO CUADRA</code></strong>, <strong>para</strong>. No ejecutes nada y dile a la persona que lo descargado no es lo que publica Void, que no se ha guardado nada y que vuelva a probar en unos minutos (GitHub tarda hasta cinco minutos en servir una versión nueva). Si se repite, que avise a quien le pasó Void.</li>
@@ -137,7 +138,7 @@ footer p{color:var(--tenue)}
 
 <section>
 <h3>Paso 4 · Pon la plantilla</h3>
-<pre><code>python3 herramientas/void.py empezar --huella eb1b270f25fc5a3e39f50849bb3a238a84f1596813d840c1bd050f41aa96f4f7</code></pre>
+<pre><code>python3 herramientas/void.py empezar --huella 84ca924a6b4a8a789095a45371a44775fd6fe23bede045c93513ba1a52dce482</code></pre>
 <p>Baja la plantilla del vault, comprueba que es la que publica esta página (la huella de detrás de <code>--huella</code>) y que cada fichero cuadra con ella <strong>antes de escribir nada</strong>, y la deja en <strong>un commit</strong> <code>vault: plantilla &lt;versión&gt; de Void</code>. Enséñale a la persona lo que diga, tal cual.</p>
 <ul>
 <li>Si dice que <strong>la huella no cuadra</strong>, <strong>para</strong>: no ha escrito nada. Dile que vuelva a probar en unos minutos y, si se repite, que avise a quien le pasó Void.</li>
@@ -153,7 +154,7 @@ footer p{color:var(--tenue)}
 <p>Pone la base común de Void (las reglas para los agentes, los candados de Codex y de Claude y <code>void.py</code>), comprueba la huella de cada fichero antes de escribir nada y deja <strong>un commit</strong> <code>void: base &lt;versión&gt;</code>. Así el vault recibe las mejoras de Void con <code>python3 herramientas/void.py actualizar</code>. Enséñale a la persona lo que diga, tal cual.</p>
 <ul>
 <li>Si dice que <strong>no hay conexión</strong>, en Codex pide permiso para salir a internet (arriba).</li>
-<li>Tiene que decir <code>Ficheros: … nuevos, 3 sin cambios.</code>: <code>AGENTS.md</code> y <code>CLAUDE.md</code> ya traían el tramo de la base y <code>void.py</code> es el que bajaste. Si dice «sin tocar porque es tuyo», para y enséñaselo.</li>
+<li>Tiene que decir <code>Ficheros: … nuevos, 6 sin cambios.</code>: <code>AGENTS.md</code> y <code>CLAUDE.md</code> ya traían el tramo de la base y <code>void.py</code> es el que bajaste; los tres ficheros de KERNEL ya venían en la plantilla. Si dice «sin tocar porque es tuyo», para y enséñaselo.</li>
 </ul>
 </section>
 

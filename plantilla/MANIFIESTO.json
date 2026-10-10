@@ -1,19 +1,22 @@
 {
-  "version": "0.3",
+  "version": "0.0.9",
   "ficheros": {
     ".claude/commands/abrir.md": "e955bbd314ca953024e7e5bf72e53dffc9bf562beaa22675e46bf2b53490f307",
     ".claude/commands/cerrar.md": "7491d12d9a53b8a8e6e367985b0b5ece6e90508193c539512c58beeef0f14707",
     ".claude/encerrado-windows.json": "5b2e47e268fac50772c764fbc6740249b31434f58abb90c97340430d618f254e",
     ".claude/settings.json": "9de4b07873bb518a1c3e472efee5bc1df74b0aa75835d68e0dd09a273afdf241",
     ".gitignore": "14d141a543a2920d14e62202785acc895e301d5ece625eab50eb30791c6290d7",
-    "AGENTS.md": "8f6fbc9a4ebe75c28a541b68a999ddcf757fc05bee293ece73a6a92fc8b93813",
+    "AGENTS.md": "7b693ac2c4f387a851a2d603b2e6157b51ef104a93457ed947f93761b024e66d",
     "CLAUDE.md": "d9b0bc4af8053145bbb16dedc4fed805c0b799ed20690f27ce6e0ff5239a8597",
     "INBOX.md": "e0e6c1ceb298c9955fd5774ec06892b1355a4885f2311190eb93f91fdec690e8",
-    "README.md": "17a2d56d5872eb9af866a80888cadf0341ed9e28257651e93cdaf50dfca3f691",
+    "README.md": "8624cc46c1ac7a627f20337147ba364a62b7d25bcfbb994584cef272b50851d5",
     "criterio/apuntes.md": "0b6d3a05c1ededc4757fdcc069ee465666a3f4dbdab68325b7a4df439fc93e88",
     "criterio/decisiones.md": "8afbc620e537053414e528ba1995f2bdd46f3ff139665e70dc274ee1eb961ac5",
+    "herramientas/kernel.py": "a30f6b03c8dec0a53527801ff5355e270568dda5b0cf21b6b8c503a5cecc3ba1",
+    "herramientas/kernel_ejemplo.json": "e186c753c9e480f50a93ba6cf3dfb1e3e8658be0dfe991f2a16acb60046a8837",
     "herramientas/medir.py": "86ec3f2b2d924a3aa2d710a1dc32767ae54f1cd1c6d2fa31789b855a8dbd2884",
-    "herramientas/pruebas.py": "9a90694d16e7324116277ec629b2d086f5d8612a06ed6f28c48dc3c8af3c5b59",
+    "herramientas/pruebas.py": "b62df17f09e5b4b85df793bb49e3720301f0c4fbca71366bdae7b0cc71d87da8",
+    "herramientas/pruebas_kernel.py": "d7a3ed550f548b27d131ac3ef4f0ab002ff2cdf563fdfcbdc68535bd41a02890",
     "herramientas/revisar.py": "b8f4b08a1f60d4c89eb9c963d3fa1597101f58afa3a3116052a29b4ec04685dc",
     "proyectos/_plantilla.md": "c6a532aeef99f041aedc6e18ca3d2624a4c69f4d5d619a2a336ece031815c943"
   }

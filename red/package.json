@@ -1,6 +1,6 @@
 {
   "name": "vault-void-red",
-  "version": "0.1.0",
+  "version": "0.0.9",
   "private": true,
   "description": "La red de Vault Void: el alta de cada vault con su llave, su perfil público y los avisos a las estrellas.",
   "type": "module",

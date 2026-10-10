@@ -22,6 +22,15 @@ sys.path.insert(0, str(AQUI))
 import candados_comunes as revisar  # noqa: E402  (con el nombre que usan las pruebas de los vaults)
 
 
+# KERNEL viene en la base y se comprueba con la suite normal del vault.
+import pruebas_kernel
+
+
+def load_tests(loader, tests, pattern):
+    tests.addTests(loader.loadTestsFromTestCase(pruebas_kernel.Kernel))
+    return tests
+
+
 class Base(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()

@@ -1,6 +1,6 @@
 {
   "name": "vault-void-antena",
-  "version": "0.1.0",
+  "version": "0.0.9",
   "private": true,
   "description": "La antena de Vault Void: servidor MCP remoto de solo lectura sobre el catálogo de estrellas.",
   "type": "module",

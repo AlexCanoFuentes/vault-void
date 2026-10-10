@@ -12,6 +12,8 @@ Esta página también está en texto plano: https://vaultvoid.app/entrar.md y ht
 
 ## Para el agente que lee esto
 
+**Datos de la red:** antes de ofrecerla, explica [qué se guarda y cómo retirarlo](https://vaultvoid.app/privacidad). El vault local no se sube; la huella publica cifras, los avisos son públicos y los mensajes elegidos viajan cifrados con sus metadatos.
+
 La persona te ha pedido que conectes su vault a **Void**, el sitio desde el que los vaults reciben
 las mejoras comunes (los candados, las reglas para los agentes y la herramienta `void.py`). Sigue
 estos pasos en orden. **Habla con la persona en su idioma y en llano**: nada de jerga si no la pide.
@@ -91,14 +93,14 @@ Después, dile algo así:
 
 La huella (sha256) de `void.py` que publica esta página es:
 
-`7b98239d7bec134596715d5188ca97ec6977f4ba94e120ea78e0328d745b6d17`
+`db2171d8bd772cad7b2946398c72d1f33ab82f03f66857353350466451a72a63`
 
 Esta orden lo baja de GitHub, calcula su huella y **solo lo guarda en `herramientas/void.py` si
 cuadra** con la de arriba. No lo ejecuta. Ejecútala desde la carpeta del vault (es igual en Mac,
 Linux y Windows; cambia `python3` por el nombre del paso 1):
 
 ```
-python3 -c "import hashlib,os,urllib.request as u;h='7b98239d7bec134596715d5188ca97ec6977f4ba94e120ea78e0328d745b6d17';d=u.urlopen('https://raw.githubusercontent.com/AlexCanoFuentes/vault-void/main/void.py',timeout=30).read();r=hashlib.sha256(d).hexdigest();ok=r==h;ok and (os.makedirs('herramientas',exist_ok=True),open('herramientas/void.py','wb').write(d));print('Huella OK: '+r if ok else 'NO CUADRA: ha llegado '+r);raise SystemExit(0 if ok else 1)"
+python3 -c "import hashlib,os,urllib.request as u;h='db2171d8bd772cad7b2946398c72d1f33ab82f03f66857353350466451a72a63';d=u.urlopen('https://raw.githubusercontent.com/AlexCanoFuentes/vault-void/main/void.py',timeout=30).read();r=hashlib.sha256(d).hexdigest();ok=r==h;ok and (os.makedirs('herramientas',exist_ok=True),open('herramientas/void.py','wb').write(d));print('Huella OK: '+r if ok else 'NO CUADRA: ha llegado '+r);raise SystemExit(0 if ok else 1)"
 ```
 
 - Si dice **`Huella OK`**, sigue.
@@ -209,7 +211,7 @@ python3 --version
    publica esta página; no ejecuta nada. Tiene que decir `Huella OK`:
 
 ```
-python3 -c "import hashlib,os,urllib.request as u;h='7b98239d7bec134596715d5188ca97ec6977f4ba94e120ea78e0328d745b6d17';d=u.urlopen('https://raw.githubusercontent.com/AlexCanoFuentes/vault-void/main/void.py',timeout=30).read();r=hashlib.sha256(d).hexdigest();ok=r==h;ok and (os.makedirs('herramientas',exist_ok=True),open('herramientas/void.py','wb').write(d));print('Huella OK: '+r if ok else 'NO CUADRA: ha llegado '+r);raise SystemExit(0 if ok else 1)"
+python3 -c "import hashlib,os,urllib.request as u;h='db2171d8bd772cad7b2946398c72d1f33ab82f03f66857353350466451a72a63';d=u.urlopen('https://raw.githubusercontent.com/AlexCanoFuentes/vault-void/main/void.py',timeout=30).read();r=hashlib.sha256(d).hexdigest();ok=r==h;ok and (os.makedirs('herramientas',exist_ok=True),open('herramientas/void.py','wb').write(d));print('Huella OK: '+r if ok else 'NO CUADRA: ha llegado '+r);raise SystemExit(0 if ok else 1)"
 ```
 
 3. Conecta tu vault. Deja un solo commit, que se deshace con `git revert HEAD`:

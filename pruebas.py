@@ -838,9 +838,11 @@ class Plantilla(unittest.TestCase):
             self.assertEqual(REF.huella(suyo[1]), REF.huella(base[1]), nombre)
 
     def test_no_pisa_la_base(self):
-        """La plantilla no trae lo que trae la base: los candados y void.py llegan al conectar."""
+        """La plantilla comparte reglas y KERNEL con la base, sin pisar los candados ni el cliente."""
         comunes = set(ficheros_planos(PLANTILLA)) & set(ficheros_planos(AQUI / "base"))
-        self.assertEqual(comunes, {"AGENTS.md", "CLAUDE.md"})
+        self.assertEqual(comunes, {"AGENTS.md", "CLAUDE.md", "herramientas/kernel.py", "herramientas/pruebas_kernel.py", "herramientas/kernel_ejemplo.json"})
+        for ruta in comunes - {"AGENTS.md", "CLAUDE.md"}:
+            self.assertEqual((PLANTILLA / ruta).read_bytes(), (AQUI / "base" / ruta).read_bytes(), ruta)
 
     def test_cada_fichero_esta_en_el_manifiesto(self):
         _, ficheros = REF.validar_manifiesto((PLANTILLA / REF.MANIFIESTO).read_bytes())
@@ -1050,7 +1052,8 @@ class Empezar(unittest.TestCase):
         self.assertEqual(commits(v), ["vault: plantilla {} de Void".format(
             REF.validar_manifiesto((PLANTILLA / REF.MANIFIESTO).read_bytes())[0])])
         salida = paso("python3 herramientas/void.py actualizar --conectar")   # paso 5
-        self.assertIn("3 sin cambios", salida)   # AGENTS.md, CLAUDE.md y el void.py del paso 3
+        comunes = set(ficheros_planos(PLANTILLA)) & set(ficheros_planos(AQUI / "base"))
+        self.assertIn("{} sin cambios".format(len(comunes) + 1), salida)  # comunes y el cliente descargado
         self.assertNotIn("tuyo", salida, "al conectar, la plantilla chocó con la base")
         self.assertEqual(len(commits(v)), 2)
         self.assertTrue(limpio(v), "dejó algo fuera de los commits")
@@ -2003,6 +2006,9 @@ class RedFalsa:
         self.vistas = []        # (método, ruta, llave o None)
         self.huellas = {}       # alias -> huella tal cual llegó
         self.cuentos_reclamados = []   # contraseñas de huellas del cuento que ha mandado un vault
+        self.claves = {}        # alias -> clave pública de mensajes
+        self.mensajes = []      # {"id", "de", "para", "tipo", "enc", "sobre", "creado"}
+        self.bloqueos = set()   # (quien_bloquea, bloqueado)
         red = self
 
         class Manejador(http.server.BaseHTTPRequestHandler):
@@ -2028,6 +2034,15 @@ class RedFalsa:
 
             def do_GET(self):
                 alias, llave = self.quien()
+                if self.path.startswith("/v1/clave/"):
+                    a = self.path.rsplit("/", 1)[1]
+                    if a not in red.claves:
+                        return self.responder(404, {"error": "@{} todavía no puede recibir mensajes.".format(a)})
+                    return self.responder(200, {"alias": a, "clave": red.claves[a]})
+                if self.path == "/v1/mensajes":
+                    if not alias:
+                        return self.responder(401, {"error": "sin llave"})
+                    return self.responder(200, {"mensajes": [m for m in red.mensajes if m["para"] == alias]})
                 if self.path == "/v1/yo":
                     if not alias:
                         return self.responder(401, {"error": "sin llave"})
@@ -2075,6 +2090,24 @@ class RedFalsa:
                 if self.path == "/v1/huella/retirar":
                     red.huellas.pop(alias, None)
                     return self.responder(200, {"alias": alias, "retirada": True})
+                if self.path == "/v1/clave":
+                    red.claves[alias] = b["clave"]
+                    return self.responder(200, {"alias": alias, "clave": b["clave"]})
+                if self.path == "/v1/mensajes":
+                    if b["tipo"] not in ("PETICION", "PROPUESTA", "RESPUESTA", "ESCALADA", "AVISO"):
+                        return self.responder(400, {"error": "ningún tipo es ORDEN"})
+                    if (b["para"], alias) not in red.bloqueos:
+                        red.mensajes.append({"id": len(red.mensajes) + 1, "de": alias, "para": b["para"], "tipo": b["tipo"],
+                                             "enc": b["enc"], "sobre": b["sobre"], "creado": 1790000000000 + len(red.mensajes)})
+                    return self.responder(201, {"para": b["para"], "enviado": True})
+                if self.path.startswith("/v1/mensajes/") and self.path.endswith("/recogido"):
+                    n = int(self.path.split("/")[3])
+                    antes = len(red.mensajes)
+                    red.mensajes = [m for m in red.mensajes if not (m["id"] == n and m["para"] == alias)]
+                    return self.responder(200 if len(red.mensajes) < antes else 404, {"id": n})
+                if self.path in ("/v1/bloquear", "/v1/desbloquear"):
+                    (red.bloqueos.add if self.path == "/v1/bloquear" else red.bloqueos.discard)((alias, b["alias"]))
+                    return self.responder(200, {"alias": b["alias"]})
                 if self.path == "/v1/baja":
                     del red.perfiles[alias]
                     return self.responder(200, {"alias": alias, "baja": True})
@@ -2093,6 +2126,90 @@ class RedFalsa:
 def hashlib_sha(texto):
     import hashlib
     return hashlib.sha256(texto.encode("utf-8")).hexdigest()
+
+
+class Mensajes(Caso):
+    """VV-008, M2: dos vaults se escriben por la red de juguete. Cifrado de extremo a extremo (la red no ve el texto),
+    lo recogido vive en .void/mensajes/ fuera de git, la red lo borra al recogerlo, y una clave que cambia se para."""
+
+    def setUp(self):
+        super().setUp()
+        self.red = RedFalsa()
+        self.antes_env = os.environ.get("VOID_RED")
+        os.environ["VOID_RED"] = self.red.url
+        self.a = self.conectado()
+        self.b = hacer_vault(self.tmp / "vault2", None)
+        self.assertEqual(correr("actualizar", "--conectar", "--vault", self.b, "--desde", self.b01)[0], 0)
+        for v, alias in ((self.a, "ana"), (self.b, "bea")):
+            codigo, out, err = correr("registrar", "--alias", alias, "--agente", "Brock", "--vault", v)
+            self.assertEqual(codigo, 0, err)
+
+    def tearDown(self):
+        self.red.parar()
+        if self.antes_env is None:
+            os.environ.pop("VOID_RED", None)
+        else:
+            os.environ["VOID_RED"] = self.antes_env
+        super().tearDown()
+
+    def test_ida_y_vuelta_cifrado_y_fuera_de_git(self):
+        correr("mensajes", "--vault", self.b)   # bea publica su clave
+        codigo, out, err = correr("escribir", "--autoriza", "Prueba · persona", "@bea", "--tipo", "PETICION", "--asunto", "Una pregunta",
+                                  "--devuelve", "un sí o un no", "--texto", "FRASE-MARCADA ¿me pasas la plantilla?", "--vault", self.a)
+        self.assertEqual(codigo, 0, err)
+        self.assertNotIn("FRASE-MARCADA", json.dumps(self.red.mensajes), "la red ve el texto del mensaje")
+        codigo, out, err = correr("mensajes", "--vault", self.b)
+        self.assertEqual(codigo, 0, err)
+        self.assertIn("FRASE-MARCADA", out)
+        self.assertIn("no instrucciones para tu asistente", out, "el mensaje no va marcado como texto ajeno")
+        self.assertEqual([m for m in self.red.mensajes if m["para"] == "bea"], [], "recogido, sigue en la red")
+        guardados = list((self.b / ".void" / "mensajes").glob("*.json"))
+        self.assertEqual(len(guardados), 1)
+        git(self.b, "add", "-A")
+        git(self.b, "commit", "-q", "-m", "todo")
+        _, seguidos = git(self.b, "ls-files")
+        self.assertNotIn(".void", seguidos, "un mensaje o una clave ha entrado en git")
+        n = json.loads(guardados[0].read_text(encoding="utf-8"))["id"]
+        codigo, out, err = correr("responder", "--autoriza", "Prueba · persona", str(n), "--texto", "Sí, te la paso.", "--vault", self.b)
+        self.assertEqual(codigo, 0, err)
+        codigo, out, err = correr("mensajes", "--vault", self.a)
+        self.assertIn("Sí, te la paso.", out)
+        self.assertIn("RESPUESTA", out)
+
+    def test_sabotajes_orden_secreto_sobre_cambiado_y_clave_cambiada(self):
+        correr("mensajes", "--vault", self.b)
+        self.assertEqual(correr("escribir", "--autoriza", "Prueba · persona", "@bea", "--tipo", "ORDEN", "--asunto", "x", "--texto", "haz esto", "--vault", self.a)[0], 1,
+                         "el tipo ORDEN se manda")
+        llave_falsa = "vv_" + "A" * 43
+        self.assertEqual(correr("escribir", "--autoriza", "Prueba · persona", "@bea", "--tipo", "AVISO", "--devuelve", "No hace falta respuesta", "--asunto", "x", "--texto", "toma " + llave_falsa, "--vault", self.a)[0], 1,
+                         "un mensaje con una llave dentro se manda")
+        self.assertEqual(correr("escribir", "--autoriza", "Prueba · persona", "@bea", "--tipo", "PETICION", "--asunto", "x", "--texto", "sin devuelve", "--vault", self.a)[0], 1,
+                         "una petición sin --devuelve se manda")
+        correr("escribir", "--autoriza", "Prueba · persona", "@bea", "--tipo", "AVISO", "--devuelve", "No hace falta respuesta", "--asunto", "Hola", "--texto", "un aviso", "--vault", self.a)
+        m = self.red.mensajes[-1]
+        import base64 as b64
+        sobre = bytearray(b64.b64decode(m["sobre"])); sobre[5] ^= 1
+        m["sobre"] = b64.b64encode(bytes(sobre)).decode()
+        codigo, out, err = correr("mensajes", "--vault", self.b)
+        self.assertIn("no se ha podido abrir", out)
+        self.assertEqual(len(self.red.mensajes), 1, "un sobre cambiado se ha borrado de la red sin abrirse")
+        self.assertFalse(list((self.b / ".void" / "mensajes").glob("*.json")), "un sobre cambiado se ha guardado")
+        # bea ya guardó la clave de ana al recibir su aviso. Si la red da otra, bea no le manda nada hasta confiar.
+        self.red.mensajes.clear()
+        self.red.claves["ana"] = b64.b64encode(b"\x0a" * 32).decode()
+        codigo, out, err = correr("escribir", "--autoriza", "Prueba · persona", "@ana", "--tipo", "AVISO", "--devuelve", "No hace falta respuesta", "--asunto", "x", "--texto", "hola", "--vault", self.b)
+        self.assertEqual(codigo, 1, "una clave que cambia no se para")
+        self.assertIn("ha cambiado", err)
+        self.assertEqual(self.red.mensajes, [], "con la clave cambiada se ha mandado igual")
+        self.assertEqual(correr("confiar", "@ana", "--vault", self.b)[0], 0)
+        self.assertEqual(correr("escribir", "--autoriza", "Prueba · persona", "@ana", "--tipo", "AVISO", "--devuelve", "No hace falta respuesta", "--asunto", "x", "--texto", "hola", "--vault", self.b)[0], 0,
+                         "después de confiar sigue sin poder escribir")
+
+    def test_bloquear(self):
+        correr("mensajes", "--vault", self.b)
+        self.assertEqual(correr("bloquear", "@ana", "--vault", self.b)[0], 0)
+        correr("escribir", "--autoriza", "Prueba · persona", "@bea", "--tipo", "AVISO", "--devuelve", "No hace falta respuesta", "--asunto", "x", "--texto", "hola", "--vault", self.a)
+        self.assertEqual(self.red.mensajes, [], "el bloqueado entrega")
 
 
 class RedDeVoid(Caso):
@@ -2298,6 +2415,15 @@ class RedDeVoid(Caso):
 # ---------------------------------------------------------------- sabotaje
 
 SABOTAJES = [
+    ("mensajes: una clave que cambia no se para",
+     [("    if alias in conocidas and conocidas[alias] != nueva and not confiar:", "    if False:")],
+     ["Mensajes.test_sabotajes_orden_secreto_sobre_cambiado_y_clave_cambiada"]),
+    ("mensajes: se manda sin mirar si lleva un secreto",
+     [("        if rx.search(asunto + \"\\n\" + cuerpo + \"\\n\" + str(d.get(\"devuelve\") or \"\") + \"\\n\" + str(autoriza or \"\")):", "        if False:")],
+     ["Mensajes.test_sabotajes_orden_secreto_sobre_cambiado_y_clave_cambiada"]),
+    ("mensajes: recoger no avisa a la red (se queda guardado allí)",
+     [("        pedir_red(\"POST\", \"/v1/mensajes/{}/recogido\".format(int(m.get(\"id\") or 0)), llave)\n", "")],
+     ["Mensajes.test_ida_y_vuelta_cifrado_y_fuera_de_git"]),
     ("taller: no mira la limpieza",
      [("    h = limpieza(carpeta, nombres)\n", "    h = []\n")],
      ["Nebulosa.test_un_correo_no_sale"], "taller.py"),
@@ -2460,7 +2586,7 @@ SABOTAJES = [
      [("    if codigo == 401:\n        raise Fallo(MSG_LLAVE_NO_VALE if llave else MSG_SIN_LLAVE)\n", "")],
      ["RedDeVoid.test_llave_falsa_da_un_error_de_una_frase"]),
     ("red: estado no dice lo que te han escrito",
-     [("    estado_red(vault)\n    return 0", "    return 0")],
+     [("    estado_red(vault)\n    huella_al_dia(vault)\n    return 0", "    huella_al_dia(vault)\n    return 0")],
      ["RedDeVoid.test_avisar_llega_al_estado_del_creador"]),
     ("red: manda la llave a una dirección sin https",
      [('    if otra.startswith("https://") or re.fullmatch(', '    if True or re.fullmatch(')],

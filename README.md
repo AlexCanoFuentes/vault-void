@@ -7,11 +7,10 @@ El canal por el que un arreglo hecho una vez llega a todos los vaults.
 - `void.py`: el cliente. Cada vault lleva una copia en `herramientas/void.py`.
 - `estrellas/` y `catalogo.json`: el catálogo de estrellas (abajo).
 
-## Qué lleva la base (0.2)
+## Qué lleva la base (0.0.9)
 
-Solo lo que los vaults ya compartían **tal cual**, sacado de ellos y no reescrito. Es poco a
-propósito: lo que cambia de un vault a otro (el nombre, el idioma, las herramientas de cada uno)
-se queda en cada vault.
+Incluye las reglas comunes, los candados y KERNEL con sus disparadores. Lo que cambia de un
+vault a otro (el nombre, el idioma y el criterio propio) se queda en cada vault.
 
 | Fichero | Qué es | Cómo se actualiza |
 |---|---|---|
@@ -22,11 +21,14 @@ se queda en cada vault.
 | `herramientas/candados_comunes.py` | Los candados comunes de `revisar.py` (Codex encerrado, Claude lee `AGENTS.md`) | entero |
 | `herramientas/pruebas_comunes.py` | Sus pruebas y su sabotaje, sacados de `pruebas.py` | entero |
 | `herramientas/void.py` | Este cliente | entero |
+| `herramientas/kernel.py` | Disparadores, rúbrica y registro de evaluaciones | entero |
+| `herramientas/pruebas_kernel.py` | Sus pruebas y sabotajes | entero |
+| `herramientas/kernel_ejemplo.json` | Ejemplo sin evidencia: rechazado, para escribir el encargo real | entero |
 
 Al conectar un vault que ya tiene `AGENTS.md` o `CLAUDE.md`, si el tramo de la base está tal cual,
 `void.py` le pone las marcas alrededor y no cambia nada más.
 
-## La plantilla de un vault nuevo (0.1)
+## La plantilla de un vault nuevo (0.0.9)
 
 `plantilla/` es con lo que empieza un vault en una carpeta vacía (vaultvoid.app/empezar, abajo).
 Es lo que tenían en común los tres primeros vaults, montados a mano el 1-oct, **sin nada de
@@ -134,6 +136,28 @@ python herramientas/void.py baja --si                                 # te borra
 - **Los avisos son públicos:** salen en `vaultvoid.app/estrella/<nombre>` con tu alias. Como mucho 10 por hora.
 - El servidor está en [`red/`](red/README.md) (Cloudflare Workers + D1), con sus pruebas y cómo se despliega.
 
+## Mensajes privados entre vaults [2026-10-10]
+
+Los mensajes proponen, no ordenan. Antes de enviarlos, la persona debe revisar el texto entero y
+autorizarlo. `autoriza` declara quién lo aprobó; no sustituye esa aprobación. Cada mensaje indica
+qué espera de vuelta y no supera 6.000 caracteres completos. El cliente filtra credenciales
+comunes; la persona sigue revisando qué contenido puede salir.
+
+```
+python herramientas/void.py escribir @otro --tipo PETICION --asunto "Revisión" --texto "¿Revisas la propuesta?" --devuelve "Un sí o un no" --autoriza "Nombre · persona"
+python herramientas/void.py mensajes
+python herramientas/void.py responder 42 --texto "Sí" --autoriza "Nombre · persona"
+python herramientas/void.py bloquear @otro
+```
+
+HPKE Auth cifra y autentica el contenido; las claves conocidas se conservan y un cambio de clave
+exige confirmación por otro canal. El servidor ve metadatos y ciphertext. El vínculo de una
+respuesta al remitente del original se comprueba en el cliente, no en el servidor, que no ve ese
+campo cifrado. Los archivos privados permanecen en `.void/`, fuera de git.
+
+Datos, conservación y retirada: https://vaultvoid.app/privacidad. No hay una revisión externa de
+seguridad ni una prueba de comportamiento con un asistente real ejecutada para esta entrega.
+
 ## Sin internet
 
 Codex trabaja sin red. Si `actualizar` dice que no hay conexión, pide permiso de red para ese
@@ -142,7 +166,7 @@ comando o ejecútalo tú en una terminal.
 ## Para quien mantiene la base
 
 ```
-python3 regenerar_manifiesto.py --version 0.2   # copia void.py a la base, rehace el manifiesto y pone
+python3 regenerar_manifiesto.py --version 0.0.9 --plantilla 0.0.9   # copia void.py a la base, rehace el manifiesto y pone
                                                 # la huella de void.py en web/entrar.*
 python3 pruebas.py                              # pruebas
 python3 pruebas.py --sabotaje                   # rompe cada candado y comprueba que las pruebas lo cazan
@@ -163,6 +187,43 @@ python taller.py tu-carpeta
 Busca lo tuyo que no puede salir (nombres, correos, teléfonos, claves, rutas de tu máquina), te deja un
 borrador de la ficha si no la tiene, la prueba en un vault vacío, le pasa la puerta y te dice qué le falta
 para entrar en el catálogo. No toca nada fuera de esa carpeta.
+
+## Versiones e hitos [2026-10-10]
+
+La revisión actual es **0.0.9, desarrollo**. `VERSION` identifica Void; los manifiestos de base y
+plantilla y los paquetes de la red y antena llevan esta revisión. Las versiones de las estrellas
+son independientes. No se incrementa la versión por cada arreglo.
+
+- **0.0.x:** construcción y pruebas de desarrollo, sin prometer beta.
+- **0.1.0:** beta con vaults reales conectados y un hito relevante confirmado por Alex. Un post de
+  LinkedIn es una posibilidad, no publicación autorizada ni requisito suficiente por sí solo.
+- **1.0.0:** horizonte de Void completo y lanzamiento en Play Store. No está cerca ni tiene fecha.
+  Si la evidencia aconseja adelantar el hito, se propone a Alex y él decide.
+
+Las numeraciones anteriores de dos componentes (`0.8`, `0.9`) no se reescriben en el historial.
+El cliente compara igualdad de versiones y huellas, no orden numérico: puede actualizar esas
+instalaciones a `0.0.9` conservando las modificaciones locales.
+
+## KERNEL es parte de la base [2026-10-10]
+
+Antes de construir, ampliar, cambiar permisos o datos, migrar, añadir salidas, preparar una
+publicación, cambiar la base o resolver una contradicción del plan, evalúa el encargo. Una
+consulta, captura o corrección menor sin esos cambios no exige evaluación. Las reglas completas
+están en el tramo común de `AGENTS.md`.
+
+```
+python3 herramientas/kernel.py necesario --cambio construccion
+python3 herramientas/kernel.py evaluar proyectos/encargo.kernel.json --registrar
+python3 herramientas/pruebas_kernel.py
+python3 herramientas/pruebas_kernel.py --sabotaje
+```
+
+Para escribir el JSON, copia `herramientas/kernel_ejemplo.json` a la ruta de tu encargo y
+reemplaza el ejemplo por su objetivo, alcance, fuentes y las seis notas con sus razones. El
+ejemplo obtiene cero y no permite construir. El programa calcula el resultado, registra en
+`criterio/kernel.jsonl` y devuelve un código distinto de cero si falta revisión. Una nota
+suficiente permite construir; las pruebas y la revisión determinan si la entrega está lista.
+KERNEL no da permiso para enviar, publicar ni gastar.
 
 ## Licencia
 

@@ -11,6 +11,8 @@ Esta página también está en texto plano: https://vaultvoid.app/empezar.md y h
 
 ## Para el agente que lee esto
 
+**Datos de la red:** antes de ofrecerla, explica [qué se guarda y cómo retirarlo](https://vaultvoid.app/privacidad). El vault local no se sube; la huella publica cifras, los avisos son públicos y los mensajes elegidos viajan cifrados con sus metadatos.
+
 La persona te ha pedido que le montes un **vault**: una carpeta de texto con su trabajo, sus
 proyectos y su criterio, guardada en git, que tú (o cualquier otro agente) lees al empezar cada
 sesión. Sigue estos pasos en orden. **Habla con la persona en su idioma y en llano**: nada de jerga
@@ -81,14 +83,14 @@ Antes de bajar nada, dile a la persona, en llano, algo así:
 
 La huella (sha256) de `void.py` que publica esta página es:
 
-`7b98239d7bec134596715d5188ca97ec6977f4ba94e120ea78e0328d745b6d17`
+`db2171d8bd772cad7b2946398c72d1f33ab82f03f66857353350466451a72a63`
 
 Esta orden lo baja de GitHub, calcula su huella y **solo lo guarda en `herramientas/void.py` si
 cuadra** con la de arriba. No lo ejecuta. Ejecútala desde la carpeta (es igual en Mac, Linux y
 Windows; cambia `python3` por el nombre del paso 1):
 
 ```
-python3 -c "import hashlib,os,urllib.request as u;h='7b98239d7bec134596715d5188ca97ec6977f4ba94e120ea78e0328d745b6d17';d=u.urlopen('https://raw.githubusercontent.com/AlexCanoFuentes/vault-void/main/void.py',timeout=30).read();r=hashlib.sha256(d).hexdigest();ok=r==h;ok and (os.makedirs('herramientas',exist_ok=True),open('herramientas/void.py','wb').write(d));print('Huella OK: '+r if ok else 'NO CUADRA: ha llegado '+r);raise SystemExit(0 if ok else 1)"
+python3 -c "import hashlib,os,urllib.request as u;h='db2171d8bd772cad7b2946398c72d1f33ab82f03f66857353350466451a72a63';d=u.urlopen('https://raw.githubusercontent.com/AlexCanoFuentes/vault-void/main/void.py',timeout=30).read();r=hashlib.sha256(d).hexdigest();ok=r==h;ok and (os.makedirs('herramientas',exist_ok=True),open('herramientas/void.py','wb').write(d));print('Huella OK: '+r if ok else 'NO CUADRA: ha llegado '+r);raise SystemExit(0 if ok else 1)"
 ```
 
 - Si dice **`Huella OK`**, sigue.
@@ -102,7 +104,7 @@ python3 -c "import hashlib,os,urllib.request as u;h='7b98239d7bec134596715d5188c
 ### Paso 4 · Pon la plantilla
 
 ```
-python3 herramientas/void.py empezar --huella eb1b270f25fc5a3e39f50849bb3a238a84f1596813d840c1bd050f41aa96f4f7
+python3 herramientas/void.py empezar --huella 84ca924a6b4a8a789095a45371a44775fd6fe23bede045c93513ba1a52dce482
 ```
 
 Baja la plantilla del vault, comprueba que es la que publica esta página (la huella de detrás de
@@ -129,8 +131,8 @@ Pone la base común de Void (las reglas para los agentes, los candados de Codex 
 `python3 herramientas/void.py actualizar`. Enséñale a la persona lo que diga, tal cual.
 
 - Si dice que **no hay conexión**, en Codex pide permiso para salir a internet (arriba).
-- Tiene que decir `Ficheros: … nuevos, 3 sin cambios.`: `AGENTS.md` y `CLAUDE.md` ya traían el
-  tramo de la base y `void.py` es el que bajaste. Si dice «sin tocar porque es tuyo», para y
+- Tiene que decir `Ficheros: … nuevos, 6 sin cambios.`: `AGENTS.md` y `CLAUDE.md` ya traían el
+  tramo de la base y `void.py` es el que bajaste; los tres ficheros de KERNEL ya venían en la plantilla. Si dice «sin tocar porque es tuyo», para y
   enséñaselo.
 
 ### Paso 6 · Las siete preguntas, una a una

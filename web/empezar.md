@@ -81,14 +81,14 @@ Antes de bajar nada, dile a la persona, en llano, algo así:
 
 La huella (sha256) de `void.py` que publica esta página es:
 
-`ecfd2c8eda7c0c5f199287a77fc7f85f4ca6da72ae29f72e8caecda7f75d0258`
+`cbac9e5dfaf278cb2c9498697b4a138269adfa86c69e058051e2f16c28788376`
 
 Esta orden lo baja de GitHub, calcula su huella y **solo lo guarda en `herramientas/void.py` si
 cuadra** con la de arriba. No lo ejecuta. Ejecútala desde la carpeta (es igual en Mac, Linux y
 Windows; cambia `python3` por el nombre del paso 1):
 
 ```
-python3 -c "import hashlib,os,urllib.request as u;h='ecfd2c8eda7c0c5f199287a77fc7f85f4ca6da72ae29f72e8caecda7f75d0258';d=u.urlopen('https://raw.githubusercontent.com/AlexCanoFuentes/vault-void/main/void.py',timeout=30).read();r=hashlib.sha256(d).hexdigest();ok=r==h;ok and (os.makedirs('herramientas',exist_ok=True),open('herramientas/void.py','wb').write(d));print('Huella OK: '+r if ok else 'NO CUADRA: ha llegado '+r);raise SystemExit(0 if ok else 1)"
+python3 -c "import hashlib,os,urllib.request as u;h='cbac9e5dfaf278cb2c9498697b4a138269adfa86c69e058051e2f16c28788376';d=u.urlopen('https://raw.githubusercontent.com/AlexCanoFuentes/vault-void/main/void.py',timeout=30).read();r=hashlib.sha256(d).hexdigest();ok=r==h;ok and (os.makedirs('herramientas',exist_ok=True),open('herramientas/void.py','wb').write(d));print('Huella OK: '+r if ok else 'NO CUADRA: ha llegado '+r);raise SystemExit(0 if ok else 1)"
 ```
 
 - Si dice **`Huella OK`**, sigue.

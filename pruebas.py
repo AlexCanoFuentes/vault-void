@@ -1920,6 +1920,76 @@ class Nebulosa(unittest.TestCase):
 
 # ---------------------------------------------------------------- la red: registrar, perfil, avisar
 
+class Cifrado(unittest.TestCase):
+    """VV-008, M0: el cifrado de los mensajes, escrito en Python puro desde los RFC. Cada pieza contra los vectores
+    oficiales de su RFC, y el conjunto contra los de RFC 9180, apéndice A.2 (modos Base y Auth)."""
+    h = staticmethod(bytes.fromhex)
+
+    def test_x25519_rfc7748(self):
+        h = self.h
+        self.assertEqual(V._x25519(h("a546e36bf0527c9d3b16154b82465edd62144c0ac1fc5a18506a2244ba449ac4"),
+                                      h("e6db6867583030db3594c1a424b15f7c726624ec26b3353b10a903a6d0ab1c4c")),
+                         h("c3da55379de9c6908e94ea4df28d084f32eccf03491c71f754b4075577a28552"))
+        self.assertEqual(V._x25519(h("4b66e9d4d1b4673c5ad22691957d6af5c11b6421e0ea01d42ca4169e7918ba0d"),
+                                      h("e5210f12786811d3f4b7959d0538ae2c31dbe7106fc03c3efc4cd549c715a493")),
+                         h("95cbde9476e8907d7aade45cb4b873f88b595a68799fa152e6f8f7647aac7957"))
+        a = h("77076d0a7318a57d3c16c17251b26645df4c2f87ebc0992ab177fba51db92c2a")
+        b = h("5dab087e624a8a4b79e17f8b83800ee66f3bb1292618b6fd1c2f8b27ff88e0eb")
+        self.assertEqual(V._x25519_publica(a), h("8520f0098930a754748b7ddcb43ef75a0dbf3a0d26381af4eba4a98eaa9b4e6a"))
+        self.assertEqual(V._x25519(a, V._x25519_publica(b)), h("4a5d9d5ba4ce2de1728e3bf480350f25e07e21c947d19e3376f09b3c1e161742"))
+
+    def test_hkdf_rfc5869(self):
+        h = self.h
+        prk = V._hkdf_extract(h("000102030405060708090a0b0c"), h("0b" * 22))
+        self.assertEqual(prk, h("077709362c2e32df0ddc3f0dc47bba6390b6c73bb50f9c3122ec844ad7c2b3e5"))
+        self.assertEqual(V._hkdf_expand(prk, h("f0f1f2f3f4f5f6f7f8f9"), 42),
+                         h("3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865"))
+
+    def test_chacha20_poly1305_rfc8439(self):
+        h = self.h
+        pt = (b"Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, "
+              b"sunscreen would be it.")
+        k, n, aad = bytes(range(0x80, 0xa0)), h("070000004041424344454647"), h("50515253c0c1c2c3c4c5c6c7")
+        sobre = V._aead_cerrar(k, n, aad, pt)
+        self.assertEqual(sobre[-16:], h("1ae10b594f09e26a7e902ecbd0600691"))
+        self.assertTrue(sobre.startswith(h("d31a8d34648e60db7b86afbc53ef7ec2a4aded51296e08fe")))
+        self.assertEqual(V._aead_abrir(k, n, aad, sobre), pt)
+
+    def test_hpke_rfc9180_base_y_auth(self):
+        h = self.h
+        info, aad = h("4f6465206f6e2061204772656369616e2055726e"), h("436f756e742d30")
+        pt = h("4265617574792069732074727574682c20747275746820626561757479")
+        enc, sobre = V.hpke_cerrar(h("4310ee97d88cc1f088a5576c77ab0cf5c3ac797f3d95139c6c84b5429c59662a"), pt, info, aad,
+                                      _efimera=h("f4ec9b33b792c372c1d2c2063507b684ef925b8c75a42dbcbf57d63ccd381600"))
+        self.assertEqual(enc, h("1afa08d3dec047a643885163f1180476fa7ddb54c6a8029ea33f95796bf2ac4a"))
+        self.assertEqual(sobre, h("1c5250d8034ec2b784ba2cfd69dbdb8af406cfe3ff938e131f0def8c8b60b4db21993c62ce81883d2dd1b51a28"))
+        skr, pks = h("3ca22a6d1cda1bb9480949ec5329d3bf0b080ca4c45879c95eddb55c70b80b82"), h("f0f4f9e96c54aeed3f323de8534fffd7e0577e4ce269896716bcb95643c8712b")
+        enc, sobre = V.hpke_cerrar(h("1a478716d63cb2e16786ee93004486dc151e988b34b475043d3e0175bdb01c44"), pt, info, aad,
+                                      priv_remitente=h("2def0cb58ffcf83d1062dd085c8aceca7f4c0c3fd05912d847b61f3e54121f05"),
+                                      _efimera=h("c94619e1af28971c8fa7957192b7e62a71ca2dcdde0a7cc4a8a9e741d600ab13"))
+        self.assertEqual(sobre, h("ab1a13c9d4f01a87ec3440dbd756e2677bd2ecf9df0ce7ed73869b98e00c09be111cb9fdf077347aeb88e61bdf"))
+        self.assertEqual(V.hpke_abrir(skr, enc, sobre, info, aad, pub_remitente=pks), pt)
+        # sabotajes: firma de otra clave y un byte cambiado
+        with self.assertRaises(ValueError):
+            V.hpke_abrir(skr, enc, sobre, info, aad, pub_remitente=h("4310ee97d88cc1f088a5576c77ab0cf5c3ac797f3d95139c6c84b5429c59662a"))
+        malo = bytearray(sobre); malo[3] ^= 1
+        with self.assertRaises(ValueError):
+            V.hpke_abrir(skr, enc, bytes(malo), info, aad, pub_remitente=pks)
+
+    def test_igual_que_la_referencia_si_esta(self):
+        try:
+            from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
+            from cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305
+        except ImportError:
+            self.skipTest("sin la biblioteca cryptography: la comparación es solo de las pruebas, nunca de void.py")
+        for _ in range(10):
+            a, b = os.urandom(32), os.urandom(32)
+            ref = X25519PrivateKey.from_private_bytes(a).exchange(X25519PublicKey.from_public_bytes(V._x25519_publica(b)))
+            self.assertEqual(V._x25519(a, V._x25519_publica(b)), ref)
+            k, n, pt, ad = os.urandom(32), os.urandom(12), os.urandom(os.urandom(1)[0]), os.urandom(7)
+            self.assertEqual(V._aead_cerrar(k, n, ad, pt), ChaCha20Poly1305(k).encrypt(n, pt, ad))
+
+
 class RedFalsa:
     """Una red de Void de juguete, en este proceso, que contesta como el Worker de red/ (sus reglas de
     verdad las prueban red/pruebas/todo.mjs contra el Worker). Aquí se prueba el cliente."""

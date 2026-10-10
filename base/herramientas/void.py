@@ -768,6 +768,195 @@ def pendientes(vault):
     return sorted(salida)
 
 
+# ---------------------------------------------------------------- mensajes: el cifrado (VV-008, M0)
+# HPKE (RFC 9180), suite DHKEM(X25519, HKDF-SHA256) · HKDF-SHA256 · ChaCha20-Poly1305, en modo Base y Auth.
+# Escrito en Python puro desde los RFC (7748, 5869, 8439, 9180) para no añadir dependencias, y probado contra sus
+# vectores oficiales en pruebas.py: si no da exactamente los bytes del estándar, no pasa. No es una auditoría, y
+# Python puro no garantiza tiempo constante: aquí no importa, porque cifra el ordenador de la persona y nadie de fuera
+# le puede medir los tiempos.
+
+_P25519 = 2 ** 255 - 19
+_A24 = 121665
+
+
+def _x25519(k, u):
+    """X25519 (RFC 7748 §5): escalar k (32 bytes) por la coordenada u (32 bytes). Escalera de Montgomery."""
+    k = bytearray(k)
+    k[0] &= 248
+    k[31] &= 127
+    k[31] |= 64
+    n = int.from_bytes(bytes(k), "little")
+    x1 = int.from_bytes(u, "little") & ((1 << 255) - 1)
+    x2, z2, x3, z3, swap = 1, 0, x1, 1, 0
+    for t in reversed(range(255)):
+        bit = (n >> t) & 1
+        swap ^= bit
+        if swap:
+            x2, x3, z2, z3 = x3, x2, z3, z2
+        swap = bit
+        a, b = (x2 + z2) % _P25519, (x2 - z2) % _P25519
+        aa, bb = a * a % _P25519, b * b % _P25519
+        e = (aa - bb) % _P25519
+        c, d = (x3 + z3) % _P25519, (x3 - z3) % _P25519
+        da, cb = d * a % _P25519, c * b % _P25519
+        x3 = (da + cb) ** 2 % _P25519
+        z3 = x1 * (da - cb) ** 2 % _P25519
+        x2 = aa * bb % _P25519
+        z2 = e * (aa + _A24 * e) % _P25519
+    if swap:
+        x2, x3, z2, z3 = x3, x2, z3, z2
+    return (x2 * pow(z2, _P25519 - 2, _P25519) % _P25519).to_bytes(32, "little")
+
+
+def _x25519_publica(privada):
+    return _x25519(privada, (9).to_bytes(32, "little"))
+
+
+def _dh(privada, publica):
+    s = _x25519(privada, publica)
+    if not any(s):
+        raise ValueError("clave pública inválida (secreto compartido a cero)")
+    return s
+
+
+def _hkdf_extract(sal, ikm):
+    import hashlib, hmac
+    return hmac.new(sal or bytes(32), ikm, hashlib.sha256).digest()
+
+
+def _hkdf_expand(prk, info, largo):
+    import hashlib, hmac
+    salida, t, n = b"", b"", 1
+    while len(salida) < largo:
+        t = hmac.new(prk, t + info + bytes([n]), hashlib.sha256).digest()
+        salida += t
+        n += 1
+    return salida[:largo]
+
+
+def _rotl(v, c):
+    return ((v << c) & 0xffffffff) | (v >> (32 - c))
+
+
+def _chacha20_bloque(clave, contador, nonce):
+    """Un bloque de ChaCha20 (RFC 8439 §2.3): 64 bytes de flujo."""
+    import struct
+    st = list(struct.unpack("<4I", b"expand 32-byte k")) + list(struct.unpack("<8I", clave)) + \
+        [contador] + list(struct.unpack("<3I", nonce))
+    w = st[:]
+    for _ in range(10):
+        for a, b, c, d in ((0, 4, 8, 12), (1, 5, 9, 13), (2, 6, 10, 14), (3, 7, 11, 15),
+                           (0, 5, 10, 15), (1, 6, 11, 12), (2, 7, 8, 13), (3, 4, 9, 14)):
+            w[a] = (w[a] + w[b]) & 0xffffffff; w[d] = _rotl(w[d] ^ w[a], 16)
+            w[c] = (w[c] + w[d]) & 0xffffffff; w[b] = _rotl(w[b] ^ w[c], 12)
+            w[a] = (w[a] + w[b]) & 0xffffffff; w[d] = _rotl(w[d] ^ w[a], 8)
+            w[c] = (w[c] + w[d]) & 0xffffffff; w[b] = _rotl(w[b] ^ w[c], 7)
+    return struct.pack("<16I", *[(w[i] + st[i]) & 0xffffffff for i in range(16)])
+
+
+def _chacha20(clave, contador, nonce, datos):
+    salida = bytearray()
+    for i in range(0, len(datos), 64):
+        flujo = _chacha20_bloque(clave, contador + i // 64, nonce)
+        salida += bytes(a ^ b for a, b in zip(datos[i:i + 64], flujo))
+    return bytes(salida)
+
+
+def _poly1305(clave, mensaje):
+    """Poly1305 (RFC 8439 §2.5): la etiqueta de 16 bytes."""
+    r = int.from_bytes(clave[:16], "little") & 0x0ffffffc0ffffffc0ffffffc0fffffff
+    s, p, acc = int.from_bytes(clave[16:], "little"), (1 << 130) - 5, 0
+    for i in range(0, len(mensaje), 16):
+        trozo = mensaje[i:i + 16] + b"\x01"
+        acc = (acc + int.from_bytes(trozo, "little")) * r % p
+    return ((acc + s) & ((1 << 128) - 1)).to_bytes(16, "little")
+
+
+def _relleno16(b):
+    return b"\x00" * (-len(b) % 16)
+
+
+def _aead_etiqueta(clave, nonce, aad, cifrado):
+    import struct
+    clave_poly = _chacha20_bloque(clave, 0, nonce)[:32]
+    datos = aad + _relleno16(aad) + cifrado + _relleno16(cifrado) + struct.pack("<QQ", len(aad), len(cifrado))
+    return _poly1305(clave_poly, datos)
+
+
+def _aead_cerrar(clave, nonce, aad, claro):
+    """AEAD_CHACHA20_POLY1305 (RFC 8439 §2.8): devuelve cifrado + etiqueta."""
+    cifrado = _chacha20(clave, 1, nonce, claro)
+    return cifrado + _aead_etiqueta(clave, nonce, aad, cifrado)
+
+
+def _aead_abrir(clave, nonce, aad, sobre):
+    import hmac
+    if len(sobre) < 16:
+        raise ValueError("sobre demasiado corto")
+    cifrado, etiqueta = sobre[:-16], sobre[-16:]
+    if not hmac.compare_digest(etiqueta, _aead_etiqueta(clave, nonce, aad, cifrado)):
+        raise ValueError("el sobre no cuadra: lo han cambiado o no es para esta clave")
+    return _chacha20(clave, 1, nonce, cifrado)
+
+
+# HPKE (RFC 9180): DHKEM(X25519, HKDF-SHA256) = 0x0020, HKDF-SHA256 = 0x0001, ChaCha20-Poly1305 = 0x0003
+_KEM_ID = b"KEM\x00\x20"
+_HPKE_ID = b"HPKE\x00\x20\x00\x01\x00\x03"
+_MODO_BASE, _MODO_AUTH = 0, 2
+
+
+def _lextract(suite, sal, etiqueta, ikm):
+    return _hkdf_extract(sal, b"HPKE-v1" + suite + etiqueta + ikm)
+
+
+def _lexpand(suite, prk, etiqueta, info, largo):
+    return _hkdf_expand(prk, largo.to_bytes(2, "big") + b"HPKE-v1" + suite + etiqueta + info, largo)
+
+
+def _secreto_kem(dh, contexto):
+    prk = _lextract(_KEM_ID, b"", b"eae_prk", dh)
+    return _lexpand(_KEM_ID, prk, b"shared_secret", contexto, 32)
+
+
+def _programa_claves(modo, secreto, info):
+    """KeySchedule de RFC 9180 §5.1, sin PSK: devuelve (clave, nonce base)."""
+    psk_id_hash = _lextract(_HPKE_ID, b"", b"psk_id_hash", b"")
+    info_hash = _lextract(_HPKE_ID, b"", b"info_hash", info)
+    contexto = bytes([modo]) + psk_id_hash + info_hash
+    s = _lextract(_HPKE_ID, secreto, b"secret", b"")
+    return _lexpand(_HPKE_ID, s, b"key", contexto, 32), _lexpand(_HPKE_ID, s, b"base_nonce", contexto, 12)
+
+
+def hpke_cerrar(pub_destino, claro, info=b"", aad=b"", priv_remitente=None, _efimera=None):
+    """Cifra `claro` para `pub_destino`. Con `priv_remitente`, modo Auth (firmado por el remitente).
+    Devuelve (enc, sobre). `_efimera` solo lo usan las pruebas, para reproducir los vectores del RFC."""
+    import os
+    efimera = _efimera or os.urandom(32)
+    enc = _x25519_publica(efimera)
+    if priv_remitente is None:
+        modo, dh, contexto = _MODO_BASE, _dh(efimera, pub_destino), enc + pub_destino
+    else:
+        pub_rem = _x25519_publica(priv_remitente)
+        modo = _MODO_AUTH
+        dh = _dh(efimera, pub_destino) + _dh(priv_remitente, pub_destino)
+        contexto = enc + pub_destino + pub_rem
+    clave, nonce = _programa_claves(modo, _secreto_kem(dh, contexto), info)
+    return enc, _aead_cerrar(clave, nonce, aad, claro)
+
+
+def hpke_abrir(priv_destino, enc, sobre, info=b"", aad=b"", pub_remitente=None):
+    """Descifra. Con `pub_remitente`, exige modo Auth y que lo firmara esa clave; si no cuadra, ValueError."""
+    pub_dest = _x25519_publica(priv_destino)
+    if pub_remitente is None:
+        modo, dh, contexto = _MODO_BASE, _dh(priv_destino, enc), enc + pub_dest
+    else:
+        modo = _MODO_AUTH
+        dh = _dh(priv_destino, enc) + _dh(priv_destino, pub_remitente)
+        contexto = enc + pub_dest + pub_remitente
+    clave, nonce = _programa_claves(modo, _secreto_kem(dh, contexto), info)
+    return _aead_abrir(clave, nonce, aad, sobre)
+
+
 # ---------------------------------------------------------------- la red
 
 def url_red():

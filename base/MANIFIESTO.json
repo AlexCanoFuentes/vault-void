@@ -6,7 +6,7 @@
     "AGENTS.md": "93746e1ab45ff8065ab2506c5b95b12772228ca932ea7425169ba491050c7eb4",
     "CLAUDE.md": "8e9e3e44a9dd3aae3bb4efdd1218cf66f249a28b809e49b9797ac5d0cca23eac",
     "herramientas/candados_comunes.py": "098329176cb8262e519090f1de5530762eacdfec74deda78fea77bc9081e9f55",
-    "herramientas/conectar_vault.py": "dca7a68023317a9072535c650fc31451fe6e84a332c0400811cc7b93a681937d",
+    "herramientas/conectar_vault.py": "e1b7f2fde8cd7c851c2122d1151861c75557cdc52fa34d96909c49bf1bbbadde",
     "herramientas/kernel.py": "a30f6b03c8dec0a53527801ff5355e270568dda5b0cf21b6b8c503a5cecc3ba1",
     "herramientas/kernel_ejemplo.json": "e186c753c9e480f50a93ba6cf3dfb1e3e8658be0dfe991f2a16acb60046a8837",
     "herramientas/pruebas_comunes.py": "f312d9f949c2dea1b4feb6fd6e1009d3afcf5fd03cab99431735a4ad83939397",

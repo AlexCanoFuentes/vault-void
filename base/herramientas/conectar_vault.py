@@ -20,6 +20,7 @@ import urllib.request
 MAX_ARCHIVO=128*1024*1024
 TAM_PARTE=512*1024
 MAX_CLARO=200*1024*1024
+USER_AGENT='VoidVault/0.0.11 (+https://vaultvoid.app)'
 def archivos(vault):
     """Inventario completo. No lee contenidos, no sigue enlaces externos ni omite ignorados."""
     vault=Path(vault).resolve()
@@ -152,13 +153,15 @@ class SinRedireccion(urllib.request.HTTPRedirectHandler):
     def redirect_request(self,*args,**kwargs):raise ValueError('Void devolvió una redirección: no envío tus datos a otro destino.')
 
 def enviar(endpoint,credencial,cuerpo,extra=None):
-    h={'authorization':'Bearer '+credencial,'content-type':'application/gzip','x-void-origen':'archivo','x-void-consentimiento':'alojar-mi-vault'}
+    h={'authorization':'Bearer '+credencial,'user-agent':USER_AGENT,'content-type':'application/gzip','x-void-origen':'archivo','x-void-consentimiento':'alojar-mi-vault'}
     h.update(extra or {})
     req=urllib.request.Request(endpoint+'/v1/alojar',data=cuerpo,method='POST',headers=h)
     try:
         with urllib.request.build_opener(SinRedireccion()).open(req,timeout=180) as r:return json.loads(r.read(65536))
     except urllib.error.HTTPError as e:
-        try:mensaje=json.loads(e.read(65536)).get('error','No se pudo conectar.')
+        try:
+            try:mensaje=json.loads(e.read(65536)).get('error','No se pudo conectar.')
+            except (ValueError,AttributeError):mensaje=f'Void rechazó la conexión (HTTP {e.code}); el original sigue intacto.'
         finally:e.close()
         raise ValueError(mensaje) from None
     except (OSError,TimeoutError,urllib.error.URLError):raise ValueError('No se pudo completar la conexión. El original sigue intacto; reintenta sin crear otro vault.') from None
@@ -199,7 +202,7 @@ def conectar(vault,confirmado=False,alojado=False):
         esperado=hashlib.sha256(cuerpo).hexdigest()
         if datos.get('archivo_sha256')!=esperado:
             raise ValueError('El espacio conserva otra copia: no se ha incorporado este original completo. No se sobrescribe; hay que revisar la caja previa.')
-        descarga=urllib.request.Request(endpoint+'/v1/alojar/archivo',headers={'authorization':'Bearer '+credencial})
+        descarga=urllib.request.Request(endpoint+'/v1/alojar/archivo',headers={'authorization':'Bearer '+credencial,'user-agent':USER_AGENT})
         try:
             with urllib.request.build_opener(SinRedireccion()).open(descarga,timeout=180) as r:recuperado=r.read(MAX_ARCHIVO+1)
         except (OSError,TimeoutError,urllib.error.URLError):

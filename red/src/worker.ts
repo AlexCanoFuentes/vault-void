@@ -28,6 +28,7 @@
 import { leerCatalogo, ErrorDeFuente, type Catalogo } from "./catalogo.js";
 import { llaveNueva, huella, llaveDe, problemaAlias, problemaAgente, publicoDe, problemaTexto, TIPOS, RE_ESTRELLA, RE_ALIAS, problemaHuella, huellaNormal, type Huella } from "./reglas.js";
 import { paginaPerfil, paginaEstrella, paginaNoEncontrada, fechaCorta, CSP, type AvisoPublico } from "./paginas.js";
+import { entradaWeb } from "./entrada-web.js";
 
 export interface Entorno {
   DB: D1Database;
@@ -43,6 +44,8 @@ export interface Entorno {
   TOPE_NUEVOS_DIA?: string;
   /** Huellas nuevas del cuento por conexión y hora. Por defecto 5. */
   TOPE_CUENTO_HORA?: string;
+  NUBE?: Fetcher;
+  TOPE_WEB?: string;
 }
 
 const MAX_CUERPO = 8 * 1024;
@@ -412,14 +415,24 @@ async function publicarHuella(request: Request, env: Entorno): Promise<Response>
   // Si trae el token de su huella del cuento, la reclama: es la misma huella, que ahora crece con las cifras del vault.
   let reclamada = false;
   if (typeof b.cuento === "string" && RE_TOKEN_CUENTO.test(b.cuento)) {
-    const c = await env.DB.prepare("SELECT id, datos FROM huellas_cuento WHERE token_hash = ?").bind(await huella_de(b.cuento)).first<{ id: number; datos: string }>();
+    const hash = await huella_de(b.cuento);
+    const vinculo = await env.DB.prepare("SELECT cuento_id, perfil_id FROM cuento_vinculos WHERE token_hash = ?").bind(hash).first<{cuento_id:number;perfil_id:number}>();
+    if (vinculo && vinculo.perfil_id !== p.id) return error(409, "Esa huella ya pertenece a otro vault.");
+    if (vinculo) semilla = `cuento:${vinculo.cuento_id}`;
+    const c = await env.DB.prepare("SELECT id, datos FROM huellas_cuento WHERE token_hash = ?").bind(hash).first<{ id: number; datos: string }>();
     if (c) {
+      const anterior = await env.DB.prepare("SELECT cuento_id FROM cuento_vinculos WHERE perfil_id = ?").bind(p.id).first<{cuento_id:number}>();
+      if (anterior && anterior.cuento_id !== c.id) return error(409, "Tu vault ya conserva su huella. No se cambia por otra.");
+      await env.DB.prepare("INSERT OR IGNORE INTO cuento_vinculos(token_hash,cuento_id,perfil_id) VALUES(?,?,?)").bind(hash,c.id,p.id).run();
+      const dueño = await env.DB.prepare("SELECT perfil_id FROM cuento_vinculos WHERE token_hash = ?").bind(hash).first<{perfil_id:number}>();
+      if (dueño?.perfil_id !== p.id) return error(409, "Esa huella ya pertenece a otro vault.");
       semilla = `cuento:${c.id}`;
       const t = (JSON.parse(c.datos) as Huella).tono;
       if (huella.tono === undefined && t !== undefined) huella.tono = t;
       const r = await env.DB.prepare("DELETE FROM huellas_cuento WHERE id = ?").bind(c.id).run();
       reclamada = !!r.meta.changes;
     }
+    if (!c && !vinculo) return error(410, "No encontramos esa huella. No se crea otra al volver.");
   }
   await env.DB.prepare("INSERT INTO huellas (perfil_id, datos, actualizado, semilla) VALUES (?, ?, ?, ?) "
     + "ON CONFLICT(perfil_id) DO UPDATE SET datos = excluded.datos, actualizado = excluded.actualizado, semilla = excluded.semilla")
@@ -437,10 +450,14 @@ async function huellaCuento(request: Request, env: Entorno): Promise<Response> {
   if (mal) return error(400, mal);
   const datos = JSON.stringify(huellaNormal(b.huella as Huella)), ahora = Date.now();
   if (typeof b.token === "string" && RE_TOKEN_CUENTO.test(b.token)) {
+    const v = await env.DB.prepare("SELECT p.alias,v.cuento_id FROM cuento_vinculos v JOIN perfiles p ON p.id=v.perfil_id WHERE v.token_hash=?").bind(await huella_de(b.token)).first<{alias:string;cuento_id:number}>();
+    if (v) return json(200, { token:b.token, nueva:false, vinculada:true, alias:v.alias,semilla:`cuento:${v.cuento_id}` }, { "access-control-allow-origin":"*" });
     const r = await env.DB.prepare("UPDATE huellas_cuento SET datos = ?, actualizado = ? WHERE token_hash = ?")
       .bind(datos, ahora, await huella_de(b.token)).run();
-    if (r.meta.changes) return json(200, { token: b.token, nueva: false }, { "access-control-allow-origin": "*" });
+    if (r.meta.changes) {const c=await env.DB.prepare("SELECT id FROM huellas_cuento WHERE token_hash=?").bind(await huella_de(b.token)).first<{id:number}>();return json(200, { token: b.token, nueva: false,semilla:`cuento:${c!.id}` }, { "access-control-allow-origin": "*" });}
+    return error(410, "Esta huella ya no está disponible. No se crea otra al volver.", { "access-control-allow-origin":"*" });
   }
+  if (b.token !== undefined) return error(400, "El token de la huella no es válido.");
   const ip = request.headers.get("cf-connecting-ip") ?? "local";
   const clave = "cuento:" + (await huella((await sal(env)) + ip));
   await env.DB.prepare("DELETE FROM ritmo WHERE creado < ?").bind(ahora - 2 * HORA).run();
@@ -456,9 +473,13 @@ async function huellaCuento(request: Request, env: Entorno): Promise<Response> {
   crypto.getRandomValues(bytes);
   const token = "vc_" + [...bytes].map((x) => x.toString(16).padStart(2, "0")).join("");
   await env.DB.prepare("INSERT INTO ritmo (clave, creado) VALUES (?, ?)").bind(clave, ahora).run();
-  await env.DB.prepare("INSERT INTO huellas_cuento (token_hash, datos, creado, actualizado) VALUES (?, ?, ?, ?)")
+  // INTEGER PRIMARY KEY reutiliza el 1 cuando el cuento anterior se reclama y se borra.
+  // La semilla también conserva los identificadores reclamados, incluidos los de antes de esta migración.
+  await env.DB.prepare("INSERT INTO huellas_cuento (id, token_hash, datos, creado, actualizado) "
+    + "SELECT COALESCE(MAX(id),0)+1,?,?,?,? FROM (SELECT id FROM huellas_cuento UNION ALL SELECT cuento_id AS id FROM cuento_vinculos UNION ALL SELECT CAST(SUBSTR(semilla,7) AS INTEGER) AS id FROM huellas WHERE semilla LIKE 'cuento:%')")
     .bind(await huella_de(token), datos, ahora, ahora).run();
-  return json(201, { token, nueva: true }, { "access-control-allow-origin": "*" });
+  const c=await env.DB.prepare("SELECT id FROM huellas_cuento WHERE token_hash=?").bind(await huella_de(token)).first<{id:number}>();
+  return json(201, { token, nueva: true,semilla:`cuento:${c!.id}` }, { "access-control-allow-origin": "*" });
 }
 
 async function retirarHuella(request: Request, env: Entorno): Promise<Response> {
@@ -496,6 +517,7 @@ export default {
         "access-control-allow-headers": "content-type", "access-control-max-age": "86400" } });
     }
     try {
+      if (ruta.startsWith("/v1/web/")) return await entradaWeb(request,env,r => publicarHuella(r,env));
       if (m === "POST") {
         if (ruta === "/v1/registrar") return await registrar(request, env);
         if (ruta === "/v1/perfil") return await perfil(request, env);

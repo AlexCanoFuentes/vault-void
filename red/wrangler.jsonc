@@ -16,8 +16,12 @@
     // de la web, así que solo estas dos rutas pasan por aquí y todo lo demás sigue siendo la web estática:
     // https://developers.cloudflare.com/workers/configuration/routing/custom-domains/
     { "pattern": "vaultvoid.app/@*", "zone_name": "vaultvoid.app" },
-    { "pattern": "vaultvoid.app/estrella/*", "zone_name": "vaultvoid.app" }
+    { "pattern": "vaultvoid.app/estrella/*", "zone_name": "vaultvoid.app" },
+    { "pattern": "vaultvoid.app/v1/web/*", "zone_name": "vaultvoid.app" }
   ],
+  "services": [{ "binding": "NUBE", "service": "void-nube-prueba", "entrypoint": "VoidAlojamiento" }],
+  // Piloto autorizado por Alex el 11-oct-2026, limitado a las tres cajas ya disponibles.
+  "vars": { "TOPE_WEB": "3" },
   "d1_databases": [
     {
       "binding": "DB",

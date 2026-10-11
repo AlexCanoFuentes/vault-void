@@ -57,11 +57,12 @@
       var tam = paso * 1.3 * (0.35 + 0.65 * Math.sqrt(Math.min(h.dias, 365) / 365)); // los días: de un tercio a todo su sitio
       var lab = h.decisiones / (h.decisiones + h.proyectos + 1);
       var tono = typeof h.tono === "number" ? h.tono : sem % 360, giro = (sem >>> 3) % 2 ? 55 : -55;
+      var paleta = [0,1,2,3].map(function(p){return hsl((tono + giro * p + 720) % 360, p%2 ? 0.7:0.72, p%2 ? 0.62:0.6);});
       return {
         alias: e.alias, cuento: !e.alias, h: h, r: r, x: xy[0], y: xy[1], tam: tam,
         f: 0.0367 + (0.055 - 0.0367) * lab, k: 0.0649 + (0.062 - 0.0649) * lab,
         brillo: 0.3 + 0.7 * Math.min(1, h.pulso / 60),
-        col: hsl(tono, 0.72, 0.6), col2: hsl((tono + giro + 360) % 360, 0.7, 0.62), // dos tonos: del centro al borde
+        col: paleta[0], col2:paleta[1], paleta:paleta,
         masa: Math.min(N * 0.12, (3 + 1.1 * Math.sqrt(h.decisiones + h.proyectos)) * N / 180)
       };
     });
@@ -145,9 +146,11 @@
           if (sombra) { v = 0; q = -1; }
           else { var s = muestra(bx, by); v = s[0]; q = s[1]; mz = s[2]; mu = Math.min(4, 1 / Math.abs(1 - Math.pow(tE / cerca, 4))); }
         }
-        var o = i * 4, b = q >= 0 ? T[q].brillo : 0, c1 = q >= 0 ? T[q].col : FONDO, c2 = q >= 0 ? T[q].col2 : FONDO;
+        var pal = q >= 0 ? T[q].paleta : [FONDO,FONDO,FONDO,FONDO];
+        var mezclaColor = Math.min(2.999, mz * 3), zona = Math.floor(mezclaColor);
+        var o = i * 4, b = q >= 0 ? T[q].brillo : 0, c1 = pal[zona], c2 = pal[zona+1];
         var a = Math.max(0, Math.min(1, (v - 0.08) / 0.27 * Math.sqrt(mu))) * b;
-        for (var ch = 0; ch < 3; ch++) d[o + ch] = FONDO[ch] + (c1[ch] + (c2[ch] - c1[ch]) * mz - FONDO[ch]) * a;
+        for (var ch = 0; ch < 3; ch++) d[o + ch] = FONDO[ch] + (c1[ch] + (c2[ch] - c1[ch]) * (mezclaColor-zona) - FONDO[ch]) * a;
         d[o + 3] = 255;
       }
       ctx.putImageData(img, 0, 0);

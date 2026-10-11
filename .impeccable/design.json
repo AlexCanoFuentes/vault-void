@@ -1,0 +1,202 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-11T00:00:00+02:00",
+  "title": "Design System: Vault Void",
+  "extensions": {
+    "colorMeta": {
+      "vacio": {
+        "role": "neutral",
+        "displayName": "Carbón cálido"
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Panel cálido translúcido"
+      },
+      "panel-solido": {
+        "role": "neutral",
+        "displayName": "Panel cálido sólido"
+      },
+      "tinta": {
+        "role": "neutral",
+        "displayName": "Tinta clara"
+      },
+      "tinta-2": {
+        "role": "neutral",
+        "displayName": "Tinta secundaria"
+      },
+      "tenue": {
+        "role": "neutral",
+        "displayName": "Tinta tenue"
+      },
+      "linea": {
+        "role": "neutral",
+        "displayName": "Línea de portada"
+      },
+      "linea-cuento": {
+        "role": "neutral",
+        "displayName": "Línea del cuento"
+      },
+      "linea-vault": {
+        "role": "neutral",
+        "displayName": "Línea del espacio"
+      },
+      "ambar": {
+        "role": "primary",
+        "displayName": "Ámbar de acción"
+      },
+      "ambar-2": {
+        "role": "primary",
+        "displayName": "Ámbar claro"
+      },
+      "verde": {
+        "role": "secondary",
+        "displayName": "Verde del cuento"
+      },
+      "tinta-accion-portada": {
+        "role": "neutral",
+        "displayName": "Tinta oscura de acción en portada"
+      },
+      "tinta-accion-espacio": {
+        "role": "neutral",
+        "displayName": "Tinta oscura de acción en espacio"
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Título del espacio",
+        "purpose": "Título principal de mi-vault."
+      },
+      "headline-cuento": {
+        "displayName": "Voz del cuento",
+        "purpose": "Texto principal centrado sobre la huella."
+      },
+      "marca-portada": {
+        "displayName": "Marca de portada",
+        "purpose": "Nombre del menú flotante."
+      },
+      "titulo-ficha": {
+        "displayName": "Título de ficha",
+        "purpose": "Alias o estado de la huella seleccionada."
+      },
+      "body": {
+        "displayName": "Interfaz de portada",
+        "purpose": "Controles y texto base del lienzo."
+      },
+      "body-cuento": {
+        "displayName": "Interfaz del cuento",
+        "purpose": "Texto base del recorrido de creación."
+      },
+      "body-espacio": {
+        "displayName": "Lectura del espacio",
+        "purpose": "Formulario de acceso y conversaciones."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "opacidad-voz-pista",
+        "value": "opacity .8s",
+        "purpose": "Declaración existente de la voz del cuento y la pista de portada."
+      },
+      {
+        "name": "encuadre-lienzo",
+        "value": "650ms; e = 1 - Math.pow(1 - k, 3)",
+        "purpose": "Interpolación existente del encuadre; no es una curva CSS global."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "portada-movil",
+        "value": "700px"
+      },
+      {
+        "name": "espacio-movil",
+        "value": "560px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Botón primario de portada",
+      "kind": "button",
+      "refersTo": "boton-primario-portada",
+      "description": "Acción principal de entrada, con hover ámbar claro y foco visible.",
+      "html": "<a class=\"ds-primario\" href=\"/tu-huella\">Crear mi espacio</a>",
+      "css": ".ds-primario{display:inline-flex;align-items:center;justify-content:center;background:var(--ambar,#F2A93B);color:#1A1407;text-decoration:none;font:500 14px/1.6 \"IBM Plex Mono\",ui-monospace,Menlo,Consolas,monospace;border-radius:999px;padding:9px 18px}.ds-primario:hover{background:var(--ambar-2,#F8CB86)}.ds-primario:focus-visible{outline:2px solid var(--ambar,#F2A93B);outline-offset:2px}"
+    },
+    {
+      "name": "Botón secundario de portada",
+      "kind": "button",
+      "refersTo": "boton-secundario-portada",
+      "description": "Acción de contorno; el borde cambia en hover y en estado expandido.",
+      "html": "<a class=\"ds-secundario\" href=\"/mi-vault\">Volver a mi espacio</a>",
+      "css": ".ds-secundario{display:inline-block;background:none;border:1px solid var(--linea,#2E2B25);border-radius:999px;padding:8px 16px;cursor:pointer;color:var(--tinta,#ECE7DE);font:400 14px/1.6 \"IBM Plex Mono\",ui-monospace,Menlo,Consolas,monospace;text-underline-offset:3px}.ds-secundario:hover,.ds-secundario[aria-expanded=\"true\"]{border-color:var(--ambar,#F2A93B)}.ds-secundario:focus-visible{outline:2px solid var(--ambar,#F2A93B);outline-offset:2px}"
+    },
+    {
+      "name": "Campo de acceso",
+      "kind": "input",
+      "refersTo": "campo-acceso",
+      "description": "Etiqueta y campo de nombre del formulario para volver al espacio.",
+      "html": "<label class=\"ds-etiqueta\" for=\"ds-alias\">Nombre de tu espacio</label><input class=\"ds-campo\" id=\"ds-alias\" autocomplete=\"username\" required pattern=\"[a-z0-9-]{3,24}\" placeholder=\"mi-cuaderno\">",
+      "css": ".ds-etiqueta{display:block;margin-top:18px;color:var(--tinta,#ECE7DE);font:400 14px/1.65 \"IBM Plex Mono\",monospace}.ds-campo{width:100%;border:1px solid var(--linea,#38332B);border-radius:10px;background:var(--fondo,#12110E);color:var(--tinta,#ECE7DE);padding:12px;font:400 14px/1.65 \"IBM Plex Mono\",monospace}.ds-campo:focus-visible{outline:2px solid var(--acento,#F2A93B);outline-offset:3px}"
+    },
+    {
+      "name": "Menú flotante",
+      "kind": "nav",
+      "refersTo": "menu-flotante",
+      "description": "Muestra del menú real sin anclaje fijo; la sección de piezas se abre con details.",
+      "html": "<nav class=\"ds-menu\" aria-label=\"Void\"><div class=\"ds-cab\"><h1>Vault <em>Void</em></h1><p>Un espacio para guardar tus ideas y tareas, pedir ayuda para trabajarlas y retomarlas cuando vuelvas. Ese espacio es tu <b>vault</b>.</p></div><div class=\"ds-acciones\"><a class=\"ds-menu-primario\" href=\"/tu-huella\">Crear mi espacio</a><a class=\"ds-menu-secundario\" href=\"/mi-vault\">Volver a mi espacio</a></div><details class=\"ds-seccion\"><summary><span>Piezas</span></summary><div class=\"ds-cuerpo\">Herramientas que ya funcionaron en el vault de alguien y que tu asistente puede traer al tuyo. Se buscan por lo que se te ha roto.</div></details></nav>",
+      "css": ".ds-menu{display:flex;flex-direction:column;width:min(360px,calc(100% - 32px));background:var(--panel,rgba(24,22,18,.92));border:1px solid var(--linea,#2E2B25);border-radius:14px;overflow:hidden;color:var(--tinta,#ECE7DE);font:400 14px/1.6 \"IBM Plex Mono\",ui-monospace,Menlo,Consolas,monospace}.ds-cab{padding:18px 18px 12px;display:grid;gap:6px}.ds-cab h1{margin:0;font:400 38px/1 \"Instrument Serif\",Georgia,\"Times New Roman\",serif;letter-spacing:-.01em}.ds-cab em{font-style:italic;color:transparent;-webkit-text-stroke:1px var(--tinta,#ECE7DE)}.ds-cab p{margin:0;color:var(--tinta-2,#B3AC9F);font-size:13px}.ds-acciones{display:flex;gap:8px;flex-wrap:wrap;padding:0 18px 14px}.ds-menu-primario{display:inline-flex;align-items:center;justify-content:center;background:var(--ambar,#F2A93B);color:#1A1407;text-decoration:none;font-weight:500;border-radius:999px;padding:9px 18px}.ds-menu-primario:hover{background:var(--ambar-2,#F8CB86)}.ds-menu-secundario{background:none;border:1px solid var(--linea,#2E2B25);border-radius:999px;padding:8px 16px;cursor:pointer;color:var(--tinta,#ECE7DE);text-underline-offset:3px}.ds-menu-secundario:hover{border-color:var(--ambar,#F2A93B)}.ds-seccion{border-top:1px solid var(--linea,#2E2B25);border-bottom:1px solid var(--linea,#2E2B25)}.ds-seccion summary{list-style:none;cursor:pointer;padding:12px 18px;display:flex;justify-content:space-between;align-items:baseline;gap:10px}.ds-seccion summary::-webkit-details-marker{display:none}.ds-seccion summary::after{content:\"+\";color:var(--tenue,#8C8578)}.ds-seccion[open] summary::after{content:\"−\"}.ds-cuerpo{padding:0 18px 16px;font-size:13px;color:var(--tinta-2,#B3AC9F)}.ds-menu a:focus-visible,.ds-menu summary:focus-visible{outline:2px solid var(--ambar,#F2A93B);outline-offset:2px}"
+    },
+    {
+      "name": "Ficha de huella",
+      "kind": "card",
+      "refersTo": "ficha-huella",
+      "description": "Estado real de una huella que empieza; muestra estática sin selección del lienzo.",
+      "html": "<div class=\"ds-ficha\"><button class=\"ds-cerrar\" type=\"button\" aria-label=\"Cerrar\">×</button><div class=\"ds-alias\">Una huella que empieza</div><p>Nació en el cuento de Void. Cuando su vault exista, esta misma huella crecerá con su trabajo.</p><a href=\"/tu-huella\">Crear la tuya →</a></div>",
+      "css": ".ds-ficha{position:relative;width:min(300px,calc(100% - 32px));background:var(--panel-solido,#1B1915);border:1px solid var(--linea,#2E2B25);border-radius:12px;padding:14px 16px;display:grid;gap:8px;font:400 13px/1.6 \"IBM Plex Mono\",ui-monospace,Menlo,Consolas,monospace;color:var(--tinta-2,#B3AC9F)}.ds-alias{font:400 24px/1.1 \"Instrument Serif\",Georgia,\"Times New Roman\",serif;color:var(--tinta,#ECE7DE)}.ds-cerrar{position:absolute;right:8px;top:6px;background:none;border:0;color:var(--tenue,#8C8578);font:400 18px/1.6 \"IBM Plex Mono\",ui-monospace,Menlo,Consolas,monospace;cursor:pointer;padding:4px 8px}.ds-ficha p{margin:1em 0}.ds-ficha a{color:var(--ambar-2,#F8CB86);text-underline-offset:3px}.ds-ficha a:focus-visible,.ds-cerrar:focus-visible{outline:2px solid var(--ambar,#F2A93B);outline-offset:2px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "El lienzo de huellas",
+    "overview": "[CONF] Void conserva su mundo visual existente: un fondo de carbón cálido y huellas orgánicas de muchos colores. Instrument Serif da voz a los títulos y IBM Plex Mono ordena la interfaz. El ámbar señala las acciones, mientras el color personal vive principalmente en la huella.\n\n[CONF] La interfaz permanece sobria para que el lienzo tenga presencia sin competir con las palabras. Los paneles flotantes usan bordes tenues y fondos cálidos; el espacio de conversaciones adapta la misma identidad a una columna de lectura. La huella mantiene su semilla y tono al regresar, en vez de estrenar una identidad visual.",
+    "keyCharacteristics": [
+      "Carbón cálido y texto claro, con jerarquía de tres intensidades.",
+      "Títulos serif ligeros e interfaz monoespaciada.",
+      "Ámbar para actuar y verde en el énfasis del cuento.",
+      "Huellas orgánicas multicolor con identidad persistente.",
+      "Bordes finos y superficies sin sombras."
+    ],
+    "rules": [
+      {
+        "name": "The Color de la huella Rule",
+        "body": "La variedad cromática pertenece a la huella; no convierte toda la interfaz en una colección de acentos.",
+        "section": "colors"
+      },
+      {
+        "name": "The Dos voces Rule",
+        "body": "Conserva Instrument Serif para los títulos e IBM Plex Mono para controles, campos y lectura de interfaz.",
+        "section": "typography"
+      },
+      {
+        "name": "The Profundidad sin sombra Rule",
+        "body": "Conserva la separación por tono, borde y superposición que ya usa Void.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** conservar el carbón cálido, el ámbar de acción y la jerarquía de tintas de las pantallas existentes.",
+      "**Do** mantener la semilla y el tono personal de la huella al regresar.",
+      "**Do** dar etiquetas visibles a los campos y conservar el foco de teclado.",
+      "**Do** reservar espacio legible para palabras y controles alrededor del lienzo.",
+      "**Do** respetar las variaciones de radios, bordes y tipografía documentadas por pantalla."
+    ],
+    "donts": [
+      "**Don't** sustituir el mundo existente por una identidad nueva.",
+      "**Don't** añadir estrellas de fondo, nebulosas ni halos a la portada.",
+      "**Don't** convertir la paleta multicolor de huellas en acentos decorativos de toda la interfaz.",
+      "**Don't** añadir sombras o desenfoque como si pertenecieran al sistema observado.",
+      "**Don't** presentar los ejemplos estáticos como una reproducción completa del lienzo o de su persistencia."
+    ]
+  }
+}

@@ -1,0 +1,31 @@
+/* Crear un espacio sin instalar asistentes. Las palabras permanecen locales hasta el consentimiento. */
+async function apiEntrada(ruta, datos) {
+  const r = await fetch('/v1/web/' + ruta, {method:datos === undefined ? 'GET':'POST', headers:{'content-type':'application/json'}, body:datos === undefined ? undefined:JSON.stringify(datos)});
+  const d = await r.json(); if (!r.ok) throw new Error(d.error || 'No se pudo completar. Vuelve a intentarlo.'); return d;
+}
+function crearAlojado() {
+  if(!guardada || !token || !semillaCuento){formada();return;}
+  decir('', 'Ponle un nombre a <em>tu espacio</em>.', 'Aquí podrás guardar ideas y pedir ayuda. Se quedarán al volver.');
+  let pendiente;
+  try { pendiente = JSON.parse(localStorage.getItem('void-alta-pendiente') || 'null'); } catch {}
+  if (!pendiente) { const a=crypto.getRandomValues(new Uint8Array(32)); pendiente={recuperacion:'vr_'+Array.from(a,x=>x.toString(16).padStart(2,'0')).join(''),alias:''}; }
+  const conservar = () => { try { localStorage.setItem('void-alta-pendiente',JSON.stringify(pendiente)); } catch {} };
+  conservar();
+  abajo.innerHTML = `<form id="alta-web" class="tres" style="width:min(520px,100%)"><label for="nombre-espacio">Nombre de tu espacio</label><input id="nombre-espacio" value="${esc(pendiente.alias)}" required pattern="[a-z0-9-]{3,24}" minlength="3" maxlength="24" autocomplete="username" placeholder="por ejemplo: mi-cuaderno" aria-describedby="nombre-ayuda"><p id="nombre-ayuda">Entre 3 y 24 letras minúsculas, números o guiones. El nombre y la huella de colores son públicos; tus palabras son privadas.</p><label class="consentimiento"><input type="checkbox" id="acepto" required> Quiero guardar mis respuestas en mi vault alojado en Void.</label><p>Se guardan cifradas. Mientras el asistente trabaja puede leerlas, y el operador de Void también puede acceder a ellas. El piloto no cobra.</p><button class="principal" id="crear-espacio">Crear mi espacio</button><p id="alta-estado" role="status"></p></form><div class="fila"><button class="texto" id="volver-respuestas">Revisar mis respuestas</button><a class="texto" href="/mi-vault">Ya creé mi espacio</a></div>`;
+  document.getElementById('volver-respuestas').onclick = porDentro;
+  const form=document.getElementById('alta-web'),nombre=document.getElementById('nombre-espacio'),estado=document.getElementById('alta-estado'),boton=document.getElementById('crear-espacio');
+  nombre.oninput=()=>{pendiente.alias=nombre.value;conservar();};
+  form.onsubmit=async e=>{
+    e.preventDefault();boton.disabled=true;estado.textContent='Preparando tu espacio…';
+    pendiente.alias=nombre.value.trim();conservar();
+    try {
+      await apiEntrada('crear',{...pendiente,consentimiento:document.getElementById('acepto').checked,cuento:token,huella:cifrasDelCuento(),respuestas:respuestas.map(r=>r === undefined ? null:r),propuesta});
+      decir('', 'Tu espacio está <em>listo</em>.', 'Guarda este código: te permite volver desde otro móvil u ordenador. No lo compartas.');
+      abajo.innerHTML=`<div class="tres" style="width:min(520px,100%)"><label for="codigo-vuelta">Código para volver a @${esc(pendiente.alias)}</label><textarea id="codigo-vuelta" readonly style="width:100%;height:104px;max-height:none;overflow-wrap:anywhere">${pendiente.recuperacion}</textarea><div class="fila"><button id="descargar-codigo">Guardar mi código en un archivo</button></div><p>Si sales y pierdes el código, todavía no podemos recuperar tu acceso.</p><label class="consentimiento"><input type="checkbox" id="codigo-guardado"> He guardado mi código en un lugar privado.</label><div class="fila"><button class="principal" id="abrir-espacio" disabled>Abrir mi espacio</button></div></div>`;
+      document.getElementById('descargar-codigo').onclick=()=>{const u=URL.createObjectURL(new Blob(['Void · @'+pendiente.alias+'\nhttps://vaultvoid.app/mi-vault\nCódigo privado: '+pendiente.recuperacion+'\n'],{type:'text/plain;charset=utf-8'}));const a=document.createElement('a');a.href=u;a.download='mi-acceso-void.txt';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);};
+      const abrir=document.getElementById('abrir-espacio');document.getElementById('codigo-guardado').onchange=e=>abrir.disabled=!e.target.checked;
+      abrir.onclick=()=>{try{localStorage.removeItem('void-alta-pendiente');localStorage.removeItem('void-cuento-borrador');}catch{}location.assign('/mi-vault');};
+    } catch(e) {estado.textContent=e.message;boton.disabled=false;}
+  };
+  nombre.focus({preventScroll:true});
+}

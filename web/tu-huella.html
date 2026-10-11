@@ -69,6 +69,9 @@ button:focus-visible,a:focus-visible,textarea:focus-visible{outline:2px solid va
 .tres{max-width:520px;background:var(--panel);border:1px solid var(--linea);border-radius:16px;padding:6px 18px}
 .tres p{margin:12px 0;color:var(--tinta);font-size:14px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.tres input:not([type=checkbox]){display:block;width:100%;margin:8px 0;padding:12px;background:var(--vacio);border:1px solid var(--linea);border-radius:8px;color:var(--tinta);font:inherit}
+.consentimiento{display:flex;gap:10px;align-items:flex-start;font-size:14px}.consentimiento input{margin-top:5px;accent-color:var(--acento)}
+.abajo:has(#alta-web),.abajo:has(#codigo-vuelta){max-height:70dvh;overflow:auto;background:var(--vacio)}
 @media (prefers-reduced-motion:reduce){.voz{transition:none}}
 </style>
 </head>
@@ -80,6 +83,8 @@ button:focus-visible,a:focus-visible,textarea:focus-visible{outline:2px solid va
 <div class="abajo" id="abajo"></div>
 <div id="hoja"></div>
 
+<script src="/huella.js"></script>
+<script src="/entrada.js"></script>
 <script>
 /* Lo que se cuenta: siete preguntas, las de la plantilla (plantilla/criterio/apuntes.md). Cada una con su color:
    el lienzo es de la gente, así que la huella trae muchos (Alex, 9-oct). La interfaz sigue sobria. */
@@ -99,6 +104,11 @@ function hsl(h, s, l) {
 CAPAS.forEach(c => { c.c = hsl(c.h, 0.72, 0.6); });
 const quieto = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let paso = "inicio", i = 0, respuestas = Array(7).fill(undefined), propuesta = null;
+let borrador=null, campoFinal=null, semillaCuento=null, tonoPersonal;
+try {borrador=JSON.parse(localStorage.getItem('void-cuento-borrador')||'null');const guardado=localStorage.getItem('void-tono');tonoPersonal=guardado===null?undefined:Number(guardado);}catch{}
+if (!Number.isInteger(tonoPersonal) || tonoPersonal < 0 || tonoPersonal > 359) { tonoPersonal=crypto.getRandomValues(new Uint16Array(1))[0]%360;try{localStorage.setItem('void-tono',String(tonoPersonal));}catch{} }
+function guardarBorrador(pos) {try{localStorage.setItem('void-cuento-borrador',JSON.stringify({respuestas,pos,propuesta}));}catch{}}
+function mostrarHuellaEstable() {if(!semillaCuento || !window.VoidHuella)return;campoFinal=VoidHuella.crear([{alias:null,semilla:semillaCuento,huella:cifrasDelCuento()}],N,0);campoFinal.paso(900);campoFinal.pintar(ox,false);}
 
 /* La química: Gray-Scott, igual que el lienzo de la portada (huella.js).
    dU = ∇²U − U·V² + f(1−U) · dV = ½∇²V + U·V² − (f+k)V. Solo crece dentro del círculo de tu huella;
@@ -230,8 +240,7 @@ function pintarHuella() {
 function pintar() {
   const ahora = performance.now(), dt = Math.min(3, (ahora - t0) / 16.67); t0 = ahora;
   colocar();
-  if (!quieto) { moverTinta(dt); pasoQuimica(6); }
-  pintarHuella();
+  if (!campoFinal) {if (!quieto) { moverTinta(dt); pasoQuimica(6); } pintarHuella();}
   x.fillStyle = "#12110E"; x.fillRect(0, 0, W, H);
   x.imageSmoothingEnabled = true; x.imageSmoothingQuality = "high";
   x.drawImage(off, CX - R, CY - R, 2 * R, 2 * R);
@@ -258,19 +267,20 @@ function nombre() { const r = respuestas[0], m = r && r.match(/(?:me llamo|soy)\
 
 function inicio() {
   paso = "inicio";
-  decir("", "Aquí no hay <em>nada</em> todavía.", "Siete cosas que me cuentes van a convertirse en tu huella. No habrá otra igual.");
-  abajo.innerHTML = `<div class="fila"><button class="principal" id="ir">Empezar</button></div>
-    <p class="pista">Sin instalar nada. Si ya usas Claude Code, Codex o Antigravity, también puedes pegarle «empieza mi vault: vaultvoid.app/empezar».</p>`;
+  decir("", "Un espacio para <em>lo tuyo</em>.", "Guarda tus ideas y tareas, pide ayuda y retómalas al volver. Cuéntanos siete cosas para prepararlo a tu medida; puedes dejar cualquiera vacía.");
+  abajo.innerHTML = `<div class="fila"><button class="principal" id="ir">${borrador ? 'Continuar donde lo dejé':'Preparar mi espacio'}</button><a class="boton" href="/mi-vault">Volver a mi espacio</a></div>
+    <p class="pista">Sin instalar nada. Al terminar podrás escribir, por ejemplo: «Ayúdame a organizar mi semana».</p>`;
   document.getElementById("ir").onclick = () => {
     let visto = false; try { visto = localStorage.getItem("void-tres-cosas") === "1"; } catch (e) {}
-    if (visto) { i = 0; contar(); } else tresCosas();
+    if (borrador && Array.isArray(borrador.respuestas) && borrador.respuestas.length===7) {respuestas=borrador.respuestas;i=Math.min(7,Math.max(0,Number(borrador.pos)||0));propuesta=borrador.propuesta||null;if(i===7)formada();else contar();}
+    else if (visto) { i = 0; contar(); } else tresCosas();
   };
 }
 function tresCosas() {
   decir("", "Antes de empezar, <em>tres cosas</em>.", "");
   abajo.innerHTML = `<div class="tres"><p>Lo que escribas aquí no sale de esta pantalla. Tu huella sí entra en el lienzo de Void, y se queda: solo su forma, hecha de cifras.</p>
-    <p>Cuando tu vault despierte en la nube, lo que guarde es tuyo: te lo llevas o lo borras cuando quieras.</p>
-    <p>Mientras tu asistente trabaje, nuestra máquina lo tendrá abierto. Y antes de cobrarte nada, te preguntamos.</p></div>
+    <p>Las respuestas se conservan en este navegador para continuar si cierras la página. Al final decidirás si guardarlas en tu espacio privado en Void.</p>
+    <p>El piloto no cobra. Antes de guardar en la nube verás quién puede acceder a tus palabras.</p></div>
     <div class="fila"><button class="principal" id="sigamos">Sigamos</button></div>`;
   document.getElementById("sigamos").onclick = () => { try { localStorage.setItem("void-tres-cosas", "1"); } catch (e) {} i = 0; contar(); };
 }
@@ -279,10 +289,11 @@ function contar() {
   decir(`${k.n} · ${i + 1} de 7`, k.dice, k.sub);
   abajo.innerHTML = `<div class="campo"><label class="sr" for="t">${esc(k.pregunta)}</label>
       <textarea id="t" rows="1" placeholder="Escribe o dicta…"></textarea>
-      <button class="principal" id="soltar" disabled aria-label="Soltar">Soltar</button></div>
+      <button class="principal" id="soltar" disabled aria-label="Guardar respuesta y continuar">Continuar</button></div>
     <div class="fila"><button class="texto" id="callar">Déjalo vacío por ahora</button></div>`;
   const t = document.getElementById("t"), b = document.getElementById("soltar");
-  t.oninput = () => { b.disabled = !t.value.trim(); t.style.height = "52px"; t.style.height = Math.min(140, t.scrollHeight) + "px"; };
+  t.maxLength=3000;t.value=respuestas[i]||'';
+  t.oninput = () => { b.disabled = !t.value.trim(); t.style.height = "52px"; t.style.height = Math.min(140, t.scrollHeight) + "px";respuestas[i]=t.value;guardarBorrador(i); };t.oninput();
   t.onkeydown = e => { if (e.key === "Enter" && !e.shiftKey && t.value.trim()) { e.preventDefault(); b.click(); } };
   b.onclick = () => soltar(t.value.trim());
   document.getElementById("callar").onclick = () => soltar(null);
@@ -290,6 +301,7 @@ function contar() {
 }
 function soltar(texto) {
   respuestas[i] = texto; abajo.innerHTML = "";
+  guardarBorrador(i+1);
   const k = CAPAS[i];
   if (texto) {
     palabrasATinta(texto, i);
@@ -313,27 +325,29 @@ function cifrasDelCuento() {
   const dichas = respuestas.filter(r => r).length, letras = respuestas.reduce((n, r) => n + (r ? r.length : 0), 0);
   const primera = respuestas.findIndex(r => r);
   return {version: 1, dias: 0, pulso: dichas * 8, decisiones: Math.min(100000, Math.round(letras / 15)), proyectos: dichas,
-          calladas: 7 - dichas, tono: primera >= 0 ? CAPAS[primera].h : 30};
+          calladas: 7 - dichas, tono: tonoPersonal};
 }
 let guardada = null; /* null: aún no; true: está en el lienzo; false: no se pudo */
+let errorHuella='';
 function guardarEnElLienzo() {
   return fetch("https://red.vaultvoid.app/v1/huella/cuento", {method: "POST", headers: {"content-type": "application/json"},
       body: JSON.stringify(token ? {huella: cifrasDelCuento(), token} : {huella: cifrasDelCuento()})})
     .then(r => r.json().then(d => ({ok: r.ok, d})))
     .then(({ok, d}) => {
       if (!ok || !d.token) throw new Error(d.error || "no");
-      token = d.token; guardada = true;
+      token = d.token; guardada = true;semillaCuento=d.semilla||null;mostrarHuellaEstable();
       try { localStorage.setItem("void-huella-cuento", token); } catch (e) {}
     })
-    .catch(() => { guardada = false; });
+    .catch(e => { guardada = false;errorHuella=e.message; });
 }
 function formada() {
   paso = "formada"; const n = nombre();
-  guardarEnElLienzo();
-  decir("", n ? `Ya existe. Es la huella de <em>${esc(n)}</em>.` : "Ya <em>existe</em>.", "Hecha con tus palabras, tal cual. Cada color es una de tus respuestas; los huecos, lo que no contaste.");
-  abajo.innerHTML = `<div class="fila"><button class="principal" id="seguir">Seguir</button><button id="dentro">Mírala por dentro</button></div>`;
+  decir("", n ? `Es la huella de <em>${esc(n)}</em>.` : "Esta es <em>tu huella</em>.", "Tus respuestas forman la huella. Su paleta de colores y su semilla se conservan para reconocerla al volver.");
+  abajo.innerHTML = `<div class="fila"><button class="principal" id="seguir" disabled>Guardando tu huella…</button><button id="dentro">Revisar mis respuestas</button></div><p class="pista" id="estado-huella" role="status"></p>`;
   document.getElementById("dentro").onclick = porDentro;
-  document.getElementById("seguir").onclick = proponer;
+  const b=document.getElementById('seguir'),estado=document.getElementById('estado-huella');
+  async function guardar(){b.disabled=true;b.textContent='Guardando tu huella…';await guardarEnElLienzo();b.disabled=false;if(guardada&&token&&semillaCuento){b.textContent='Continuar a mi espacio';estado.textContent='Tu huella está guardada. Será la misma al volver.';b.onclick=proponer;}else{b.textContent='Volver a guardar mi huella';estado.textContent='No hemos podido guardar tu huella. Tus respuestas siguen aquí. '+(errorHuella||'Vuelve a intentarlo en un momento.');b.onclick=guardar;}}
+  guardar();
 }
 function porDentro() {
   hoja.innerHTML = `<div class="hoja" role="dialog" aria-label="Tu vault por dentro"><h3>Tu vault, por dentro</h3>
@@ -352,10 +366,10 @@ function proponer() {
   paso = "propuesta"; hoja.innerHTML = "";
   const [n, d] = herramienta(); propuesta = n;
   const de = respuestas[3] ? `Sale de lo que te agobia: «${esc(recorte(respuestas[3], 60))}».` : "No me contaste qué te agobia, así que es una propuesta a ciegas.";
-  decir("Una herramienta", `Te propongo una: <em>${esc(n)}</em>.`, `Una herramienta que ${esc(d)}. ${de} Si dices que sí, la tendrá tu vault cuando despierte.`);
+  decir("Una herramienta", `Te propongo una: <em>${esc(n)}</em>.`, `Una herramienta que ${esc(d)}. ${de} Si dices que sí, queda apuntada para prepararla contigo dentro de tu espacio.`);
   abajo.innerHTML = `<div class="fila"><button class="principal" id="si">Que se quede</button><button id="no">Ahora no</button></div>`;
-  document.getElementById("si").onclick = () => despertar(true);
-  document.getElementById("no").onclick = () => { propuesta = null; despertar(false); };
+  document.getElementById("si").onclick = () => {guardarBorrador(7);despertar(true);};
+  document.getElementById("no").onclick = () => { propuesta = null;guardarBorrador(7); despertar(false); };
 }
 function despertar(seQueda) {
   paso = "despertar"; abajo.innerHTML = "";
@@ -373,6 +387,9 @@ function textoParaAsistente() {
     + (token ? `\n\nMi huella ya está en el lienzo de Void: es el principio de la de mi vault. Cuando me des de alta en la red, publica mi huella con «--cuento ${token}» para que sea la misma.` : "\n\nCuando el vault esté, publica mi huella en el lienzo de Void.");
 }
 function viva() {
+  crearAlojado();
+}
+function vivaLocal() {
   paso = "viva"; luz = 1;
   const dice = guardada === false ? "No he podido guardarla en el lienzo ahora mismo; vuelve a intentarlo en un momento con «Empezar otra vez»." :
     "Ya está en el lienzo de Void, y se queda. Es el principio de la huella de tu vault: cuando exista, crecerá con tu trabajo.";
@@ -407,6 +424,7 @@ function viva() {
 
 addEventListener("resize", tam);
 tam(); reiniciarCampo(); requestAnimationFrame(pintar); inicio();
+apiEntrada('yo').then(d=>{paso='viva';semillaCuento=d.semilla;if(d.huella){campoFinal=VoidHuella.crear([{alias:d.alias,semilla:d.semilla,huella:d.huella}],N,0);campoFinal.paso(900);campoFinal.pintar(ox,false);}decir('', 'Tu espacio ya <em>te espera</em>.', 'Puedes retomar tus ideas y conversaciones en @'+esc(d.alias)+'.');abajo.innerHTML='<div class="fila"><a class="boton" href="/mi-vault">Abrir mi espacio</a></div>';}).catch(()=>{});
 </script>
 </body>
 </html>

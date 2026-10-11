@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Vault Void</title>
-<meta name="description" content="Vault Void: el lienzo donde cada vault deja su huella. Tu vault se queda en tu casa; aquí solo viajan las piezas y unas cifras.">
+<meta name="description" content="Void: guarda tus ideas y tareas, pide ayuda y retómalas al volver. Crea tu espacio alojado o conecta tu carpeta. Solo tu huella de cifras se publica en el lienzo.">
 <link rel="canonical" href="https://vaultvoid.app/">
 <link rel="alternate" type="text/plain" href="/llms.txt" title="Void para asistentes de IA">
 <meta property="og:title" content="Vault Void">
@@ -22,7 +22,7 @@
 <link rel="icon" href="/icono.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="theme-color" content="#12110E">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Vault Void","url":"https://vaultvoid.app/","applicationCategory":"ProductivityApplication","operatingSystem":"Windows, macOS, Linux","inLanguage":"es","license":"https://www.apache.org/licenses/LICENSE-2.0","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"},"codeRepository":"https://github.com/AlexCanoFuentes/vault-void","description":"Conecta tu vault, la carpeta donde tu asistente de IA guarda tu trabajo y tu criterio, con los de los demás, sin que nada tuyo salga de tu ordenador."}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Vault Void","url":"https://vaultvoid.app/","applicationCategory":"ProductivityApplication","operatingSystem":"Web, Windows, macOS, Linux","inLanguage":"es","license":"https://www.apache.org/licenses/LICENSE-2.0","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"},"codeRepository":"https://github.com/AlexCanoFuentes/vault-void","description":"Guarda tus ideas y tareas y retómalas con ayuda de un asistente. Puedes crear un vault alojado en Void o conectar una carpeta local. La huella pública contiene solo cifras; las respuestas del espacio alojado se guardan en su almacenamiento privado."}</script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 /*
@@ -97,8 +97,8 @@ details[open] summary::after{content:"−"}
 .lista .ss{color:var(--tenue);font-size:12px}
 .lista .apagada{opacity:.35}
 .punto{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px;vertical-align:baseline}
-.detalle{border-left:2px solid var(--ambar);padding:4px 0 4px 12px;display:grid;gap:8px}
-.detalle h3{margin:0;font:400 22px/1.15 var(--serif);color:var(--tinta)}
+.detalle{border-top:1px solid var(--linea);padding:12px 0 4px;display:grid;gap:8px}
+.detalle h2{margin:0;font:400 22px/1.15 var(--serif);color:var(--tinta)}
 .orden{display:flex;gap:6px;align-items:stretch}
 .orden code{flex:1;min-width:0;background:var(--vacio);border:1px solid var(--linea);border-radius:6px;padding:6px 8px;color:var(--tinta);font:12px/1.4 var(--mono);overflow-wrap:anywhere}
 .orden button{background:none;border:1px solid var(--linea);border-radius:6px;padding:0 10px;cursor:pointer;font-size:12px}
@@ -107,7 +107,7 @@ details[open] summary::after{content:"−"}
 .dato b{color:var(--tinta);font-weight:500}
 .pie{padding:10px 18px 14px;font-size:11px;color:var(--tenue);display:flex;flex-wrap:wrap;gap:4px 12px}
 .pie a{color:var(--tinta-2);text-decoration:none;border-bottom:1px solid var(--linea)}
-.menu.plegado .tengo,.menu.plegado .secciones,.menu.plegado .pie,.menu.plegado .lema{display:none!important}
+.menu.plegado .tengo,.menu.plegado .secciones,.menu.plegado .pie,.menu.plegado .ejemplo{display:none!important}
 .menu.plegado .acciones{padding:0 14px 12px}
 .menu.plegado .cab{padding:12px 14px}
 .menu.plegado h1{font-size:26px}
@@ -154,18 +154,20 @@ details[open] summary::after{content:"−"}
       <h1>Vault <em>Void</em></h1>
       <button class="plegar" id="plegar" type="button" aria-expanded="true" aria-controls="menu" aria-label="Plegar el menú">–</button>
     </div>
-    <p class="lema">Tu asistente de IA olvida todo al cerrar la sesión; tu vault no. Cada vault deja aquí su huella, hecha solo con cifras.</p>
+    <p class="lema">Un espacio para guardar tus ideas y tareas, pedir ayuda para trabajarlas y retomarlas cuando vuelvas. Ese espacio es tu <b>vault</b>.</p>
+    <p class="lema ejemplo">Por ejemplo: «Ayúdame a organizar mi semana». Tú decides qué guardar y qué hacer.</p>
   </div>
   <div class="acciones">
-    <a class="primario" href="/tu-huella">Empezar</a>
-    <button class="secundario" id="tengo" type="button" aria-expanded="false" aria-controls="tengo-panel">Ya tengo vault</button>
+    <a class="primario" href="/tu-huella">Crear mi espacio</a>
+    <a class="secundario" href="/mi-vault">Volver a mi espacio</a>
+    <button class="secundario" id="tengo" type="button" aria-expanded="false" aria-controls="tengo-panel">Tengo una carpeta vault</button>
   </div>
   <div class="tengo" id="tengo-panel" hidden>
     <p>Abre tu asistente en la carpeta de tu vault y pégale: <b>«conéctate a Void: vaultvoid.app/entrar»</b></p>
     <form id="ir-perfil"><label for="alias">Tu sitio: vaultvoid.app/@</label><input id="alias" autocomplete="off" spellcheck="false" placeholder="tu-alias" pattern="[a-z0-9-]{3,24}"><button type="submit">Ir</button></form>
   </div>
   <div class="secciones">
-    <details id="sec-piezas" open>
+    <details id="sec-piezas">
       <summary><span class="t">Piezas</span><span class="n" id="n-piezas"></span></summary>
       <div class="cuerpo">
         <p>Herramientas que ya funcionaron en el vault de alguien y que tu asistente puede traer al tuyo. Se buscan por lo que se te ha roto.</p>
@@ -173,7 +175,7 @@ details[open] summary::after{content:"−"}
         <p class="eco" id="eco" aria-live="polite"></p>
         <ul class="lista" id="lista-piezas"></ul>
         <div class="detalle" id="detalle" hidden aria-live="polite">
-          <h3 id="d-t"></h3>
+          <h2 id="d-t"></h2>
           <p id="d-r"></p>
           <p id="d-o"></p>
           <div class="orden"><code id="d-c"></code><button type="button" class="copiar" data-de="d-c">copiar</button></div>

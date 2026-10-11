@@ -10,7 +10,7 @@ const hash=t=>createHash('sha256').update(t).digest('hex');
 export async function probarExistentes({root,mf,db,pedir,prueba,URL_BASE,huella,servir}){
   await db.prepare('DELETE FROM perfiles').run();await db.prepare('DELETE FROM huellas_cuento').run();
   const carpeta=mkdtempSync(resolve(tmpdir(),'void-conexion-fixtures-'));
-  execFileSync('python3',[root+'/pruebas/pruebas_conectar_vault.py',carpeta]);
+  execFileSync('python3',[root+'/pruebas/pruebas_conectar_vault.py',carpeta,'--grande']);
   const fixtures=JSON.parse(readFileSync(carpeta+'/fixtures.json','utf8'));
   async function propietario(f,ruta,cuerpo,extra={}){
     const r=await mf.dispatchFetch(URL_BASE+ruta,{method:'POST',headers:{authorization:'Bearer '+f.llave,'x-void-origen':'archivo','x-void-consentimiento':'alojar-mi-vault','content-type':'application/gzip',...extra},body:cuerpo});
@@ -26,20 +26,53 @@ export async function probarExistentes({root,mf,db,pedir,prueba,URL_BASE,huella,
       await db.prepare("INSERT INTO perfiles(alias,agente,huella_llave,publico,creado) VALUES(?,'Agente propio',?,'',?)").bind(f.alias,hash(f.llave),Date.now()).run();
       assert.equal((await propietario(f,'/v1/huella',JSON.stringify({huella:{...huella,dias:90+i,tono:42+i}}),{'content-type':'application/json'})).status,200);
       const antes=await pedir('/v1/huellas');
-      const r=await propietario(f,'/v1/alojar',readFileSync(f.archivo));assert.equal(r.status,200,JSON.stringify(r.d));conexiones.push(r.d);
+      const datos=readFileSync(f.archivo);let r;
+      if(i===0){
+        assert.ok(datos.length>50*1024*1024);
+        const inicio=await propietario(f,'/v1/alojar',JSON.stringify({bytes:datos.length,sha256:hash(datos)}),{'x-void-subida':'iniciar'});assert.equal(inicio.status,200);assert.equal(inicio.d.tamano_parte,512*1024);
+        const id=inicio.d.subida,h={'x-void-subida-id':id};
+        assert.equal((await propietario(f,'/v1/alojar',Buffer.alloc(0),{...h,'x-void-subida':'terminar'})).status,409);
+        assert.equal((await propietario(fixtures[1],'/v1/alojar',datos.subarray(0,512*1024),{...h,'x-void-subida':'trozo','x-void-indice':'0'})).status,401);
+        const parte=datos.subarray(0,512*1024);
+        assert.equal((await propietario(f,'/v1/alojar',parte,{...h,'x-void-subida':'trozo','x-void-indice':'0'})).status,200);
+        assert.equal((await propietario(f,'/v1/alojar',parte,{...h,'x-void-subida':'trozo','x-void-indice':'0'})).status,200);
+        assert.equal((await propietario(f,'/v1/alojar',Buffer.alloc(512*1024),{...h,'x-void-subida':'trozo','x-void-indice':'0'})).status,409);
+        const nuevo=await propietario(f,'/v1/alojar',JSON.stringify({bytes:datos.length,sha256:hash(datos)}),{'x-void-subida':'iniciar'});assert.equal(nuevo.d.subida,id);assert.equal(nuevo.d.recibidos,1);
+        for(let j=1;j*512*1024<datos.length;j++)assert.equal((await propietario(f,'/v1/alojar',datos.subarray(j*512*1024,(j+1)*512*1024),{...h,'x-void-subida':'trozo','x-void-indice':String(j)})).status,200);
+        r=await propietario(f,'/v1/alojar',Buffer.alloc(0),{...h,'x-void-subida':'terminar'});
+        assert.equal((await propietario(f,'/v1/alojar',JSON.stringify({bytes:128*1024*1024+1,sha256:hash(datos)}),{'x-void-subida':'iniciar'})).status,413);
+      }else r=await propietario(f,'/v1/alojar',datos);
+      assert.equal(r.status,200,JSON.stringify(r.d));conexiones.push(r.d);
       assert.deepEqual((await pedir('/v1/huellas')).d,antes.d);
       const archivo=await worker.fetch('https://prueba/_admin/vault?persona='+f.alias,{headers:{'x-admin':'solo-prueba-inventada'}});
       const tar=gunzipSync(Buffer.from(await archivo.arrayBuffer()));assert.ok(tar.includes(Buffer.from('Plantilla a medida '+i)));assert.ok(tar.includes(Buffer.from('.git/HEAD')));assert.ok(tar.includes(Buffer.from('Nota que todavía no tiene commit.')));
     }
     assert.equal((await db.prepare('SELECT COUNT(*) n FROM perfiles').first()).n,2);
   });
+  await prueba('recuperar la copia completa requiere la llave vigente de su propio vault',async()=>{
+    async function recuperar(f){return mf.dispatchFetch(URL_BASE+'/v1/alojar/archivo',{headers:f?{authorization:'Bearer '+f.llave}:{}});}
+    for(const [i,f] of fixtures.entries()){
+      const r=await recuperar(f);assert.equal(r.status,200);assert.equal(r.headers.get('cache-control'),'no-store');
+      const datos=Buffer.from(await r.arrayBuffer());assert.equal(hash(datos),hash(readFileSync(f.archivo)));assert.equal(conexiones[i].archivo_sha256,hash(datos));assert.equal(conexiones[i].importado,true);
+    }
+    assert.equal((await recuperar()).status,401);assert.equal((await recuperar({llave:'vv_'+'z'.repeat(43)})).status,401);
+  });
   await prueba('reintentar no pisa el archivo y los códigos privados no quedan en D1',async()=>{
-    for(const f of fixtures){const r=await propietario(f,'/v1/alojar',new Uint8Array([1,2,3]));assert.equal(r.status,200);conexiones[fixtures.indexOf(f)]=r.d;}
+    for(const f of fixtures){const r=await propietario(f,'/v1/alojar',new Uint8Array([1,2,3]));assert.equal(r.status,200);assert.equal(r.d.conservado,true);assert.equal(r.d.archivo_sha256,hash(readFileSync(f.archivo)));assert.notEqual(r.d.archivo_sha256,hash(new Uint8Array([1,2,3])));conexiones[fixtures.indexOf(f)]=r.d;}
     const datos=JSON.stringify((await db.prepare('SELECT * FROM web_enlaces').all()).results);for(const c of conexiones)assert.ok(!datos.includes(c.enlace));
   });
+  await prueba('guardado en flujo conserva la copia anterior al fallar y verifica más de 50 MiB',async()=>{
+    const datos=readFileSync(fixtures[0].archivo),puente=await mf.getWorker('puente');
+    const guardar=sha=>puente.fetch('https://privado/prueba-interno',{method:'PUT',headers:{'x-void-bytes':String(datos.length),'x-void-sha256':sha},body:datos});
+    const bad=await guardar('0'.repeat(64));assert.equal(bad.status,400);
+    const previa=await worker.fetch('https://prueba/_admin/vault?persona='+fixtures[0].alias,{headers:{'x-admin':'solo-prueba-inventada'}});assert.equal(hash(Buffer.from(await previa.arrayBuffer())),hash(datos));
+    const bien=await guardar(hash(datos));assert.equal(bien.status,200,await bien.text());
+    const posterior=await worker.fetch('https://prueba/_admin/vault?persona='+fixtures[0].alias,{headers:{'x-admin':'solo-prueba-inventada'}});assert.equal(hash(Buffer.from(await posterior.arrayBuffer())),hash(datos));
+    const ajeno=await propietario(fixtures[1],'/v1/alojar',datos.subarray(0,512*1024),{'x-void-subida':'trozo','x-void-subida-id':'a'.repeat(32),'x-void-indice':'0'});assert.equal(ajeno.status,409);
+  });
   await prueba('propiedad vigente, consentimiento y origen propio son obligatorios',async()=>{
-    assert.equal((await propietario({...fixtures[0],llave:'vv_'+'z'.repeat(43)},'/v1/alojar',readFileSync(fixtures[0].archivo))).status,401);
-    assert.equal((await propietario(fixtures[0],'/v1/alojar',readFileSync(fixtures[0].archivo),{'x-void-consentimiento':''})).status,400);
+    assert.equal((await propietario({...fixtures[0],llave:'vv_'+'z'.repeat(43)},'/v1/alojar',new Uint8Array([1,2,3]))).status,401);
+    assert.equal((await propietario(fixtures[0],'/v1/alojar',new Uint8Array([1,2,3]),{'x-void-consentimiento':''})).status,400);
     assert.equal((await pedir('/v1/web/conectar',{enlace:conexiones[0].enlace,recuperacion:'vr_'+'f'.repeat(64)},null,'https://ajeno.invalid')).status,403);
   });
   await prueba('dos consumos simultáneos abren una sesión y recuperan la misma identidad',async()=>{
@@ -58,18 +91,18 @@ export async function probarExistentes({root,mf,db,pedir,prueba,URL_BASE,huella,
   });
   await prueba('archivo peligroso y caja ajena se rechazan; caja previa exige contraseña',async()=>{
     const caja=await worker.fetch('https://prueba/_admin/alta?persona=previo-seguro',{method:'POST',headers:{'x-admin':'solo-prueba-inventada','content-type':'application/json'},body:JSON.stringify({origen:'nube'})});assert.equal(caja.status,200);const cred=await caja.json();
-    const sembrar=await worker.fetch('https://prueba/_admin/siembra?persona=previo-seguro',{method:'POST',headers:{'x-admin':'solo-prueba-inventada'},body:readFileSync(fixtures[0].archivo)});assert.equal(sembrar.status,200);
-    let r=await privado('/conectar','previo-seguro','1'.repeat(64),readFileSync(fixtures[0].archivo));assert.equal(r.status,403);
+    const sembrar=await worker.fetch('https://prueba/_admin/siembra?persona=previo-seguro',{method:'POST',headers:{'x-admin':'solo-prueba-inventada'},body:readFileSync(fixtures[1].archivo)});assert.equal(sembrar.status,200);
+    let r=await privado('/conectar','previo-seguro','1'.repeat(64),readFileSync(fixtures[1].archivo));assert.equal(r.status,403);
     r=await privado('/conectar','previo-seguro','1'.repeat(64),JSON.stringify({pass:'incorrecta'}),'alojado');assert.equal(r.status,403);
     r=await privado('/conectar','previo-seguro','1'.repeat(64),JSON.stringify({pass:cred.contraseña}),'alojado');assert.equal(r.status,200);
     r=await privado('/conectar','archivo-invalido','1'.repeat(64),new Uint8Array([1,2,3]));assert.equal(r.status,400);
     // Un USTAR bien formado pero con traversal, para comprobar la validación de rutas, no solo gzip.
-    const mal=gunzipSync(readFileSync(fixtures[0].archivo));mal.fill(0,0,100);Buffer.from('../escape').copy(mal);mal.fill(32,148,156);let suma=0;for(let i=0;i<512;i++)suma+=mal[i];mal.write(suma.toString(8).padStart(6,'0')+'\0 ',148,'ascii');
+    const mal=gunzipSync(readFileSync(fixtures[1].archivo));mal.fill(0,0,100);Buffer.from('../escape').copy(mal);mal.fill(32,148,156);let suma=0;for(let i=0;i<512;i++)suma+=mal[i];mal.write(suma.toString(8).padStart(6,'0')+'\0 ',148,'ascii');
     r=await privado('/conectar','ruta-invalida','1'.repeat(64),gzipSync(mal));assert.equal(r.status,400);
     r=await privado('/conectar','archivo-grande','1'.repeat(64),new Uint8Array(50*1024*1024+1));assert.equal(r.status,413);
     // Un cuerpo pequeño comprimido no puede expandirse más allá del límite del piloto.
-    const cabecera=Buffer.from(gunzipSync(readFileSync(fixtures[0].archivo)).subarray(0,512));cabecera.fill(0,0,100);Buffer.from('contenido.md').copy(cabecera);
-    cabecera.write((200*1024*1024).toString(8).padStart(11,'0')+'\0',124,'ascii');cabecera.fill(32,148,156);let control=0;for(const v of cabecera)control+=v;cabecera.write(control.toString(8).padStart(6,'0')+'\0 ',148,'ascii');
+    const cabecera=Buffer.from(gunzipSync(readFileSync(fixtures[1].archivo)).subarray(0,512));cabecera.fill(0,0,100);Buffer.from('contenido.md').copy(cabecera);
+    cabecera[156]=48;cabecera.write((200*1024*1024).toString(8).padStart(11,'0')+'\0',124,'ascii');cabecera.fill(32,148,156);let control=0;for(const v of cabecera)control+=v;cabecera.write(control.toString(8).padStart(6,'0')+'\0 ',148,'ascii');
     const comprimidor=Readable.from((function*(){yield cabecera;const bloque=Buffer.alloc(1024*1024);for(let i=0;i<200;i++)yield bloque;yield Buffer.alloc(1024);})()).pipe(createGzip());const trozos=[];for await(const t of comprimidor)trozos.push(t);
     r=await privado('/conectar','archivo-expandido','1'.repeat(64),Buffer.concat(trozos));assert.equal(r.status,400);assert.match((await r.json()).error,/200 MiB/);
   });

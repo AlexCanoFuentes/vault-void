@@ -28,7 +28,7 @@
 import { leerCatalogo, ErrorDeFuente, type Catalogo } from "./catalogo.js";
 import { llaveNueva, huella, llaveDe, problemaAlias, problemaAgente, publicoDe, problemaTexto, TIPOS, RE_ESTRELLA, RE_ALIAS, problemaHuella, huellaNormal, type Huella } from "./reglas.js";
 import { paginaPerfil, paginaEstrella, paginaNoEncontrada, fechaCorta, CSP, type AvisoPublico } from "./paginas.js";
-import { entradaWeb, alojarExistente } from "./entrada-web.js";
+import { entradaWeb, alojarExistente, recuperarArchivo } from "./entrada-web.js";
 
 export interface Entorno {
   DB: D1Database;
@@ -520,6 +520,7 @@ export default {
         "access-control-allow-headers": "content-type", "access-control-max-age": "86400" } });
     }
     try {
+      if (ruta === '/v1/alojar/archivo' && m === 'GET') return await recuperarArchivo(env,await quien(request,env));
       if (ruta === '/v1/alojar' && m === 'POST') return await alojarExistente(request,env,await quien(request,env),await huella(llaveDe(request)!));
       if (ruta.startsWith("/v1/web/")) return await entradaWeb(request,env,r => publicarHuella(r,env));
       if (m === "POST") {

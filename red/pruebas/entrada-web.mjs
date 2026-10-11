@@ -29,7 +29,7 @@ const scriptNube=await bundle(cloud+'/src/index.js',[{name:'contenedor-de-prueba
 const mf=new Miniflare({workers:[
   {config:{name:'red',compatibilityDate:'2026-09-30',manifest:{mainModule:'index.js',modules:{'index.js':{type:'esm',contents:script}}},env:{DB:{type:'d1',id:'red'},TOPE_WEB:{type:'text',value:'2'},NUBE:{type:'worker',worker:'nube',exportName:'VoidAlojamiento'}}}},
   {config:{name:'nube',compatibilityDate:'2026-09-30',manifest:{mainModule:'index.js',modules:{'index.js':{type:'esm',contents:scriptNube}}},exports:{CajaPersona:{type:'durable-object',storage:'sqlite'}},env:{CAJA:{type:'durable-object',worker:'nube',exportName:'CajaPersona'},LLAVE_MAESTRA:{type:'text',value:Buffer.alloc(32,21).toString('base64')},ADMIN:{type:'text',value:'solo-prueba-inventada'}}}}
-,{config:{name:'puente',compatibilityDate:'2026-09-30',manifest:{mainModule:'index.js',modules:{'index.js':{type:'esm',contents:'export default {fetch(req,env){return env.NUBE.fetch(req)}}'}}},env:{NUBE:{type:'worker',worker:'nube',exportName:'VoidAlojamiento'}}}}
+,{config:{name:'puente',compatibilityDate:'2026-09-30',manifest:{mainModule:'index.js',modules:{'index.js':{type:'esm',contents:`export default {fetch(req,env){const u=new URL(req.url);if(u.pathname==='/prueba-interno')return env.CAJA.get(env.CAJA.idFromName('existente-a')).interno('PUT','/vault',req.body,{bytes:Number(req.headers.get('x-void-bytes')),sha256:req.headers.get('x-void-sha256')});return env.NUBE.fetch(req)}}`}}},env:{NUBE:{type:'worker',worker:'nube',exportName:'VoidAlojamiento'},CAJA:{type:'durable-object',worker:'nube',exportName:'CajaPersona'}}}}
 ]});
 const db=await mf.getD1Database('DB','red');
 const {readdirSync}=await import('node:fs');

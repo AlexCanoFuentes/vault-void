@@ -33,3 +33,15 @@ La primera prueba humana en producción corresponde a la persona responsable del
 - API: `5742884d-bef9-4ca2-8773-99f7d64cfbf3`.
 - Web: `fe1618e8-502b-445e-b212-9eaf7d26b645`.
 - D1: migración `0006_entrada_web.sql`, aplicada sin eliminar datos.
+
+## Copia completa preparada · 2026-10-12
+
+El conector incluye los archivos ignorados por Git y los archivos de acceso locales, sin leer ni mostrar sus valores en la vista previa. Tras consentimiento empaqueta todos los archivos, preserva configuración e historial y materializa enlaces internos con metadatos privados para reconstruirlos. Directorios vacíos incluidos. Enlaces externos, ciclos, archivos especiales, escritura concurrente o límites superados detienen la copia; no se recortan datos. SQLite usa respaldo coherente; sus WAL/SHM originales quedan como archivos de recuperación inactivos dentro de la importación. La memoria compartida SQLite puede cambiar por su propio protocolo de lectura, sin modificar filas ni el WAL.
+
+`python3 pruebas/pruebas_copia_completa.py`: restauración de todos los contenidos declarados, historial y enlaces; ignorados, secretos inventados sin imprimir y conversación con WAL. El paquete también pasó el validador real de void-nube. El manifiesto permite verificar conservación antes del envío. Alex ha autorizado la publicación y su copia completa, incluidos los archivos de acceso y entregables descritos. También autoriza ampliar el límite a 128 MiB comprimidos; se mantienen 200 MiB claros y tres cajas. La prueba real se registra después de ejecutarla.
+
+## Transporte completo · 2026-10-12
+
+POST /v1/alojar acepta x-void-subida: iniciar, trozo o terminar, siempre con consentimiento y llave vigente. El inicio declara bytes y SHA-256; las partes de 512 KiB llevan identificador e índice. La caja cifra por parte, rechaza contenido distinto en un reintento y confirma el puntero solo tras comprobar hash, tamaño y archivo seguro. La entrada anterior permanece disponible para clientes pequeños y archivos antiguos. GET /v1/alojar/archivo recupera solo el archivo propio en flujo, sin caché. El cliente compara recibo y manifiesto de todos los archivos. Un vault previo nunca se pisa. La caja usa el mismo almacenamiento en flujo al guardar; conserva archivos sin commit aunque un hook impida el checkpoint, sin desactivar candados.
+
+Validación adicional: 17 comprobaciones de entrada, incluyendo importación y recuperación de una copia inventada mayor de 50 MiB, corte antes de confirmar, reintento, límite, guardado en flujo y rechazo de hash incorrecto. Pruebas Python de copia completa y de verificación de respuesta y descarga. Docker real con conversación e historial restaurados, sin invocar el modelo.

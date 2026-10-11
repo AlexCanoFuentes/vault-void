@@ -152,15 +152,29 @@ export async function alojarExistente(req:Request,env:EntradaEnv,p:{id:number;al
     if(!propia)return fallo(503,'No queda sitio en el piloto; tu vault original sigue intacto.');
     const origen=req.headers.get('x-void-origen');
     if(origen!=='archivo'&&origen!=='alojado')return fallo(400,'Indica si tu vault está en una carpeta o ya alojado.');
+    const accion=req.headers.get('x-void-subida');
+    if(accion&&(!['iniciar','trozo','terminar'].includes(accion)||origen!=='archivo'))return fallo(400,'Paso de subida no válido.');
     const h=new Headers({'x-void-alias':p.alias,'x-void-prueba':propia.alojamiento_prueba || propia.recuperacion_hash,'x-void-origen':origen,'content-type':origen==='archivo'?'application/gzip':'application/json'});
-    const r=await env.NUBE.fetch(new Request('https://privado/conectar',{method:'POST',headers:h,body:req.body}));
+    for(const nombre of ['x-void-subida-id','x-void-indice']){const valor=req.headers.get(nombre);if(valor)h.set(nombre,valor);}
+    const r=await env.NUBE.fetch(new Request(accion?'https://privado/subida/'+accion:'https://privado/conectar',{method:'POST',headers:h,body:req.body}));
     if(!r.ok){const d=await r.json() as {error?:string};return fallo(r.status,d.error||'No se pudo abrir el alojamiento; el original sigue intacto.');}
+    const recibo=await r.json() as {importado?:boolean;conservado?:boolean;archivo_sha256?:string};
+    if(accion&&accion!=='terminar'&&!recibo.conservado)return json(200,recibo);
     const enlace=llaveNueva().replace(/^vv_/,'ve_'),caduca=Date.now()+10*60*1000;
     await env.DB.batch([
       env.DB.prepare('UPDATE web_vaults SET listo=1 WHERE perfil_id=?').bind(p.id),
       env.DB.prepare('DELETE FROM web_enlaces WHERE caduca<? OR perfil_id=?').bind(Date.now(),p.id),
       env.DB.prepare('INSERT INTO web_enlaces(token_hash,perfil_id,llave_hash,caduca) VALUES(?,?,?,?)').bind(await huella(enlace),p.id,llaveHash,caduca)
     ]);
-    return json(200,{alias:p.alias,enlace,caduca,pagina:'https://vaultvoid.app/conectar-vault',ya_alojado:!!previa?.listo});
+    return json(200,{alias:p.alias,enlace,caduca,pagina:'https://vaultvoid.app/conectar-vault',ya_alojado:!!previa?.listo,importado:recibo.importado===true,conservado:recibo.conservado===true,archivo_sha256:recibo.archivo_sha256});
   }catch{return fallo(503,'No se pudo preparar la conexión. Reintenta: nunca sustituimos tu vault por uno vacío.');}
+}
+
+/** Exportación privada para verificar y recuperar únicamente el vault de la llave vigente. */
+export async function recuperarArchivo(env:EntradaEnv,p:{id:number;alias:string}):Promise<Response>{
+  if(!env.NUBE)return fallo(503,'El alojamiento no está disponible.');
+  const propia=await env.DB.prepare('SELECT recuperacion_hash,alojamiento_prueba,listo FROM web_vaults WHERE perfil_id=?').bind(p.id).first<Propietario>();
+  if(!propia?.listo)return fallo(404,'Tu vault todavía no está alojado.');
+  const r=await env.NUBE.fetch(new Request('https://privado/archivo',{headers:{'x-void-alias':p.alias,'x-void-prueba':propia.alojamiento_prueba || propia.recuperacion_hash}}));
+  return new Response(r.body,{status:r.status,headers:{'content-type':r.ok?'application/gzip':'application/json','cache-control':'no-store','x-content-type-options':'nosniff'}});
 }

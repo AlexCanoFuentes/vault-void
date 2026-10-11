@@ -79,6 +79,13 @@ export async function probarExistentes({root,mf,db,pedir,prueba,URL_BASE,huella,
     assert.equal(vistos.length,302);assert.equal(new Set(vistos).size,302);assert.equal((await pedir('/v1/huellas?cursor=mal')).status,400);
     await db.prepare("DELETE FROM perfiles WHERE alias LIKE 'pagina-%'").run();
   });
+  await prueba('semillas repetidas conservan datos y ocupan sitios distintos',async()=>{
+    const antes=(await pedir('/v1/huellas')).d.huellas;
+    await db.prepare("UPDATE huellas SET semilla='cuento:1'").run();
+    await db.prepare('INSERT INTO huellas_cuento(id,token_hash,datos,creado,actualizado) VALUES(1,?,?,?,?)').bind(hash('cuento-inventado'),JSON.stringify({...huella,tono:200}),Date.now(),Date.now()).run();
+    const lista=(await pedir('/v1/huellas')).d.huellas;assert.equal(lista.length,3);assert.equal(new Set(lista.map(h=>h.posicion)).size,3);assert.ok(lista.every(h=>h.semilla==='cuento:1'));
+    for(const h of lista.filter(h=>h.alias)){assert.equal(h.posicion%2,0);assert.deepEqual(h.huella,antes.find(a=>a.alias===h.alias).huella);}assert.equal(lista.find(h=>!h.alias).posicion%2,1);
+  });
   if(servir){
     const enlaces=[];for(const f of fixtures){const r=await propietario(f,'/v1/alojar',readFileSync(f.archivo));assert.equal(r.status,200);enlaces.push(r.d);}
     mkdirSync(root+'/.impeccable/review',{recursive:true});writeFileSync(root+'/.impeccable/review/enlaces.json',JSON.stringify(enlaces));

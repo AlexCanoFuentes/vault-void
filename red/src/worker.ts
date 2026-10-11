@@ -497,7 +497,8 @@ async function huellas(env: Entorno, cursor='0,0'): Promise<Response> {
   const delCuento = (await env.DB.prepare("SELECT id, datos, actualizado FROM huellas_cuento WHERE id>? ORDER BY id LIMIT ?")
     .bind(cuento,tam).all<{ id: number; datos: string; actualizado: number }>()).results;
   return json(200, { huellas: [
-    ...filas.map((f) => ({ alias: f.alias, posicion:f.semilla?.startsWith('cuento:')?Number(f.semilla.slice(7))*2+1:f.id*2,semilla: f.semilla ?? f.alias, huella: JSON.parse(f.datos), actualizado: f.actualizado })),
+    // La semilla define la forma; el identificador del perfil define su sitio único.
+    ...filas.map((f) => ({ alias: f.alias, posicion:f.id*2,semilla: f.semilla ?? f.alias, huella: JSON.parse(f.datos), actualizado: f.actualizado })),
     // sin alias: nacieron en el cuento y su vault aún no existe; el «id» solo sirve para dibujarlas siempre igual
     ...delCuento.map((f) => ({ alias: null, cuento: f.id, posicion:f.id*2+1,semilla: `cuento:${f.id}`, huella: JSON.parse(f.datos), actualizado: f.actualizado })),
   ],siguiente:filas.length===tam||delCuento.length===tam?`${filas.at(-1)?.id??perfil},${delCuento.at(-1)?.id??cuento}`:null }, { "access-control-allow-origin": "*" });

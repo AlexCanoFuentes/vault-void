@@ -113,7 +113,7 @@ details[open] summary::after{content:"−"}
 .menu.plegado h1{font-size:26px}
 
 /* los mandos del lienzo */
-.mandos{position:fixed;right:16px;top:calc(16px + env(safe-area-inset-top,0px));display:flex;gap:6px;align-items:center;z-index:4;flex-wrap:wrap;justify-content:flex-end}
+.mandos{position:fixed;right:16px;top:calc(16px + env(safe-area-inset-top,0px));max-width:calc(100% - 32px);display:flex;gap:6px;align-items:center;z-index:4;flex-wrap:wrap;justify-content:flex-end}
 .mandos button,.mandos label{background:var(--panel);border:1px solid var(--linea);border-radius:10px;height:36px;min-width:36px;padding:0 10px;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;color:var(--tinta-2);font-size:12px}
 .mandos button:hover,.mandos label:hover{color:var(--tinta);border-color:var(--tinta-2)}
 .mandos input{accent-color:var(--ambar);margin:0}
@@ -146,6 +146,7 @@ details[open] summary::after{content:"−"}
   <button type="button" id="acercar" aria-label="Acercar">+</button>
   <button type="button" id="encuadrar" aria-label="Ver todas las huellas">todas</button>
   <label for="grav"><input type="checkbox" id="grav"> gravedad</label>
+  <button type="button" id="regresar" hidden>Volver a las huellas</button>
 </div>
 
 <nav class="menu" id="menu" aria-label="Void">
@@ -160,7 +161,7 @@ details[open] summary::after{content:"−"}
   <div class="acciones">
     <a class="primario" href="/tu-huella">Crear mi espacio</a>
     <a class="secundario" href="/mi-vault">Volver a mi espacio</a>
-    <button class="secundario" id="tengo" type="button" aria-expanded="false" aria-controls="tengo-panel">Tengo una carpeta vault</button>
+    <a class="secundario" href="/conectar-vault">Conectar mi vault</a>
   </div>
   <div class="tengo" id="tengo-panel" hidden>
     <p>Abre tu asistente en la carpeta de tu vault y pégale: <b>«conéctate a Void: vaultvoid.app/entrar»</b></p>
@@ -225,6 +226,7 @@ details[open] summary::after{content:"−"}
 <noscript><p style="position:fixed;inset:auto 16px 16px;max-width:30rem">Para ver el lienzo hace falta JavaScript. Qué es Void: <a href="/que-es">vaultvoid.app/que-es</a>.</p></noscript>
 
 <script src="/huella.js"></script>
+<script src="/vacio.js"></script>
 <script>
 (function () {
   "use strict";
@@ -234,17 +236,17 @@ details[open] summary::after{content:"−"}
   var sinTildes = function (s) { return String(s || "").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, ""); };
 
   /* ── el lienzo */
-  var N = 360, LIBRES = 6, TOTAL = 4200;
+  var N = 360;
   var cv = $("lienzo"), ctx = cv.getContext("2d"), off = document.createElement("canvas"), octx;
   off.width = off.height = N; octx = off.getContext("2d");
-  var campo = null, hechos = 0, W = 0, H = 0, dpr = 1, vista = { x: N / 2, y: N / 2, s: 1 }, ajuste = 1, sel = null, sucio = true;
+  var campo = null, hechos = 0, pendiente = true, W = 0, H = 0, dpr = 1, vista = { x: N / 2, y: N / 2, s: 1 }, ajuste = 1, sel = null, sucio = true;
 
   function tam() {
     W = innerWidth; H = innerHeight; dpr = Math.min(devicePixelRatio || 1, 2);
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); encuadrar(true); sucio = true;
   }
-  function caja() { // lo que hay que ver: huellas y sitios libres
-    if (!campo) return { x0: N * .3, y0: N * .3, x1: N * .7, y1: N * .7 };
+  function caja() {
+    if (!campo || !campo.territorios.length) return { x0:-180,y0:-180,x1:180,y1:180 };
     var x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
     campo.territorios.concat(campo.libres).forEach(function (t) { x0 = Math.min(x0, t.x - t.tam); y0 = Math.min(y0, t.y - t.tam); x1 = Math.max(x1, t.x + t.tam); y1 = Math.max(y1, t.y + t.tam); });
     return { x0: x0, y0: y0, x1: x1, y1: y1 };
@@ -259,9 +261,13 @@ details[open] summary::after{content:"−"}
     if (sinAnimar || quieto) { vista = meta; sucio = true; } else vuela(meta);
   }
   var vuelo = null;
-  function vuela(meta) { vuelo = { de: { x: vista.x, y: vista.y, s: vista.s }, a: meta, t0: performance.now() }; }
+  function vuela(meta) {
+    if (quieto) { vuelo = null; vista = { x: meta.x, y: meta.y, s: meta.s }; sucio = true; return; }
+    vuelo = { de: { x: vista.x, y: vista.y, s: vista.s }, a: meta, t0: performance.now() };
+  }
   function zoom(f, px, py) {
-    var s2 = Math.max(ajuste * .5, Math.min(ajuste * 10, vista.s * f));
+    // Solo límites numéricos: no hay marco, casillas ni tope de desplazamiento del mundo.
+    var s2 = Math.max(.000001, Math.min(10000, vista.s * f));
     if (px == null) { px = W / 2; py = H / 2; }
     var wx = vista.x + (px - W / 2) / vista.s, wy = vista.y + (py - H / 2) / vista.s;
     vista.s = s2; vista.x = wx - (px - W / 2) / s2; vista.y = wy - (py - H / 2) / s2; sucio = true;
@@ -269,18 +275,12 @@ details[open] summary::after{content:"−"}
   function aMundo(px, py) { return { x: vista.x + (px - W / 2) / vista.s, y: vista.y + (py - H / 2) / vista.s }; }
   function aPantalla(x, y) { return { x: W / 2 + (x - vista.x) * vista.s, y: H / 2 + (y - vista.y) * vista.s }; }
 
-  function dibuja() {
+  function dibuja(now) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = "#12110E"; ctx.fillRect(0, 0, W, H);
     ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
-    var o = aPantalla(0, 0);
-    if (campo) ctx.drawImage(off, o.x, o.y, N * vista.s, N * vista.s);
-    // los sitios libres: donde crecerán las huellas que vienen
-    if (campo) {
-      ctx.setLineDash([2, 6]); ctx.lineWidth = 1; ctx.strokeStyle = "rgba(236,231,222,.16)";
-      campo.libres.forEach(function (l) { var p = aPantalla(l.x, l.y); ctx.beginPath(); ctx.arc(p.x, p.y, l.tam * vista.s * .7, 0, 6.2832); ctx.stroke(); });
-      ctx.setLineDash([]);
-    }
+    var visibles=campo?campo.pintar(ctx,vista,W,H,now||0,quieto):0;
+    $("regresar").hidden=!campo || !campo.territorios.length || visibles>0;
     if (sel && sel.x != null) { var p = aPantalla(sel.x, sel.y); ctx.strokeStyle = "rgba(242,169,59,.8)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(p.x, p.y, sel.tam * vista.s * 1.04, 0, 6.2832); ctx.stroke(); }
   }
 
@@ -290,12 +290,10 @@ details[open] summary::after{content:"−"}
       vista.x = vuelo.de.x + (vuelo.a.x - vuelo.de.x) * e; vista.y = vuelo.de.y + (vuelo.a.y - vuelo.de.y) * e; vista.s = vuelo.de.s + (vuelo.a.s - vuelo.de.s) * e;
       sucio = true; if (k >= 1) vuelo = null;
     }
-    if (campo && hechos < TOTAL) {
-      var t0 = performance.now();
-      do { campo.paso(4); hechos += 4; } while (performance.now() - t0 < 9 && hechos < TOTAL);
-      campo.pintar(octx, $("grav").checked); sucio = true;
+    if(campo && !document.hidden && (sucio || !quieto || pendiente)){
+      pendiente=campo.avanzar(vista,W,H,quieto,$("grav").checked);sucio=true;
     }
-    if (sucio) { dibuja(); sucio = false; }
+    if (sucio) { dibuja(now); sucio = false; }
     requestAnimationFrame(bucle);
   }
 
@@ -331,7 +329,8 @@ details[open] summary::after{content:"−"}
   $("acercar").addEventListener("click", function () { zoom(1.4); });
   $("alejar").addEventListener("click", function () { zoom(1 / 1.4); });
   $("encuadrar").addEventListener("click", function () { cierraFicha(); encuadrar(); });
-  $("grav").addEventListener("change", function () { if (campo) { campo.pintar(octx, $("grav").checked); sucio = true; } });
+  $("grav").addEventListener("change", function () { sucio = true; });
+  $("regresar").addEventListener("click",function(){cierraFicha();encuadrar();});
   addEventListener("keydown", function (e) {
     if (e.target.closest && e.target.closest("input,textarea")) return;
     if (e.key === "+" || e.key === "=") zoom(1.3); else if (e.key === "-") zoom(1 / 1.3); else if (e.key === "0") encuadrar();
@@ -396,8 +395,7 @@ details[open] summary::after{content:"−"}
   function arranca(lista) {
     $("cuantas").textContent = lista.length === 1 ? "1 huella" : lista.length + " huellas";
     $("n-huellas").textContent = String(lista.length);
-    campo = VoidHuella.crear(lista, N, LIBRES); hechos = 0;
-    if (quieto) { campo.paso(TOTAL); hechos = TOTAL; campo.pintar(octx, false); }
+    campo = VoidVacio.crear(lista); hechos = 0;
     var lh = $("lista-huellas");
     lh.innerHTML = campo.territorios.length ? campo.territorios.map(function (t, i) {
       var c = t.col;
@@ -423,7 +421,6 @@ details[open] summary::after{content:"−"}
     if (W < 700) encuadrar();
   });
   if (innerWidth < 700) { $("menu").classList.add("plegado"); $("plegar").textContent = "+"; $("plegar").setAttribute("aria-expanded", "false"); $("plegar").setAttribute("aria-label", "Abrir el menú"); }
-  $("tengo").addEventListener("click", function () { var p = $("tengo-panel"), abre = p.hidden; p.hidden = !abre; this.setAttribute("aria-expanded", String(abre)); if (abre) $("alias").focus(); });
   $("ir-perfil").addEventListener("submit", function (e) { e.preventDefault(); var v = ($("alias").value || "").trim().toLowerCase(); if (/^[a-z0-9-]{3,24}$/.test(v)) location.href = "/@" + v; });
   document.querySelectorAll(".copiar").forEach(function (b) {
     b.addEventListener("click", function () {
@@ -489,9 +486,8 @@ details[open] summary::after{content:"−"}
   /* ── arranque */
   tam(); addEventListener("resize", tam, { passive: true });
   requestAnimationFrame(bucle);
-  fetch("https://red.vaultvoid.app/v1/huellas", { headers: { accept: "application/json" } })
-    .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
-    .then(function (d) { arranca((d && d.huellas) || []); })
+  async function traerHuellas(){var lista=[],cursor=null;do{var r=await fetch("https://red.vaultvoid.app/v1/huellas"+(cursor?'?cursor='+encodeURIComponent(cursor):''),{headers:{accept:'application/json'}});if(!r.ok)throw new Error(r.status);var d=await r.json();lista=lista.concat(d.huellas||[]);cursor=d.siguiente||null;}while(cursor);arranca(lista);}
+  traerHuellas()
     .catch(function () { arranca([]); $("lista-huellas").innerHTML = '<li><span class="ss">No he podido traer las huellas. Vuelve a cargar en un momento.</span></li>'; });
 })();
 </script>

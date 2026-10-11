@@ -1,0 +1,15 @@
+# Conectar vaults existentes y a medida · 2026-10-11
+
+[CONF] El plano humano abre el vault real de su dueño conservando su alias, huella, archivos, plantilla e historial. No crea otro perfil ni vuelve a pedir las respuestas del cuento. Los vaults a medida siguen este mismo camino; el cobro queda fuera de esta entrega.
+
+El cliente `conectar_vault.py` primero describe la copia local sin enviar nada. Solo con `--confirmar-alojamiento` usa automáticamente la llave propia del vault para preparar el vínculo. Conserva el original y su historial; excluye archivos `.env`, `.pem` y `.key`, carpetas de dependencias y configuración del remoto. Los commits previos se conservan y deben revisarse también. Las conversaciones SQLite bajo `.agente` se copian con su API de backup. La copia privada conserva las claves propias de Void. No hay sincronización posterior entre el ordenador y Void.
+
+Una caja previa se vincula con `--ya-alojado` y la contraseña que introduce su dueño con entrada oculta. No se resiembra ni se cambia su archivo. Un reintento de conexión conserva el alojamiento previo. La capacidad del piloto sigue siendo tres alojamientos.
+
+La API comprueba la llave vigente y el consentimiento, y devuelve un código aleatorio `ve_` de un uso que caduca en diez minutos. Solo su hash llega a D1. La web exige origen propio, consume el código de forma atómica y crea un nuevo código privado `vr_` y sesión HttpOnly. Ese paso revoca los accesos web anteriores, conservando la prueba de propiedad de la caja, la llave del vault y su huella. Rotar la llave invalida códigos temporales pendientes.
+
+El vacío elimina los huecos reservados y el marco finito. La API pagina todas las huellas públicas; cada una ocupa coordenadas estables. El lienzo permite desplazamiento en cualquier dirección, zoom, selección y vuelta a las huellas. Prepara únicamente las texturas visibles, con caché de doce, y usa niveles de detalle para las lejanas. La respiración suave se detiene con movimiento reducido. No añade perfiles ficticios.
+
+Verificación local: diecinueve pruebas generales de red, catorce comprobaciones de entrada y conexión con Miniflare y contenedor sustituido explícitamente, validación TypeScript y dos copias Python distintas. Las pruebas cubren consumo concurrente, caducidad, rotación de llave, consentimiento, CSRF, archivo peligroso, caja ajena y paginación de más de una página. El navegador local comprobó móvil y escritorio, recuperación, conversación, huella idéntica al volver y desplazamiento sin bordes. Una caja Docker real conservó plantilla a medida, archivos, historial git y conversación al parar, archivar y restaurar; esa prueba se ejecutó con `--sin-modelo` y no prueba una respuesta nueva de un proveedor de IA.
+
+Cada dueño autoriza el alojamiento de sus propios archivos. La infraestructura y el modelo siguen usando proveedores externos; el operador puede acceder a los archivos durante el trabajo. No representa soberanía completa ni cifrado inaccesible al operador. La comprobación humana en producción corresponde al responsable del producto; no se crean cuentas de prueba allí.

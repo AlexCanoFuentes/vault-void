@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-11T00:00:00+02:00",
+  "generatedAt": "2026-10-11T05:37:46.324109+00:00",
   "title": "Design System: Vault Void",
   "extensions": {
     "colorMeta": {
@@ -89,6 +89,14 @@
       "body-espacio": {
         "displayName": "Lectura del espacio",
         "purpose": "Formulario de acceso y conversaciones."
+      },
+      "headline-conexion": {
+        "displayName": "Entrada de conexión",
+        "purpose": "Título principal de la columna para vaults existentes o a medida."
+      },
+      "body-conexion": {
+        "displayName": "Lectura de conexión",
+        "purpose": "Explicación de privacidad, consentimiento, campos y estados de conexión."
       }
     },
     "shadows": [],
@@ -101,7 +109,12 @@
       {
         "name": "encuadre-lienzo",
         "value": "650ms; e = 1 - Math.pow(1 - k, 3)",
-        "purpose": "Interpolación existente del encuadre; no es una curva CSS global."
+        "purpose": "Vuelo de encuadre o selección; con movimiento reducido, la cámara cambia de inmediato y la ficha no espera el vuelo. No es una curva CSS global."
+      },
+      {
+        "name": "respiracion-huella",
+        "value": "scale = 1 + .024 * Math.sin(now / 1900 + x * .01)",
+        "purpose": "Variación de escala de ±2,4% de texturas visibles, sin desplazar sus coordenadas; con movimiento reducido, escala fija en 1."
       }
     ],
     "breakpoints": [
@@ -111,7 +124,8 @@
       },
       {
         "name": "espacio-movil",
-        "value": "560px"
+        "value": "560px",
+        "purpose": "Identidad y mensajes de mi-vault; columna de conexión con padding horizontal de 18px y margen superior de 28px."
       }
     ]
   },
@@ -144,8 +158,8 @@
       "name": "Menú flotante",
       "kind": "nav",
       "refersTo": "menu-flotante",
-      "description": "Muestra del menú real sin anclaje fijo; la sección de piezas se abre con details.",
-      "html": "<nav class=\"ds-menu\" aria-label=\"Void\"><div class=\"ds-cab\"><h1>Vault <em>Void</em></h1><p>Un espacio para guardar tus ideas y tareas, pedir ayuda para trabajarlas y retomarlas cuando vuelvas. Ese espacio es tu <b>vault</b>.</p></div><div class=\"ds-acciones\"><a class=\"ds-menu-primario\" href=\"/tu-huella\">Crear mi espacio</a><a class=\"ds-menu-secundario\" href=\"/mi-vault\">Volver a mi espacio</a></div><details class=\"ds-seccion\"><summary><span>Piezas</span></summary><div class=\"ds-cuerpo\">Herramientas que ya funcionaron en el vault de alguien y que tu asistente puede traer al tuyo. Se buscan por lo que se te ha roto.</div></details></nav>",
+      "description": "Menú real con crear, volver y conectar siempre visibles; muestra sin anclaje fijo y con details nativo.",
+      "html": "<nav class=\"ds-menu\" aria-label=\"Void\"><div class=\"ds-cab\"><h1>Vault <em>Void</em></h1><p>Un espacio para guardar tus ideas y tareas, pedir ayuda para trabajarlas y retomarlas cuando vuelvas. Ese espacio es tu <b>vault</b>.</p></div><div class=\"ds-acciones\"><a class=\"ds-menu-primario\" href=\"/tu-huella\">Crear mi espacio</a><a class=\"ds-menu-secundario\" href=\"/mi-vault\">Volver a mi espacio</a><a class=\"ds-menu-secundario\" href=\"/conectar-vault\">Conectar mi vault</a></div><details class=\"ds-seccion\"><summary><span>Piezas</span></summary><div class=\"ds-cuerpo\">Herramientas que ya funcionaron en el vault de alguien y que tu asistente puede traer al tuyo. Se buscan por lo que se te ha roto.</div></details></nav>",
       "css": ".ds-menu{display:flex;flex-direction:column;width:min(360px,calc(100% - 32px));background:var(--panel,rgba(24,22,18,.92));border:1px solid var(--linea,#2E2B25);border-radius:14px;overflow:hidden;color:var(--tinta,#ECE7DE);font:400 14px/1.6 \"IBM Plex Mono\",ui-monospace,Menlo,Consolas,monospace}.ds-cab{padding:18px 18px 12px;display:grid;gap:6px}.ds-cab h1{margin:0;font:400 38px/1 \"Instrument Serif\",Georgia,\"Times New Roman\",serif;letter-spacing:-.01em}.ds-cab em{font-style:italic;color:transparent;-webkit-text-stroke:1px var(--tinta,#ECE7DE)}.ds-cab p{margin:0;color:var(--tinta-2,#B3AC9F);font-size:13px}.ds-acciones{display:flex;gap:8px;flex-wrap:wrap;padding:0 18px 14px}.ds-menu-primario{display:inline-flex;align-items:center;justify-content:center;background:var(--ambar,#F2A93B);color:#1A1407;text-decoration:none;font-weight:500;border-radius:999px;padding:9px 18px}.ds-menu-primario:hover{background:var(--ambar-2,#F8CB86)}.ds-menu-secundario{background:none;border:1px solid var(--linea,#2E2B25);border-radius:999px;padding:8px 16px;cursor:pointer;color:var(--tinta,#ECE7DE);text-underline-offset:3px}.ds-menu-secundario:hover{border-color:var(--ambar,#F2A93B)}.ds-seccion{border-top:1px solid var(--linea,#2E2B25);border-bottom:1px solid var(--linea,#2E2B25)}.ds-seccion summary{list-style:none;cursor:pointer;padding:12px 18px;display:flex;justify-content:space-between;align-items:baseline;gap:10px}.ds-seccion summary::-webkit-details-marker{display:none}.ds-seccion summary::after{content:\"+\";color:var(--tenue,#8C8578)}.ds-seccion[open] summary::after{content:\"−\"}.ds-cuerpo{padding:0 18px 16px;font-size:13px;color:var(--tinta-2,#B3AC9F)}.ds-menu a:focus-visible,.ds-menu summary:focus-visible{outline:2px solid var(--ambar,#F2A93B);outline-offset:2px}"
     },
     {
@@ -155,17 +169,42 @@
       "description": "Estado real de una huella que empieza; muestra estática sin selección del lienzo.",
       "html": "<div class=\"ds-ficha\"><button class=\"ds-cerrar\" type=\"button\" aria-label=\"Cerrar\">×</button><div class=\"ds-alias\">Una huella que empieza</div><p>Nació en el cuento de Void. Cuando su vault exista, esta misma huella crecerá con su trabajo.</p><a href=\"/tu-huella\">Crear la tuya →</a></div>",
       "css": ".ds-ficha{position:relative;width:min(300px,calc(100% - 32px));background:var(--panel-solido,#1B1915);border:1px solid var(--linea,#2E2B25);border-radius:12px;padding:14px 16px;display:grid;gap:8px;font:400 13px/1.6 \"IBM Plex Mono\",ui-monospace,Menlo,Consolas,monospace;color:var(--tinta-2,#B3AC9F)}.ds-alias{font:400 24px/1.1 \"Instrument Serif\",Georgia,\"Times New Roman\",serif;color:var(--tinta,#ECE7DE)}.ds-cerrar{position:absolute;right:8px;top:6px;background:none;border:0;color:var(--tenue,#8C8578);font:400 18px/1.6 \"IBM Plex Mono\",ui-monospace,Menlo,Consolas,monospace;cursor:pointer;padding:4px 8px}.ds-ficha p{margin:1em 0}.ds-ficha a{color:var(--ambar-2,#F8CB86);text-underline-offset:3px}.ds-ficha a:focus-visible,.ds-cerrar:focus-visible{outline:2px solid var(--ambar,#F2A93B);outline-offset:2px}"
+    },
+    {
+      "name": "Campo y consentimiento de conexión",
+      "kind": "input",
+      "refersTo": "campo-conexion",
+      "description": "Extracto real del formulario: código temporal, ayuda, consentimiento y acción. La muestra conserva semántica y estados CSS, sin conectar datos.",
+      "html": "<form class=\"ds-conexion\"><label for=\"ds-enlace\">Código temporal que te dio tu vault</label><input class=\"ds-enlace\" id=\"ds-enlace\" autocomplete=\"off\" spellcheck=\"false\" required placeholder=\"Empieza por ve_\" aria-describedby=\"ds-ayuda\"><p id=\"ds-ayuda\">Dura diez minutos y sirve una sola vez. No pegues aquí la llave privada del vault.</p><label><input class=\"ds-confirmar\" type=\"checkbox\" required> Quiero vincular este vault a mi acceso web. Guardaré el nuevo código privado; sustituye el acceso web anterior.</label><button class=\"ds-conectar\" type=\"submit\">Conectar mi vault</button><p class=\"ds-estado\" role=\"status\"></p></form>",
+      "css": ".ds-conexion{color:var(--tinta,#ECE7DE);font:400 14px/1.7 \"IBM Plex Mono\",monospace}.ds-conexion label{display:block;margin:24px 0 8px}.ds-conexion p{margin:16px 0;color:var(--secundaria,#B3AC9F)}.ds-enlace{width:100%;padding:12px;border:1px solid var(--linea,#38332B);border-radius:10px;background:var(--panel,#1B1915);color:var(--tinta,#ECE7DE);font:inherit;caret-color:var(--acento,#F2A93B)}.ds-enlace::placeholder{color:var(--secundaria,#B3AC9F);opacity:1}.ds-confirmar{accent-color:auto}.ds-conectar{display:inline-block;margin-top:18px;padding:11px 18px;border:1px solid var(--acento,#F2A93B);border-radius:24px;background:var(--acento,#F2A93B);color:#1A1206;cursor:pointer;font:inherit}.ds-conectar:hover{border-color:var(--acento,#F2A93B)}.ds-conectar:disabled{opacity:.5;cursor:wait}.ds-conexion :focus-visible{outline:2px solid var(--acento,#F2A93B);outline-offset:3px}.ds-estado{min-height:1.7em}"
+    },
+    {
+      "name": "Mando de regreso",
+      "kind": "button",
+      "refersTo": "mando-regresar",
+      "description": "Acción de la barra superior cuando ninguna huella queda cerca del encuadre. Muestra visible del estado real; el retorno de cámara pertenece al canvas.",
+      "html": "<button class=\"ds-regresar\" type=\"button\">Volver a las huellas</button>",
+      "css": ".ds-regresar{background:var(--panel,rgba(24,22,18,.92));border:1px solid var(--linea,#2E2B25);border-radius:10px;height:36px;min-width:36px;padding:0 10px;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;color:var(--tinta-2,#B3AC9F);font:400 12px/1.6 \"IBM Plex Mono\",ui-monospace,Menlo,Consolas,monospace}.ds-regresar:hover{color:var(--tinta,#ECE7DE);border-color:var(--tinta-2,#B3AC9F)}.ds-regresar:focus-visible{outline:2px solid var(--ambar,#F2A93B);outline-offset:2px}"
+    },
+    {
+      "name": "Botón primario del espacio y conexión",
+      "kind": "button",
+      "refersTo": "boton-primario-espacio",
+      "description": "Variante operativa compartida, con radio de 24px y estado deshabilitado. Mi-vault usa línea 1,65 y conexión 1,7.",
+      "html": "<button class=\"ds-principal-espacio\" type=\"button\">Conectar mi vault</button>",
+      "css": ".ds-principal-espacio{display:inline-block;border:1px solid var(--acento,#F2A93B);border-radius:24px;padding:11px 18px;background:var(--acento,#F2A93B);color:#1A1206;cursor:pointer;font:400 14px/1.7 \"IBM Plex Mono\",monospace}.ds-principal-espacio:hover{border-color:var(--acento,#F2A93B)}.ds-principal-espacio:disabled{opacity:.5;cursor:wait}.ds-principal-espacio:focus-visible{outline:2px solid var(--acento,#F2A93B);outline-offset:3px}"
     }
   ],
   "narrative": {
     "northStar": "El lienzo de huellas",
-    "overview": "[CONF] Void conserva su mundo visual existente: un fondo de carbón cálido y huellas orgánicas de muchos colores. Instrument Serif da voz a los títulos y IBM Plex Mono ordena la interfaz. El ámbar señala las acciones, mientras el color personal vive principalmente en la huella.\n\n[CONF] La interfaz permanece sobria para que el lienzo tenga presencia sin competir con las palabras. Los paneles flotantes usan bordes tenues y fondos cálidos; el espacio de conversaciones adapta la misma identidad a una columna de lectura. La huella mantiene su semilla y tono al regresar, en vez de estrenar una identidad visual.",
+    "overview": "[CONF] Void conserva su mundo visual existente: un fondo de carbón cálido y huellas orgánicas de muchos colores. Instrument Serif da voz a los títulos y IBM Plex Mono ordena la interfaz. El ámbar señala las acciones, mientras el color personal vive principalmente en la huella.\n\n[CONF] La interfaz permanece sobria para que el lienzo tenga presencia sin competir con las palabras. Los paneles flotantes usan bordes tenues y fondos cálidos; el espacio de conversaciones adapta la misma identidad a una columna de lectura. La huella mantiene su semilla y tono al regresar, en vez de estrenar una identidad visual.\n\n[CONF] El vacío de portada se puede recorrer en cualquier dirección, sin borde de atlas ni sitios reservados. La superficie de experiencia deja espacio al plano y sus huellas reales; conectar un vault existente o a medida usa una columna operativa legible dentro de la misma identidad. El alcance infinito es espacial, sin rellenar el mundo con vaults inventados.",
     "keyCharacteristics": [
       "Carbón cálido y texto claro, con jerarquía de tres intensidades.",
       "Títulos serif ligeros e interfaz monoespaciada.",
       "Ámbar para actuar y verde en el énfasis del cuento.",
       "Huellas orgánicas multicolor con identidad persistente.",
-      "Bordes finos y superficies sin sombras."
+      "Bordes finos y superficies sin sombras.",
+      "Plano navegable sin bordes, con regreso visible y movimiento reducido."
     ],
     "rules": [
       {
@@ -189,14 +228,18 @@
       "**Do** mantener la semilla y el tono personal de la huella al regresar.",
       "**Do** dar etiquetas visibles a los campos y conservar el foco de teclado.",
       "**Do** reservar espacio legible para palabras y controles alrededor del lienzo.",
-      "**Do** respetar las variaciones de radios, bordes y tipografía documentadas por pantalla."
+      "**Do** respetar las variaciones de radios, bordes y tipografía documentadas por pantalla.",
+      "**Do** conservar el plano sin bordes, la caché acotada y la representación por detalle de huellas reales.",
+      "**Do** mantener visibles crear, volver y conectar, y ofrecer regreso al alejarse.",
+      "**Do** respetar movimiento reducido con cámara inmediata y sin respiración."
     ],
     "donts": [
       "**Don't** sustituir el mundo existente por una identidad nueva.",
       "**Don't** añadir estrellas de fondo, nebulosas ni halos a la portada.",
       "**Don't** convertir la paleta multicolor de huellas en acentos decorativos de toda la interfaz.",
       "**Don't** añadir sombras o desenfoque como si pertenecieran al sistema observado.",
-      "**Don't** presentar los ejemplos estáticos como una reproducción completa del lienzo o de su persistencia."
+      "**Don't** presentar los ejemplos estáticos como una reproducción completa del lienzo o de su persistencia.",
+      "**Don't** rellenar el vacío con huellas ficticias ni círculos de sitios reservados."
     ]
   }
 }

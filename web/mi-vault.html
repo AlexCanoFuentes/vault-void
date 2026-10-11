@@ -10,7 +10,7 @@
 </style>
 </head>
 <body>
-<header><a class="marca" href="/">Vault Void</a><div class="fila"><a href="/tu-huella" id="crear">Crear mi espacio</a><button id="salir" hidden>Salir de este dispositivo</button></div></header>
+<header><a class="marca" href="/">Vault Void</a><div class="fila"><a href="/conectar-vault">Conectar mi vault</a><a href="/tu-huella" id="crear">Crear mi espacio</a><button id="salir" hidden>Salir de este dispositivo</button></div></header>
 <main>
 <section class="acceso" id="acceso"><h1>Vuelve a <em>lo tuyo</em>.</h1><p>Tus ideas, tareas y conversaciones te esperan aquí. Usa el nombre y el código que guardaste al crear tu espacio.</p><form id="entrar"><label for="alias">Nombre de tu espacio</label><input id="alias" autocomplete="username" required pattern="[a-z0-9-]{3,24}" placeholder="mi-cuaderno"><label for="codigo">Tu código privado</label><input id="codigo" type="password" autocomplete="current-password" required placeholder="Empieza por vr_"><p><button class="principal" id="entrar-boton">Entrar a mi espacio</button></p><p class="estado" id="login-estado" role="status"></p></form><p class="secundario">Si aún no tienes uno, <a href="/tu-huella">crea tu espacio</a>. Si has perdido el código, todavía no podemos recuperar tu acceso.</p></section>
 <section id="espacio" hidden>

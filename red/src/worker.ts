@@ -28,7 +28,7 @@
 import { leerCatalogo, ErrorDeFuente, type Catalogo } from "./catalogo.js";
 import { llaveNueva, huella, llaveDe, problemaAlias, problemaAgente, publicoDe, problemaTexto, TIPOS, RE_ESTRELLA, RE_ALIAS, problemaHuella, huellaNormal, type Huella } from "./reglas.js";
 import { paginaPerfil, paginaEstrella, paginaNoEncontrada, fechaCorta, CSP, type AvisoPublico } from "./paginas.js";
-import { entradaWeb } from "./entrada-web.js";
+import { entradaWeb, alojarExistente } from "./entrada-web.js";
 
 export interface Entorno {
   DB: D1Database;
@@ -489,16 +489,18 @@ async function retirarHuella(request: Request, env: Entorno): Promise<Response> 
 }
 
 /** El lienzo: público, como el perfil. Solo lo que cada vault ha mandado, que ya son solo cifras. */
-async function huellas(env: Entorno): Promise<Response> {
-  const filas = (await env.DB.prepare("SELECT p.alias, h.datos, h.actualizado, h.semilla FROM huellas h JOIN perfiles p ON p.id = h.perfil_id "
-    + "ORDER BY h.actualizado DESC LIMIT 500").all<{ alias: string; datos: string; actualizado: number; semilla: string | null }>()).results;
-  const delCuento = (await env.DB.prepare("SELECT id, datos, actualizado FROM huellas_cuento ORDER BY actualizado DESC LIMIT 1500")
-    .all<{ id: number; datos: string; actualizado: number }>()).results;
+async function huellas(env: Entorno, cursor='0,0'): Promise<Response> {
+  if(!/^\d{1,12},\d{1,12}$/.test(cursor))return error(400,'La página de huellas no es válida.');
+  const [perfil,cuento]=cursor.split(',').map(Number),tam=250;
+  const filas = (await env.DB.prepare("SELECT p.id,p.alias, h.datos, h.actualizado, h.semilla FROM huellas h JOIN perfiles p ON p.id = h.perfil_id WHERE p.id>? ORDER BY p.id LIMIT ?")
+    .bind(perfil,tam).all<{ id:number;alias: string; datos: string; actualizado: number; semilla: string | null }>()).results;
+  const delCuento = (await env.DB.prepare("SELECT id, datos, actualizado FROM huellas_cuento WHERE id>? ORDER BY id LIMIT ?")
+    .bind(cuento,tam).all<{ id: number; datos: string; actualizado: number }>()).results;
   return json(200, { huellas: [
-    ...filas.map((f) => ({ alias: f.alias, semilla: f.semilla ?? f.alias, huella: JSON.parse(f.datos), actualizado: f.actualizado })),
+    ...filas.map((f) => ({ alias: f.alias, posicion:f.semilla?.startsWith('cuento:')?Number(f.semilla.slice(7))*2+1:f.id*2,semilla: f.semilla ?? f.alias, huella: JSON.parse(f.datos), actualizado: f.actualizado })),
     // sin alias: nacieron en el cuento y su vault aún no existe; el «id» solo sirve para dibujarlas siempre igual
-    ...delCuento.map((f) => ({ alias: null, cuento: f.id, semilla: `cuento:${f.id}`, huella: JSON.parse(f.datos), actualizado: f.actualizado })),
-  ] }, { "access-control-allow-origin": "*" });
+    ...delCuento.map((f) => ({ alias: null, cuento: f.id, posicion:f.id*2+1,semilla: `cuento:${f.id}`, huella: JSON.parse(f.datos), actualizado: f.actualizado })),
+  ],siguiente:filas.length===tam||delCuento.length===tam?`${filas.at(-1)?.id??perfil},${delCuento.at(-1)?.id??cuento}`:null }, { "access-control-allow-origin": "*" });
 }
 
 // ---------------------------------------------------------------- entrada
@@ -517,6 +519,7 @@ export default {
         "access-control-allow-headers": "content-type", "access-control-max-age": "86400" } });
     }
     try {
+      if (ruta === '/v1/alojar' && m === 'POST') return await alojarExistente(request,env,await quien(request,env),await huella(llaveDe(request)!));
       if (ruta.startsWith("/v1/web/")) return await entradaWeb(request,env,r => publicarHuella(r,env));
       if (m === "POST") {
         if (ruta === "/v1/registrar") return await registrar(request, env);
@@ -536,7 +539,7 @@ export default {
       }
       if (m === "GET" || m === "HEAD") {
         if (ruta === "/v1/yo") return await yo(request, env);
-        if (ruta === "/v1/huellas") return await huellas(env);
+        if (ruta === "/v1/huellas") return await huellas(env,url.searchParams.get('cursor')||'0,0');
         if (ruta === "/v1/mensajes") return await bandeja(request, env);
         const rc = /^\/v1\/clave\/([^/]+)$/.exec(ruta);
         if (rc) return await claveDe(env, decodificar(rc[1]).toLowerCase());

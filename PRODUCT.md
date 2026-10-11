@@ -6,4 +6,6 @@
 
 Prueba de aceptación: comprender para qué sirve, crear un espacio, guardar el código privado, enviar una petición, regresar al mismo espacio y recuperar el acceso desde otro dispositivo. Palabras privadas y huella pública. Alex será el primer usuario de este recorrido en producción.
 
-Límites actuales: piloto sobre tres contenedores existentes, nombre nuevo para crear un vault alojado; no migra una carpeta privada ya registrada. Cifrado en reposo con clave del operador, no soberanía completa ni cifrado inaccesible al operador. El asistente propone y la persona decide. No promete herramientas instaladas por elegir una propuesta.
+La primera prueba humana detectó que faltaba conectar vaults existentes. [CONF] Ampliación del 11-oct: vaults nuevos, existentes y hechos a medida tienen entrada al plano humano conservando su identidad y archivos. La carpeta local se copia tras autorización del dueño, sin borrar el original ni prometer sincronización posterior. Una caja ya alojada se vincula sin resiembra.
+
+Límites actuales: piloto sobre tres contenedores existentes, cifrado en reposo con clave del operador, no soberanía completa ni cifrado inaccesible al operador. El asistente propone y la persona decide. No promete herramientas instaladas por elegir una propuesta. Los vaults a medida pueden conectarse; el cobro y sus precios quedan fuera de este recorrido.

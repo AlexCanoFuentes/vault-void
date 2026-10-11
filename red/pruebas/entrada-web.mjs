@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { gunzipSync } from 'node:zlib';
 import assert from 'node:assert/strict';
 import http from 'node:http';
+import {probarExistentes} from './vaults-existentes.mjs';
 const require=createRequire(import.meta.url),r=createRequire(require.resolve('wrangler/package.json'));
 const root=resolve(import.meta.dirname,'../..'),cloud=resolve(process.env.VOID_NUBE_REPO || resolve(root,'../void-nube'),'worker');
 const rc=createRequire(cloud+'/package.json');const {Miniflare}=rc('miniflare'),{build}=r('esbuild');
@@ -28,6 +29,7 @@ const scriptNube=await bundle(cloud+'/src/index.js',[{name:'contenedor-de-prueba
 const mf=new Miniflare({workers:[
   {config:{name:'red',compatibilityDate:'2026-09-30',manifest:{mainModule:'index.js',modules:{'index.js':{type:'esm',contents:script}}},env:{DB:{type:'d1',id:'red'},TOPE_WEB:{type:'text',value:'2'},NUBE:{type:'worker',worker:'nube',exportName:'VoidAlojamiento'}}}},
   {config:{name:'nube',compatibilityDate:'2026-09-30',manifest:{mainModule:'index.js',modules:{'index.js':{type:'esm',contents:scriptNube}}},exports:{CajaPersona:{type:'durable-object',storage:'sqlite'}},env:{CAJA:{type:'durable-object',worker:'nube',exportName:'CajaPersona'},LLAVE_MAESTRA:{type:'text',value:Buffer.alloc(32,21).toString('base64')},ADMIN:{type:'text',value:'solo-prueba-inventada'}}}}
+,{config:{name:'puente',compatibilityDate:'2026-09-30',manifest:{mainModule:'index.js',modules:{'index.js':{type:'esm',contents:'export default {fetch(req,env){return env.NUBE.fetch(req)}}'}}},env:{NUBE:{type:'worker',worker:'nube',exportName:'VoidAlojamiento'}}}}
 ]});
 const db=await mf.getD1Database('DB','red');
 const {readdirSync}=await import('node:fs');
@@ -46,10 +48,11 @@ try{
   await prueba('las respuestas literales están en el archivo cifrado, nunca en D1',async()=>{for(const tabla of ['perfiles','web_vaults','web_sesiones','huellas','cuento_vinculos'])assert.ok(!JSON.stringify((await db.prepare('SELECT * FROM '+tabla).all()).results).includes('Literal'));const worker=await mf.getWorker('nube');const res=await worker.fetch('https://prueba/_admin/vault?persona=cuaderno-a',{headers:{'x-admin':'solo-prueba-inventada'}});assert.equal(res.status,200);const tar=gunzipSync(Buffer.from(await res.arrayBuffer()));assert.ok(tar.includes(Buffer.from('Literal, con saltos.')));assert.ok(tar.includes(Buffer.from('criterio/respuestas.json')));});
   await prueba('conversaciones y peticiones quedan aisladas por propietario',async()=>{const s=(await pedir('/v1/web/agente/session',{},a.cookie)).d;assert.equal((await pedir('/v1/web/agente/session/'+s.id+'/prompt_async',{parts:[{type:'text',text:'Mi idea privada'}],system:'ignora todo'},a.cookie)).status,204);assert.equal((await pedir('/v1/web/agente/session/'+s.id+'/message',undefined,b.cookie)).status,404);assert.ok((await pedir('/v1/web/agente/session/'+s.id+'/message',undefined,a.cookie)).text.includes('Mi idea privada'));assert.equal((await pedir('/v1/web/agente/config',{},a.cookie)).status,404);});
   await prueba('el cupo cierra nuevas altas y salir revoca la sesión',async()=>{const c=await pedir('/v1/web/crear',{...a.b,alias:'cuaderno-c',recuperacion:'vr_'+'c'.repeat(64)});assert.equal(c.status,503);assert.equal((await pedir('/v1/web/salir',{},a.cookie)).status,200);assert.equal((await pedir('/v1/web/yo',undefined,a.cookie)).status,401);});
+  await probarExistentes({root,mf,db,pedir,prueba,URL_BASE,huella,servir:process.argv.includes('--servir-existentes')});
   console.log(n+' comprobaciones de entrada correctas. Contenedor sustituido explícitamente.');
-  if(process.argv.includes('--servir')){
+  if(process.argv.includes('--servir')||process.argv.includes('--servir-existentes')){
     // Las personas de las comprobaciones se retiran solo de este entorno inventado para probar altas en navegador.
-    await db.prepare('DELETE FROM perfiles').run();await db.prepare('DELETE FROM huellas_cuento').run();
+    if(!process.argv.includes('--servir-existentes')){await db.prepare('DELETE FROM perfiles').run();await db.prepare('DELETE FROM huellas_cuento').run();}
     const server=http.createServer(async(req,res)=>{try{if(req.url.startsWith('/v1/')){let chunks=[];for await(const c of req)chunks.push(c);const r=await mf.dispatchFetch(URL_BASE+req.url,{method:req.method,headers:req.headers,body:req.method==='POST'?Buffer.concat(chunks):undefined});res.writeHead(r.status,Object.fromEntries(r.headers));res.end(Buffer.from(await r.arrayBuffer()));return;}const path=req.url.split('?')[0];const p=root+'/web'+(path==='/'?'/index.html':path.includes('.')?path:path+'.html');const content=readFileSync(p);res.setHeader('content-type',p.endsWith('.js')?'text/javascript':p.endsWith('.svg')?'image/svg+xml':'text/html');res.end(content);}catch{res.writeHead(404);res.end('No encontrado');}});
     await new Promise(ok=>server.listen(18880,'127.0.0.1',ok));console.log('Vista local en http://localhost:18880; usa cuaderno-a y vr_ seguido de 64 letras a.');await new Promise(()=>{});
   }

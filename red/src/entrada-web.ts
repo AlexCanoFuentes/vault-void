@@ -6,7 +6,7 @@ export interface EntradaEnv {
   NUBE?: Fetcher;
   TOPE_WEB?: string;
 }
-interface Propietario { id: number; alias: string; listo: number; recuperacion_hash: string }
+interface Propietario { id: number; alias: string; listo: number; recuperacion_hash: string; alojamiento_prueba?: string }
 const COOKIE = '__Host-void';
 const VIDA = 30 * 24 * 60 * 60 * 1000;
 const RE_CODIGO = /^vr_[0-9a-f]{64}$/;
@@ -24,7 +24,7 @@ async function leer(req: Request) {
 async function sesion(req: Request, env: EntradaEnv): Promise<Propietario | null> {
   const token = req.headers.get('cookie')?.split(';').map(s => s.trim()).find(s => s.startsWith(COOKIE + '='))?.slice(COOKIE.length + 1);
   if (!token || !/^vv_[A-Za-z0-9_-]{43}$/.test(token)) return null;
-  return env.DB.prepare('SELECT p.id,p.alias,w.listo,w.recuperacion_hash FROM web_sesiones s JOIN perfiles p ON p.id=s.perfil_id JOIN web_vaults w ON w.perfil_id=p.id WHERE s.token_hash=? AND s.caduca>?')
+  return env.DB.prepare('SELECT p.id,p.alias,w.listo,w.recuperacion_hash,w.alojamiento_prueba FROM web_sesiones s JOIN perfiles p ON p.id=s.perfil_id JOIN web_vaults w ON w.perfil_id=p.id WHERE s.token_hash=? AND s.caduca>?')
     .bind(await huella(token), Date.now()).first<Propietario>();
 }
 async function entrar(p: Propietario, req: Request, env: EntradaEnv) {
@@ -47,6 +47,19 @@ export async function entradaWeb(req: Request, env: EntradaEnv, publicar: (req: 
   if (!['GET', 'POST'].includes(req.method)) return fallo(405, 'Método no permitido.');
   if (req.method === 'POST' && req.headers.get('origin') !== url.origin) return fallo(403, 'Abre esta pantalla desde Void para continuar.');
   try {
+    if (ruta === '/conectar' && req.method === 'POST') {
+      const b=await leer(req);
+      if(!/^ve_[A-Za-z0-9_-]{43}$/.test(b.enlace||'') || !RE_CODIGO.test(b.recuperacion||'')) return fallo(400,'Pega el código temporal que preparó tu vault.');
+      // RETURNING consume una sola vez, incluso con dos peticiones simultáneas. La llave debe seguir vigente.
+      const enlace=await env.DB.prepare('UPDATE web_enlaces SET usado=1 WHERE token_hash=? AND usado=0 AND caduca>? AND llave_hash=(SELECT huella_llave FROM perfiles WHERE id=web_enlaces.perfil_id) AND EXISTS(SELECT 1 FROM web_vaults WHERE perfil_id=web_enlaces.perfil_id AND listo=1) RETURNING perfil_id').bind(await huella(b.enlace),Date.now()).first<{perfil_id:number}>();
+      if(!enlace)return fallo(410,'Ese código caducó o ya se usó. Pide a tu vault un nuevo código para conectar.');
+      await env.DB.batch([
+        env.DB.prepare('UPDATE web_vaults SET alojamiento_prueba=COALESCE(alojamiento_prueba,recuperacion_hash),recuperacion_hash=? WHERE perfil_id=?').bind(await huella(b.recuperacion),enlace.perfil_id),
+        env.DB.prepare('DELETE FROM web_sesiones WHERE perfil_id=?').bind(enlace.perfil_id)
+      ]);
+      const p=await env.DB.prepare('SELECT p.id,p.alias,w.listo,w.recuperacion_hash,w.alojamiento_prueba FROM perfiles p JOIN web_vaults w ON w.perfil_id=p.id WHERE p.id=?').bind(enlace.perfil_id).first<Propietario>();
+      return entrar(p!,req,env);
+    }
     if (ruta === '/crear' && req.method === 'POST') {
       const b = await leer(req), alias = typeof b.alias === 'string' ? b.alias.trim() : '';
       const mal = problemaAlias(alias) || problemaHuella(b.huella);
@@ -84,7 +97,7 @@ export async function entradaWeb(req: Request, env: EntradaEnv, publicar: (req: 
     if (ruta === '/entrar' && req.method === 'POST') {
       const b = await leer(req);
       if (typeof b.alias !== 'string' || !RE_CODIGO.test(b.recuperacion || '')) return fallo(401, 'El nombre o el código no coinciden.');
-      const p = await env.DB.prepare('SELECT p.id,p.alias,w.listo,w.recuperacion_hash FROM perfiles p JOIN web_vaults w ON w.perfil_id=p.id WHERE p.alias=? AND w.recuperacion_hash=?').bind(b.alias.trim(), await huella(b.recuperacion)).first<Propietario>();
+      const p = await env.DB.prepare('SELECT p.id,p.alias,w.listo,w.recuperacion_hash FROM perfiles p JOIN web_vaults w ON w.perfil_id=p.id WHERE (?=\'\' OR p.alias=?) AND w.recuperacion_hash=?').bind(b.alias.trim(),b.alias.trim(), await huella(b.recuperacion)).first<Propietario>();
       if (!p) return fallo(401, 'El nombre o el código no coinciden.');
       if (!p.listo) return fallo(409, 'Tu espacio está a medio preparar. Vuelve al cuento en el navegador donde empezaste y pulsa Crear mi espacio.');
       return entrar(p, req, env);
@@ -118,9 +131,36 @@ export async function entradaWeb(req: Request, env: EntradaEnv, publicar: (req: 
         if(!Array.isArray(b.answers)||b.answers.length>10||b.answers.some((a:unknown)=>!Array.isArray(a)||a.length>20||a.some(s=>typeof s!=='string'||s.length>3000)))return fallo(400,'Las respuestas no son válidas.');
         Object.keys(b).forEach(k=>{if(k!=='answers')delete b[k];});
       }
-      const r = await env.NUBE.fetch(new Request('https://privado/agente' + api, { method: req.method, headers: { 'x-void-alias': p.alias, 'x-void-prueba': p.recuperacion_hash, 'content-type': 'application/json' }, body: b ? JSON.stringify(b) : undefined }));
+      const r = await env.NUBE.fetch(new Request('https://privado/agente' + api, { method: req.method, headers: { 'x-void-alias': p.alias, 'x-void-prueba': p.alojamiento_prueba || p.recuperacion_hash, 'content-type': 'application/json' }, body: b ? JSON.stringify(b) : undefined }));
       return new Response(r.body, { status: r.status, headers: cab });
     }
     return fallo(404, 'Esa pantalla no existe.');
   } catch { return fallo(503, 'No hemos podido completar la petición. Tus datos no se han borrado; vuelve a intentarlo.'); }
+}
+
+/** Solo el vault con su llave vigente prepara el vínculo. Nunca cambia el perfil ni la huella. */
+export async function alojarExistente(req:Request,env:EntradaEnv,p:{id:number;alias:string},llaveHash:string):Promise<Response>{
+  if(req.headers.get('x-void-consentimiento')!=='alojar-mi-vault')return fallo(400,'Confirma primero que quieres abrir tu vault existente en Void.');
+  if(!env.NUBE)return fallo(503,'El alojamiento no está disponible.');
+  try{
+    const previa=await env.DB.prepare('SELECT recuperacion_hash,alojamiento_prueba,listo FROM web_vaults WHERE perfil_id=?').bind(p.id).first<Propietario>();
+    const prueba=previa?.alojamiento_prueba || previa?.recuperacion_hash || await huella(llaveNueva());
+    const limite=Number(env.TOPE_WEB || 0);
+    if(!previa && (!Number.isInteger(limite)||limite<1))return fallo(503,'El piloto está cerrado para nuevos alojamientos.');
+    await env.DB.prepare('INSERT OR IGNORE INTO web_vaults(perfil_id,recuperacion_hash,alojamiento_prueba,creado) SELECT ?,?,?,? WHERE (SELECT COUNT(*) FROM web_vaults)<?').bind(p.id,prueba,prueba,Date.now(),limite).run();
+    const propia=await env.DB.prepare('SELECT recuperacion_hash,alojamiento_prueba,listo FROM web_vaults WHERE perfil_id=?').bind(p.id).first<Propietario>();
+    if(!propia)return fallo(503,'No queda sitio en el piloto; tu vault original sigue intacto.');
+    const origen=req.headers.get('x-void-origen');
+    if(origen!=='archivo'&&origen!=='alojado')return fallo(400,'Indica si tu vault está en una carpeta o ya alojado.');
+    const h=new Headers({'x-void-alias':p.alias,'x-void-prueba':propia.alojamiento_prueba || propia.recuperacion_hash,'x-void-origen':origen,'content-type':origen==='archivo'?'application/gzip':'application/json'});
+    const r=await env.NUBE.fetch(new Request('https://privado/conectar',{method:'POST',headers:h,body:req.body}));
+    if(!r.ok){const d=await r.json() as {error?:string};return fallo(r.status,d.error||'No se pudo abrir el alojamiento; el original sigue intacto.');}
+    const enlace=llaveNueva().replace(/^vv_/,'ve_'),caduca=Date.now()+10*60*1000;
+    await env.DB.batch([
+      env.DB.prepare('UPDATE web_vaults SET listo=1 WHERE perfil_id=?').bind(p.id),
+      env.DB.prepare('DELETE FROM web_enlaces WHERE caduca<? OR perfil_id=?').bind(Date.now(),p.id),
+      env.DB.prepare('INSERT INTO web_enlaces(token_hash,perfil_id,llave_hash,caduca) VALUES(?,?,?,?)').bind(await huella(enlace),p.id,llaveHash,caduca)
+    ]);
+    return json(200,{alias:p.alias,enlace,caduca,pagina:'https://vaultvoid.app/conectar-vault',ya_alojado:!!previa?.listo});
+  }catch{return fallo(503,'No se pudo preparar la conexión. Reintenta: nunca sustituimos tu vault por uno vacío.');}
 }

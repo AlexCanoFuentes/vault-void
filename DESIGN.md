@@ -284,3 +284,9 @@ Ficha compacta y sólida cerca de la huella elegida. Presenta un título serif y
 - **Don't** añadir sombras o desenfoque como si pertenecieran al sistema observado.
 - **Don't** presentar los ejemplos estáticos como una reproducción completa del lienzo o de su persistencia.
 - **Don't** rellenar el vacío con huellas ficticias ni círculos de sitios reservados.
+
+## Mi espacio y cuentas propias · 2026-10-12
+
+Navegación horizontal con subrayado ámbar: Conversar, Herramientas, Mis modelos y Mi acceso y mis datos. Herramientas en filas planas de dos columnas, una en móvil. Modelos y formulario de cuentas hasta 580px, select nativo, etiquetas visibles y consentimiento junto a su acción. Claves en campos de contraseña, nunca en mensajes ni almacenamiento del navegador. La exportación explica qué copia descarga.
+
+CSS de espacio posterior al estilo base: campos y lectura móvil a 16px, foco visible, salto al contenido y desplazamiento de navegación sin desbordar la página. Microtransición de opacidad de 180ms al cambiar de zona mediante Web Animations, anulada con movimiento reducido. Markdown de conversación construido con nodos DOM seguros; no ejecuta HTML recibido. Mantiene carbón, ámbar, serif y huella personal.

@@ -28,4 +28,5 @@ function crearAlojado() {
     } catch(e) {estado.textContent=e.message;boton.disabled=false;}
   };
   nombre.focus({preventScroll:true});
+  apiEntrada('capacidad').then(d=>{if(!form.isConnected)return;if(!d.disponible){boton.disabled=true;estado.textContent='El piloto está completo por ahora. Tus respuestas siguen en este navegador. Si ya tienes un vault, usa Conectar mi vault para comprobar su acceso; si ya creaste tu espacio, puedes volver a él.';const a=document.createElement('a');a.href='/conectar-vault';a.textContent='Conectar mi vault existente';form.append(a);}}).catch(()=>{if(form.isConnected)estado.textContent='No pudimos consultar la disponibilidad. Puedes reintentar: tus respuestas se conservan aquí.';});
 }

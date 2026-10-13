@@ -120,7 +120,7 @@ export async function probarExistentes({root,mf,db,pedir,prueba,URL_BASE,huella,
     for(const h of lista.filter(h=>h.alias)){assert.equal(h.posicion%2,0);assert.deepEqual(h.huella,antes.find(a=>a.alias===h.alias).huella);}assert.equal(lista.find(h=>!h.alias).posicion%2,1);
   });
   if(servir){
-    const enlaces=[];for(const f of fixtures){const r=await propietario(f,'/v1/alojar',readFileSync(f.archivo));assert.equal(r.status,200);enlaces.push(r.d);}
+    const enlaces=[];for(const f of fixtures){const r=await propietario(f,'/v1/alojar',JSON.stringify({pass:''}),{'x-void-origen':'alojado','content-type':'application/json'});assert.equal(r.status,200);enlaces.push(r.d);}
     mkdirSync(root+'/.impeccable/review',{recursive:true});writeFileSync(root+'/.impeccable/review/enlaces.json',JSON.stringify(enlaces));
   }
 }

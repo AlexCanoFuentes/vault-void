@@ -3,7 +3,7 @@
   function mostrar(d){$('conexion').hidden=true;$('guardado').hidden=false;$('titulo').textContent='El vault de @'+d.alias+' está conectado.';$('recuperacion').value=d.recuperacion;pendiente=d;}
   if(pendiente?.alias&&/^vr_[0-9a-f]{64}$/.test(pendiente.recuperacion))mostrar(pendiente);
   $('copiar').onclick=async()=>{try{await navigator.clipboard.writeText($('orden').textContent);$('copiar').textContent='Copiado';}catch{$('estado').textContent='Selecciona y copia la frase para tu asistente.';}};
-  $('vincular').onsubmit=async e=>{e.preventDefault();const enlace=$('enlace').value.trim();if(!/^ve_[A-Za-z0-9_-]{43}$/.test(enlace)){$('estado').textContent='Necesitas el código temporal que empieza por ve_. La llave del vault se queda en tu vault.';return;}
+  $('vincular').onsubmit=async e=>{e.preventDefault();if($('conectar').disabled)return;const enlace=$('enlace').value.trim();if(!/^ve_[A-Za-z0-9_-]{43}$/.test(enlace)){$('estado').textContent='Necesitas el código temporal que empieza por ve_. La llave del vault se queda en tu vault.';return;}
     const a=crypto.getRandomValues(new Uint8Array(32)),recuperacion='vr_'+Array.from(a,x=>x.toString(16).padStart(2,'0')).join('');
     try{localStorage.setItem(almacenBorrador,JSON.stringify({recuperacion}));}catch{$('estado').textContent='Este navegador no puede conservar tu código si se interrumpe. Permite el almacenamiento local antes de conectar.';return;}
     $('conectar').disabled=true;$('estado').textContent='Conectando tu vault…';

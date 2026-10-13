@@ -1,5 +1,6 @@
 /** VV-010 · Credenciales aleatorias, sesiones privadas y alojamiento por binding. */
 import { huella, llaveNueva, problemaAlias, problemaHuella } from './reglas.js';
+import {catalogoModelos,proveedoresWeb,pedirCaja} from './modelos-web.js';
 
 export interface EntradaEnv {
   DB: D1Database;
@@ -47,6 +48,11 @@ export async function entradaWeb(req: Request, env: EntradaEnv, publicar: (req: 
   if (!['GET', 'POST'].includes(req.method)) return fallo(405, 'Método no permitido.');
   if (req.method === 'POST' && req.headers.get('origin') !== url.origin) return fallo(403, 'Abre esta pantalla desde Void para continuar.');
   try {
+    if (ruta === '/capacidad' && req.method === 'GET') {
+      const usados = await env.DB.prepare('SELECT COUNT(*) n FROM web_vaults').first<{n:number}>();
+      const limite = Number(env.TOPE_WEB || 0);
+      return json(200, { disponible: !!env.NUBE && Number.isInteger(limite) && limite > (usados?.n || 0) });
+    }
     if (ruta === '/conectar' && req.method === 'POST') {
       const b=await leer(req);
       if(!/^ve_[A-Za-z0-9_-]{43}$/.test(b.enlace||'') || !RE_CODIGO.test(b.recuperacion||'')) return fallo(400,'Pega el código temporal que preparó tu vault.');
@@ -108,6 +114,46 @@ export async function entradaWeb(req: Request, env: EntradaEnv, publicar: (req: 
       const h = await env.DB.prepare('SELECT datos,semilla FROM huellas WHERE perfil_id=?').bind(p.id).first<{datos:string;semilla:string|null}>();
       return json(200, { alias: p.alias, listo: !!p.listo, huella: h ? JSON.parse(h.datos) : null, semilla: h?.semilla || p.alias });
     }
+    if (ruta === '/archivo' && req.method === 'GET' && env.NUBE && p.listo) {
+      const r = await recuperarArchivo(env, p);
+      const h = new Headers(r.headers);
+      if (r.ok) h.set('content-disposition', `attachment; filename="void-${p.alias}.tgz"`);
+      return new Response(r.body, {status:r.status, headers:h});
+    }
+    if (ruta === '/modelos' && req.method === 'GET' && env.NUBE && p.listo) {
+      return json(200,await catalogoModelos(env,p));
+    }
+    if (ruta === '/proveedores' && req.method === 'GET' && env.NUBE && p.listo) return json(200,await proveedoresWeb(env,p));
+    if (ruta === '/proveedores' && req.method === 'POST' && env.NUBE && p.listo) {
+      const b=await leer(req),catalogo=await proveedoresWeb(env,p),proveedor=catalogo.proveedores.find(x=>x.id===b.proveedor);
+      if(!proveedor)return fallo(400,'Elige un proveedor de la lista.');
+      const metodo=proveedor.metodos.find(m=>m.indice===b.metodo);
+      if(b.accion==='desconectar'){
+        const r=await pedirCaja(env,p,'/agente/auth/'+proveedor.id,'DELETE');
+        return r.ok&&await r.json()===true?json(200,{desconectado:true}):fallo(503,'No se pudo desconectar. Vuelve a intentarlo.');
+      }
+      if(!metodo||b.consentimiento!==true)return fallo(400,'Confirma la conexión y el consumo en tu propia cuenta.');
+      if(b.accion==='clave'&&metodo.tipo==='api'){
+        if(typeof b.clave!=='string'||b.clave.length<8||b.clave.length>8192||/[\x00-\x20\x7f]/.test(b.clave))return fallo(400,'Escribe una clave de API válida, sin espacios.');
+        const r=await pedirCaja(env,p,'/agente/auth/'+proveedor.id,'PUT',{type:'api',key:b.clave});
+        return r.ok&&await r.json()===true?json(200,{conectado:true,validacion:'primer-uso'}):fallo(r.status===409?409:503,r.status===409?'Espera a que termine el asistente antes de cambiar sus conexiones.':'No se pudo guardar la conexión. Vuelve a intentarlo.');
+      }
+      if(b.accion==='autorizar'&&metodo.tipo==='oauth'){
+        const inputs:Record<string,string>={};
+        for(const q of metodo.campos){if(typeof q.key==='string'&&typeof b.inputs?.[q.key]==='string'&&b.inputs[q.key].length<=1000)inputs[q.key]=b.inputs[q.key];}
+        const r=await pedirCaja(env,p,'/agente/provider/'+proveedor.id+'/oauth/authorize','POST',{method:metodo.indice,inputs});
+        if(!r.ok)return fallo(503,'El proveedor no pudo iniciar la conexión. Vuelve a intentarlo.');
+        const d=await r.json() as {url:string;method:string;instructions:string};
+        const u=new URL(d.url);if(u.protocol!=='https:')return fallo(503,'Ese método necesita una conexión desde un dispositivo local. Elige el método para navegador remoto o código.');
+        return json(200,{url:u.href,method:d.method,instructions:d.instructions});
+      }
+      if(b.accion==='completar'&&metodo.tipo==='oauth'){
+        if(b.codigo!==undefined&&(typeof b.codigo!=='string'||b.codigo.length>4096))return fallo(400,'El código de autorización no es válido.');
+        const r=await pedirCaja(env,p,'/agente/provider/'+proveedor.id+'/oauth/callback','POST',{method:metodo.indice,...b.codigo?{code:b.codigo}:{}});
+        return r.ok&&await r.json()===true?json(200,{conectado:true}):fallo(503,'La autorización no terminó. Revisa el acceso en el proveedor y vuelve a intentarlo.');
+      }
+      return fallo(400,'Elige un método de conexión disponible.');
+    }
     if (ruta === '/salir' && req.method === 'POST') {
       const token = req.headers.get('cookie')!.split(';').map(s => s.trim()).find(s => s.startsWith(COOKIE + '='))!.slice(COOKIE.length + 1);
       await env.DB.prepare('DELETE FROM web_sesiones WHERE token_hash=?').bind(await huella(token)).run();
@@ -121,8 +167,12 @@ export async function entradaWeb(req: Request, env: EntradaEnv, publicar: (req: 
       const b = req.method === 'POST' ? await leer(req) : null;
       if (api.endsWith('/prompt_async')) {
         if (!Array.isArray(b.parts) || b.parts.length !== 1 || b.parts[0].type !== 'text' || typeof b.parts[0].text !== 'string' || !b.parts[0].text.trim() || b.parts[0].text.length > 6000) return fallo(400, 'Escribe una petición de hasta 6000 caracteres.');
-        // No se aceptan overrides de sistema, modelo, agente o herramientas.
-        Object.keys(b).forEach(k => { if (k !== 'parts') delete b[k]; });
+        const catalogo=await catalogoModelos(env,p),elegido=b.model||catalogo.defecto;
+        const modelo=catalogo.modelos.find(m=>m.providerID===elegido?.providerID&&m.modelID===elegido?.modelID);
+        if(!modelo)return fallo(400,'Elige un modelo disponible en tus conexiones.');
+        if(modelo.cuentaPropia&&b.consumoPropio!==true)return fallo(400,'Confirma que esta petición consume tu cuenta del proveedor.');
+        b.model={providerID:modelo.providerID,modelID:modelo.modelID};
+        Object.keys(b).forEach(k => { if (!['parts','model'].includes(k)) delete b[k]; });
       } else if (req.method === 'POST' && api === '/session') Object.keys(b).forEach(k => delete b[k]);
       else if (api.startsWith('/permission/') && api.endsWith('/reply')) {
         if (!['once','reject'].includes(b.reply)) return fallo(400, 'Elige permitir esta vez o rechazar.');

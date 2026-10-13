@@ -1,0 +1,25 @@
+/* Mi espacio: el mismo lienzo de huellas, ahora con puertas claras a cada tarea. */
+html{scrollbar-color:var(--linea) var(--fondo);-webkit-text-size-adjust:100%}
+::selection{background:var(--acento);color:var(--fondo)}input,textarea{caret-color:var(--acento)}
+button,a.boton{transition:border-color 160ms,background-color 160ms,color 160ms,transform 120ms}
+button:hover:not(:disabled),a.boton:hover{border-color:var(--acento)}button:active:not(:disabled){transform:translateY(1px)}
+input::placeholder,textarea::placeholder{color:var(--secundaria);opacity:1}
+select{width:100%;min-height:46px;padding:10px 12px;border:1px solid var(--linea);border-radius:10px;background:var(--panel);color:var(--tinta);font:inherit}
+button:disabled,select:disabled{cursor:default}.saltar{position:absolute;top:12px;left:12px;z-index:5;padding:12px;background:var(--panel);transform:translateY(-150%)}.saltar:focus{transform:none}
+.identidad{margin-bottom:24px}.identidad>div{min-width:0}.identidad h1{overflow-wrap:anywhere;text-wrap:balance}
+.zonas{display:flex;gap:4px;border-bottom:1px solid var(--linea);overflow-x:auto;margin-bottom:30px;padding-bottom:2px}
+.zonas button{border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;white-space:nowrap;padding:14px 15px;color:var(--secundaria)}
+.zonas button[aria-pressed=true]{border-bottom-color:var(--acento);color:var(--tinta)}
+.zona>h2{margin-top:0}.zona>p{max-width:68ch}.elegir-modelo{max-width:560px;margin:22px 0}.elegir-modelo label{margin:0 0 8px}.elegir-modelo p{margin:8px 0;font-size:13px}
+.consentimiento{display:flex;align-items:flex-start;gap:10px}.consentimiento input{width:20px;min-width:20px;height:20px;margin:3px 0 0}
+.tareas{display:grid;grid-template-columns:1fr 1fr;gap:0 32px;margin:24px 0}.tareas button{text-align:left;border:0;border-top:1px solid var(--linea);border-radius:0;padding:24px 0;background:transparent}
+.tareas strong,.tareas span{display:block}.tareas strong{font-weight:500;font-size:16px}.tareas span{color:var(--secundaria);margin-top:8px}.tareas button:hover strong{color:var(--acento)}
+#conectar-proveedor,#autorizacion{max-width:580px}#conectar-proveedor .fila{margin-top:20px}#autorizacion{margin-top:30px;border-top:1px solid var(--linea);padding-top:14px}
+#autorizacion-instrucciones{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--tinta)}
+.datos-fila{display:grid;grid-template-columns:1fr auto;align-items:start;gap:28px;border-top:1px solid var(--linea);padding:24px 0}.datos-fila h3{font:500 16px/1.5 var(--mono);margin:0}.datos-fila p{max-width:62ch;margin-bottom:0}.datos-fila>button,.datos-fila>a{margin-top:2px}
+.mensajes{padding:0 8px 0 0}.mensaje{white-space:normal}.mensaje>pre{white-space:pre-wrap}.mensaje p{margin:8px 0}.mensaje code{font:inherit;background:var(--panel);padding:1px 4px;border-radius:4px}.mensaje .codigo{background:var(--panel);padding:14px;overflow-x:auto}.mensaje .codigo code{padding:0}.mensaje ul,.mensaje ol{padding-left:24px}.mensaje li{margin:5px 0}.mensaje a{overflow-wrap:anywhere}
+#hablar[aria-busy=true] .mensajes{opacity:.8}#modelo-respuesta{overflow-wrap:anywhere}#proveedor-estado{max-width:70ch}
+@media(max-width:700px){body{font-size:16px}input,textarea,select{font-size:16px}.zonas{margin-inline:-18px;padding-inline:6px}.zonas button{font-size:14px;padding:13px 12px}.tareas{grid-template-columns:1fr}.datos-fila{grid-template-columns:1fr;gap:16px}.datos-fila>button,.datos-fila>a{justify-self:start}#conectar-proveedor button{max-width:100%}.identidad h1{font-size:30px}.identidad p,.identidad a{font-size:14px}.peticion .estado{max-width:none}.peticion .fila{gap:8px}.mensajes{max-height:48dvh}.ejemplos button{font-size:14px}.elegir-modelo p{font-size:14px}}
+@media(prefers-reduced-motion:reduce){button,a.boton{transition:none}button:active:not(:disabled){transform:none}}
+
+.mensaje p b,.mensaje li b{display:inline;color:inherit;margin:0;font-weight:500}

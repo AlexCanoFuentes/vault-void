@@ -88,6 +88,9 @@ export async function entradaWeb(req: Request, env: EntradaEnv, publicar: (req: 
       // RETURNING consume una sola vez, incluso con dos peticiones simultáneas. La llave debe seguir vigente.
       const enlace=await env.DB.prepare('UPDATE web_enlaces SET usado=1 WHERE token_hash=? AND usado=0 AND caduca>? AND llave_hash=(SELECT huella_llave FROM perfiles WHERE id=web_enlaces.perfil_id) AND EXISTS(SELECT 1 FROM web_vaults WHERE perfil_id=web_enlaces.perfil_id AND listo=1) RETURNING perfil_id').bind(await huella(b.enlace),Date.now()).first<{perfil_id:number}>();
       if(!enlace)return fallo(410,'Ese código caducó o ya se usó. Pide a tu vault un nuevo código para conectar.');
+      // Con candado, el código nuevo no abre nada: cambiarlo dejaría fuera al dueño. Se entra con su código o su kit.
+      const previo=await env.DB.prepare('SELECT p.id,p.alias,w.listo,w.recuperacion_hash,w.alojamiento_prueba FROM perfiles p JOIN web_vaults w ON w.perfil_id=p.id WHERE p.id=?').bind(enlace.perfil_id).first<Propietario>();
+      if(previo&&env.NUBE){const e=await candado(env,previo,'estado');if(e.ok&&(await e.json() as {candado?:boolean}).candado)return fallo(409,'Tu vault ya tiene su candado. Entra en Mi espacio con tu código o con tu kit de recuperación.');}
       await env.DB.batch([
         env.DB.prepare('UPDATE web_vaults SET alojamiento_prueba=COALESCE(alojamiento_prueba,recuperacion_hash),recuperacion_hash=? WHERE perfil_id=?').bind(await huella(b.recuperacion),enlace.perfil_id),
         env.DB.prepare('DELETE FROM web_sesiones WHERE perfil_id=?').bind(enlace.perfil_id)
@@ -104,7 +107,7 @@ export async function entradaWeb(req: Request, env: EntradaEnv, publicar: (req: 
       if (b.propuesta !== null && (typeof b.propuesta !== 'string' || b.propuesta.length > 100)) return fallo(400, 'La propuesta no es válida.');
       if (!env.NUBE) return fallo(503, 'El alojamiento todavía no está abierto. Tus respuestas siguen en este navegador.');
       const prueba = await huella(b.recuperacion), llave = await llaveWeb(b.recuperacion);
-      let p = await env.DB.prepare('SELECT p.id,p.alias,w.listo,w.recuperacion_hash FROM perfiles p LEFT JOIN web_vaults w ON w.perfil_id=p.id WHERE p.alias=?').bind(alias).first<Propietario>();
+      let p = await env.DB.prepare('SELECT p.id,p.alias,w.listo,w.recuperacion_hash,w.alojamiento_prueba FROM perfiles p LEFT JOIN web_vaults w ON w.perfil_id=p.id WHERE p.alias=?').bind(alias).first<Propietario>();
       if (p && p.recuperacion_hash !== prueba) return fallo(409, 'Ese nombre ya tiene un vault. Elige otro o entra con su código.');
       if (!p) {
         const limite = Number(env.TOPE_WEB || 0);
@@ -114,7 +117,7 @@ export async function entradaWeb(req: Request, env: EntradaEnv, publicar: (req: 
           env.DB.prepare("INSERT OR IGNORE INTO perfiles(alias,agente,huella_llave,publico,creado) SELECT ?,'Void',?,'',? WHERE (SELECT COUNT(*) FROM web_vaults)<?").bind(alias, await huella(llave), Date.now(), limite),
           env.DB.prepare('INSERT OR IGNORE INTO web_vaults(perfil_id,recuperacion_hash,creado) SELECT id,?,? FROM perfiles WHERE alias=? AND huella_llave=?').bind(prueba, Date.now(), alias, await huella(llave)),
         ]);
-        p = await env.DB.prepare('SELECT p.id,p.alias,w.listo,w.recuperacion_hash FROM perfiles p JOIN web_vaults w ON w.perfil_id=p.id WHERE p.alias=?').bind(alias).first<Propietario>();
+        p = await env.DB.prepare('SELECT p.id,p.alias,w.listo,w.recuperacion_hash,w.alojamiento_prueba FROM perfiles p JOIN web_vaults w ON w.perfil_id=p.id WHERE p.alias=?').bind(alias).first<Propietario>();
         if (!p) return fallo(503, 'Ahora mismo no queda sitio en el piloto. Tus respuestas siguen aquí.');
         if (p.recuperacion_hash !== prueba) return fallo(409, 'Ese nombre acaba de reservarse. Elige otro.');
       }
@@ -138,15 +141,18 @@ export async function entradaWeb(req: Request, env: EntradaEnv, publicar: (req: 
       if (typeof b.alias !== 'string' || !b.alias.trim()) return fallo(401, 'Escribe el nombre de tu vault y tu kit.');
       const p = await env.DB.prepare('SELECT p.id,p.alias,w.listo,w.recuperacion_hash,w.alojamiento_prueba FROM perfiles p JOIN web_vaults w ON w.perfil_id=p.id WHERE p.alias=? AND w.listo=1').bind(b.alias.trim()).first<Propietario>();
       if (!p || !env.NUBE) return fallo(401, 'El nombre o el kit no coinciden.');
-      const abierto = await abrirCandado(env, p, req, 'kit', b.kit);
-      if (!abierto.abierto) return fallo(401, 'El nombre o el kit no coinciden.');
       const nuevo = 'vr_' + [...crypto.getRandomValues(new Uint8Array(32))].map(x => x.toString(16).padStart(2, '0')).join('');
-      const r = await candado(env, p, 'codigo-nuevo', { secreto: nuevo });
-      if (!r.ok) return fallo(503, 'Tu vault se abrió, pero no pudimos crear tu código nuevo. Vuelve a entrar con tu kit.');
-      await env.DB.batch([
-        env.DB.prepare('UPDATE web_vaults SET alojamiento_prueba=COALESCE(alojamiento_prueba,recuperacion_hash),recuperacion_hash=? WHERE perfil_id=?').bind(await huella(nuevo), p.id),
+      const viejo = galleta(req, COOKIE_AP), reemplazar = viejo && RE_APARATO.test(viejo) ? viejo.slice(0, 16) : undefined;
+      // En la caja, en un solo paso: el kit abre y el código nuevo queda puesto. Dos recuperaciones no se cruzan allí.
+      const r = await candado(env, p, 'recuperar', { kit: b.kit, codigo: nuevo, reemplazar });
+      if (!r.ok) return fallo(401, 'El nombre o el kit no coinciden.');
+      const abierto = await r.json() as Record<string, unknown>;
+      // Aquí solo si nadie cambió el código mientras tanto. Si otra recuperación ganó, el kit sigue valiendo: se repite.
+      const [mover] = await env.DB.batch([
+        env.DB.prepare('UPDATE web_vaults SET alojamiento_prueba=COALESCE(alojamiento_prueba,recuperacion_hash),recuperacion_hash=? WHERE perfil_id=? AND recuperacion_hash=?').bind(await huella(nuevo), p.id, p.recuperacion_hash),
         env.DB.prepare('DELETE FROM web_sesiones WHERE perfil_id=?').bind(p.id),
       ]);
+      if (!mover.meta.changes) return fallo(409, 'Había otra recuperación a la vez. Vuelve a entrar con tu kit: sigue valiendo.');
       return entrar(p, req, env, { ...abierto, codigoNuevo: nuevo });
     }
     if (ruta === '/entrar' && req.method === 'POST') {

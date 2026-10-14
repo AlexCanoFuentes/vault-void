@@ -177,6 +177,9 @@ export async function entradaWeb(req: Request, env: EntradaEnv, publicar: (req: 
       const b = await leer(req);
       if (b.accion === 'abrir') {
         if (!(RE_KIT.test(b.secreto || '') || RE_CODIGO.test(b.secreto || ''))) return fallo(400, 'Pega tu kit o tu código.');
+        // Un código tiene que ser el de esta cuenta: si no, con una sesión robada o una errata se pondría un candado
+        // ajeno al vault y su dueño quedaría fuera (14-oct). El kit lo comprueba el propio candado.
+        if (RE_CODIGO.test(b.secreto) && await huella(b.secreto) !== p.recuperacion_hash) return fallo(401, 'Ese no es tu código.');
         const d = await abrirCandado(env, p, req, RE_KIT.test(b.secreto) ? 'kit' : 'codigo', b.secreto);
         if (!d.abierto) return fallo(401, 'Esa llave no abre tu vault.');
         const h = new Headers(cab), ap = d.aparato as { id: string; secreto: string } | null;

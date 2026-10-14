@@ -414,7 +414,8 @@ body.vh-activa .pista{
       crear.style.opacity = String(1 - entregar);
     }
 
-    if (!visto()) {
+    // Se repite a propósito con «Ver cómo funciona» (?historia en la dirección), aunque ya se haya visto (14-oct).
+    if (!visto() || new URLSearchParams(location.search).has('historia')) {
       try {
         montar();
       } catch {

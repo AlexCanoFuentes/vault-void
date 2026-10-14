@@ -93,6 +93,9 @@ try{
     const nuevo=await pedir('/v1/web/entrar',{alias:v.b.alias,recuperacion:k.d.codigoNuevo});assert.equal(nuevo.status,200);assert.equal(nuevo.d.candado,'abierto');
     llaves=galletas(nuevo);
   });
+  await prueba('candado: con la sesión abierta, un código que no es el de la cuenta no pone ni abre candados',async()=>{
+    const r=await pedir('/v1/web/candado',{accion:'abrir',secreto:'vr_'+'0'.repeat(64)},llaves);assert.equal(r.status,401,r.text);assert.match(r.d.error||'',/no es tu código/);
+  });
   await prueba('candado: confirmar el kit y salir borra la llave del aparato',async()=>{
     const est=await pedir('/v1/web/candado',undefined,llaves);assert.equal(est.status,200);assert.equal(est.d.kitPendiente,true);
     assert.equal((await pedir('/v1/web/candado',{accion:'confirmar'},llaves)).status,200);

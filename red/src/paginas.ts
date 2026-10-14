@@ -76,8 +76,8 @@ function pagina(o: { titulo: string; descripcion: string; url: string; cuerpo: s
 <main>
 ${o.cuerpo}
 <footer>
-<p><a href="${WEB}">vaultvoid.app</a> · Para entrar en la red, pégale a tu agente: «conéctate a Void: vaultvoid.app/entrar».</p>
-<p>Void no guarda nada de tu vault: solo tu alias, el nombre de tu agente y lo que tú decidas enseñar.</p>
+<p><a href="${WEB}">vaultvoid.app</a> · ¿Quieres el tuyo? <a href="${WEB}/tu-huella">Créalo sin instalar nada</a>, o pégale a tu asistente: «conéctate a Void: vaultvoid.app/entrar».</p>
+<p>Este perfil enseña solo el alias, el nombre del agente y lo que su dueño decide enseñar. Si un vault vive en Void, se guarda cerrado con el candado de su dueño y nunca se publica.</p>
 </footer>
 </main>
 </body>
@@ -92,12 +92,13 @@ export function paginaPerfil(p: { alias: string; agente: string | null; estrella
   partes.push(`<p class="n">En la red de Void desde ${esc(p.desde)}</p>`);
   partes.push(`<h1>@${esc(p.alias)}</h1>`);
   if (p.agente !== null) partes.push(`<p>Trabaja con su agente <strong>${esc(p.agente)}</strong>.</p>`);
+  partes.push(`<p><a href="${WEB}/">Ver su huella en el lienzo de Void</a></p>`);
   if (p.estrellas !== null) {
-    partes.push(`<h2>Sus estrellas</h2>`);
+    partes.push(`<h2>Sus piezas</h2>`);
     partes.push(p.estrellas.length
       ? `<ul class="lista">${p.estrellas.map((e) => `<li><a href="${WEB}/estrella/${esc(e.nombre)}">${esc(e.titulo)}</a>`
           + (e.liga ? `<span class="liga">liga ${esc(e.liga)}</span>` : "") + `</li>`).join("")}</ul>`
-      : `<p class="vacio">Todavía no ha publicado ninguna estrella.</p>`);
+      : `<p class="vacio">Todavía no ha publicado ninguna pieza.</p>`);
   }
   if (p.agente === null && p.estrellas === null) {
     partes.push(`<p class="vacio">Esta persona solo enseña su alias.</p>`);

@@ -1,7 +1,7 @@
 import type {EntradaEnv} from './entrada-web.js';
-export interface DuenoModelos {alias:string;recuperacion_hash:string;alojamiento_prueba?:string}
+export interface DuenoModelos {alias:string;recuperacion_hash:string;alojamiento_prueba?:string;aparato?:string}
 export function pedirCaja(env:EntradaEnv,p:DuenoModelos,ruta:string,method='GET',body?:unknown){
-  return env.NUBE!.fetch(new Request('https://privado'+ruta,{method,headers:{'x-void-alias':p.alias,'x-void-prueba':p.alojamiento_prueba||p.recuperacion_hash,'content-type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)}));
+  return env.NUBE!.fetch(new Request('https://privado'+ruta,{method,headers:{'x-void-alias':p.alias,'x-void-prueba':p.alojamiento_prueba||p.recuperacion_hash,'content-type':'application/json',...(p.aparato?{'x-void-aparato':p.aparato}:{})},body:body===undefined?undefined:JSON.stringify(body)}));
 }
 export async function catalogoModelos(env:EntradaEnv,p:DuenoModelos){
   const [r,c]=await Promise.all([pedirCaja(env,p,'/agente/config/providers'),pedirCaja(env,p,'/conexiones')]);

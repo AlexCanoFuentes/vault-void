@@ -38,7 +38,7 @@ const scriptNube=await bundle(cloud+'/src/index.js',[{name:'contenedor-de-prueba
 const mf=new Miniflare({workers:[
   {config:{name:'red',compatibilityDate:'2026-09-30',manifest:{mainModule:'index.js',modules:{'index.js':{type:'esm',contents:script}}},env:{DB:{type:'d1',id:'red'},TOPE_WEB:{type:'text',value:'2'},NUBE:{type:'worker',worker:'nube',exportName:'VoidAlojamiento'}}}},
   {config:{name:'nube',compatibilityDate:'2026-09-30',manifest:{mainModule:'index.js',modules:{'index.js':{type:'esm',contents:scriptNube}}},exports:{CajaPersona:{type:'durable-object',storage:'sqlite'}},env:{CAJA:{type:'durable-object',worker:'nube',exportName:'CajaPersona'},LLAVE_MAESTRA:{type:'text',value:Buffer.alloc(32,21).toString('base64')},ADMIN:{type:'text',value:'solo-prueba-inventada'}}}}
-,{config:{name:'puente',compatibilityDate:'2026-09-30',manifest:{mainModule:'index.js',modules:{'index.js':{type:'esm',contents:`export default {fetch(req,env){const u=new URL(req.url);if(u.pathname==='/prueba-interno')return env.CAJA.get(env.CAJA.idFromName('existente-a')).interno('PUT','/vault',req.body,{bytes:Number(req.headers.get('x-void-bytes')),sha256:req.headers.get('x-void-sha256')});return env.NUBE.fetch(req)}}`}}},env:{NUBE:{type:'worker',worker:'nube',exportName:'VoidAlojamiento'},CAJA:{type:'durable-object',worker:'nube',exportName:'CajaPersona'}}}}
+,{config:{name:'puente',compatibilityDate:'2026-09-30',manifest:{mainModule:'index.js',modules:{'index.js':{type:'esm',contents:`export default {async fetch(req,env){const u=new URL(req.url);const caja=a=>env.CAJA.get(env.CAJA.idFromName(a));if(u.pathname==='/prueba-dormir'){await caja(u.searchParams.get('alias')).onStop({exitCode:0,reason:'prueba'});return new Response('dormida');}if(u.pathname==='/prueba-desde-dentro'){const r=await caja(u.searchParams.get('alias')).interno('GET','/vault',null);return new Response(null,{status:r.status});}if(u.pathname==='/prueba-interno')return env.CAJA.get(env.CAJA.idFromName('existente-a')).interno('PUT','/vault',req.body,{bytes:Number(req.headers.get('x-void-bytes')),sha256:req.headers.get('x-void-sha256')});return env.NUBE.fetch(req)}}`}}},env:{NUBE:{type:'worker',worker:'nube',exportName:'VoidAlojamiento'},CAJA:{type:'durable-object',worker:'nube',exportName:'CajaPersona'}}}}
 ]});
 const db=await mf.getD1Database('DB','red');
 const {readdirSync}=await import('node:fs');
@@ -63,6 +63,45 @@ try{
   await prueba('descarga privada por cookie y capacidad sin crear una cuenta ficticia',async()=>{assert.equal((await pedir('/v1/web/archivo')).status,401);const r=await mf.dispatchFetch(URL_BASE+'/v1/web/archivo',{headers:{cookie:a.cookie}});assert.equal(r.status,200);assert.match(r.headers.get('content-disposition'),/void-cuaderno-a/);assert.ok(gunzipSync(Buffer.from(await r.arrayBuffer())).includes(Buffer.from('Literal, con saltos.')));assert.equal((await pedir('/v1/web/capacidad')).d.disponible,false);});
   await prueba('el cupo cierra nuevas altas y salir revoca la sesión',async()=>{const c=await pedir('/v1/web/crear',{...a.b,alias:'cuaderno-c',recuperacion:'vr_'+'c'.repeat(64)});assert.equal(c.status,503);assert.equal((await pedir('/v1/web/salir',{},a.cookie)).status,200);assert.equal((await pedir('/v1/web/yo',undefined,a.cookie)).status,401);});
   await probarExistentes({root,mf,db,pedir,prueba,URL_BASE,huella,servir:process.argv.includes('--servir-existentes')});
+  // ---- el candado del dueño (fase 2a, 14-oct). Con su propio vault: las pruebas de arriba vacían los perfiles. ----
+  await db.prepare('DELETE FROM web_sesiones').run();await db.prepare('DELETE FROM web_vaults').run();
+  const v=await alta('candado-a','e');
+  const galletas=(r)=>r.headers.getSetCookie().map(c=>c.split(';')[0]).join('; ');
+  const sinAparato=(c)=>c.split('; ').filter(x=>!x.startsWith('__Host-void-ap=')).join('; ');
+  const dormir=async(alias)=>{const r=await mf.getWorker('puente');return r.fetch('http://puente/prueba-dormir?alias='+alias);};
+  const desdeDentro=async(alias)=>(await (await mf.getWorker('puente')).fetch('http://puente/prueba-desde-dentro?alias='+alias)).status;
+  await prueba('candado: un vault nuevo nace con candado, su kit se enseña una vez y Void no guarda ninguna llave',async()=>{
+    assert.match(v.d.kit||'',/^vk_[0-9a-f]{64}$/,'el alta no dio el kit');assert.equal(v.d.candado,'abierto');
+    const otra=await pedir('/v1/web/entrar',{alias:v.b.alias,recuperacion:v.b.recuperacion});assert.equal(otra.status,200,otra.text);assert.ok(!otra.d.kit,'el kit se enseñó dos veces');
+    const filas=JSON.stringify(await db.prepare('SELECT * FROM web_vaults').all());assert.ok(!filas.includes(v.d.kit.slice(3,30)),'el kit está en D1');
+  });
+  let llaves=galletas(v);
+  await prueba('candado: dormida, ni Void ni la caja abren el vault; con la llave del aparato se abre sola',async()=>{
+    assert.ok(llaves.includes('__Host-void-ap='),'no se recordó el aparato');
+    await dormir(v.b.alias);assert.equal(await desdeDentro(v.b.alias),423,'la caja dormida entrega el vault sin su dueño');
+    const sin=await pedir('/v1/web/archivo',undefined,sinAparato(llaves));assert.equal(sin.status,423,'sin la llave del aparato se descarga');
+    const con=await pedir('/v1/web/archivo',undefined,llaves);assert.equal(con.status,200,'con la llave del aparato no abre: '+con.text.slice(0,120));
+    assert.equal(await desdeDentro(v.b.alias),200,'abierta, la caja no recibe su vault');
+  });
+  await prueba('candado: perdiste el código, el kit entra y da uno nuevo; el viejo deja de entrar',async()=>{
+    await dormir(v.b.alias);
+    assert.equal((await pedir('/v1/web/entrar',{alias:v.b.alias,kit:'vk_'+'0'.repeat(64)})).status,401,'un kit ajeno entra');
+    const k=await pedir('/v1/web/entrar',{alias:v.b.alias,kit:v.d.kit});assert.equal(k.status,200,k.text);
+    assert.match(k.d.codigoNuevo||'',/^vr_[0-9a-f]{64}$/);assert.equal(k.d.candado,'abierto');
+    assert.equal((await pedir('/v1/web/entrar',{alias:v.b.alias,recuperacion:v.b.recuperacion})).status,401,'el código viejo sigue entrando');
+    await dormir(v.b.alias);
+    const nuevo=await pedir('/v1/web/entrar',{alias:v.b.alias,recuperacion:k.d.codigoNuevo});assert.equal(nuevo.status,200);assert.equal(nuevo.d.candado,'abierto');
+    llaves=galletas(nuevo);
+  });
+  await prueba('candado: confirmar el kit y salir borra la llave del aparato',async()=>{
+    const est=await pedir('/v1/web/candado',undefined,llaves);assert.equal(est.status,200);assert.equal(est.d.kitPendiente,true);
+    assert.equal((await pedir('/v1/web/candado',{accion:'confirmar'},llaves)).status,200);
+    assert.equal((await pedir('/v1/web/candado',undefined,llaves)).d.kitPendiente,false);
+    assert.equal((await pedir('/v1/web/salir',{},llaves)).status,200);
+    await dormir(v.b.alias);
+    assert.equal(await desdeDentro(v.b.alias),423,'tras salir y dormir, la caja sigue abierta');
+    assert.equal((await pedir('/v1/web/archivo',undefined,llaves)).status,401,'la sesión y la llave del aparato siguen valiendo tras salir');
+  });
   console.log(n+' comprobaciones de entrada correctas. Contenedor sustituido explícitamente.');
   if(process.argv.includes('--servir')||process.argv.includes('--servir-existentes')){
     // Las personas de las comprobaciones se retiran solo de este entorno inventado para probar altas en navegador.

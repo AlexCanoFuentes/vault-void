@@ -7,8 +7,13 @@ export interface EntradaEnv {
   NUBE?: Fetcher;
   TOPE_WEB?: string;
 }
-interface Propietario { id: number; alias: string; listo: number; recuperacion_hash: string; alojamiento_prueba?: string }
+interface Propietario { id: number; alias: string; listo: number; recuperacion_hash: string; alojamiento_prueba?: string; aparato?: string }
 const COOKIE = '__Host-void';
+// La llave de «recordar este aparato» (fase 2a, candado del dueño): abre la caja al despertar sin teclear el
+// código. Solo vive en este navegador; Void no la guarda. Salir la borra.
+const COOKIE_AP = '__Host-void-ap';
+const RE_APARATO = /^[0-9a-f]{16}:vd_[0-9a-f]{64}$/;
+const RE_KIT = /^vk_[0-9a-f]{64}$/;
 const VIDA = 30 * 24 * 60 * 60 * 1000;
 const RE_CODIGO = /^vr_[0-9a-f]{64}$/;
 const cab = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' };
@@ -22,20 +27,44 @@ async function leer(req: Request) {
   if (!b || typeof b !== 'object' || Array.isArray(b)) throw new Error('formato');
   return b;
 }
+const galleta = (req: Request, nombre: string) => req.headers.get('cookie')?.split(';').map(s => s.trim()).find(s => s.startsWith(nombre + '='))?.slice(nombre.length + 1);
 async function sesion(req: Request, env: EntradaEnv): Promise<Propietario | null> {
-  const token = req.headers.get('cookie')?.split(';').map(s => s.trim()).find(s => s.startsWith(COOKIE + '='))?.slice(COOKIE.length + 1);
+  const token = galleta(req, COOKIE);
   if (!token || !/^vv_[A-Za-z0-9_-]{43}$/.test(token)) return null;
-  return env.DB.prepare('SELECT p.id,p.alias,w.listo,w.recuperacion_hash,w.alojamiento_prueba FROM web_sesiones s JOIN perfiles p ON p.id=s.perfil_id JOIN web_vaults w ON w.perfil_id=p.id WHERE s.token_hash=? AND s.caduca>?')
+  const p = await env.DB.prepare('SELECT p.id,p.alias,w.listo,w.recuperacion_hash,w.alojamiento_prueba FROM web_sesiones s JOIN perfiles p ON p.id=s.perfil_id JOIN web_vaults w ON w.perfil_id=p.id WHERE s.token_hash=? AND s.caduca>?')
     .bind(await huella(token), Date.now()).first<Propietario>();
+  const ap = galleta(req, COOKIE_AP);
+  if (p && ap && RE_APARATO.test(ap)) p.aparato = ap;
+  return p;
 }
-async function entrar(p: Propietario, req: Request, env: EntradaEnv) {
+const pruebaDe = (p: Propietario) => p.alojamiento_prueba || p.recuperacion_hash;
+/** Habla con el candado de la caja de esta persona. */
+function candado(env: EntradaEnv, p: Propietario, accion: string, body?: unknown) {
+  return env.NUBE!.fetch(new Request('https://privado/candado/' + accion, { method: body === undefined ? 'GET' : 'POST', headers: { 'x-void-alias': p.alias, 'x-void-prueba': pruebaDe(p), 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) }));
+}
+/** Abre el candado al entrar y deja recordado este aparato. Si el vault aún no tiene candado y se entra con el
+ *  código, se le pone (y se migra): la respuesta trae el kit, que se enseña una sola vez. */
+async function abrirCandado(env: EntradaEnv, p: Propietario, req: Request, tipo: 'codigo' | 'kit', secreto: string) {
+  if (!env.NUBE) return { abierto: false } as Record<string, unknown>;
+  const viejo = galleta(req, COOKIE_AP), reemplazar = viejo && RE_APARATO.test(viejo) ? viejo.slice(0, 16) : undefined;
+  const r = await candado(env, p, 'abrir', { tipo, secreto, recordar: true, reemplazar });
+  const d = await r.json() as Record<string, unknown>;
+  return r.ok ? d : { abierto: false, status: r.status, error: d.error };
+}
+async function entrar(p: Propietario, req: Request, env: EntradaEnv, extra: Record<string, unknown> = {}) {
   const token = llaveNueva();
   const anterior = req.headers.get('cookie')?.split(';').map(s => s.trim()).find(s => s.startsWith(COOKIE + '='))?.slice(COOKIE.length + 1);
   await env.DB.batch([
     env.DB.prepare('DELETE FROM web_sesiones WHERE caduca<? OR token_hash=?').bind(Date.now(), await huella(anterior || '')),
     env.DB.prepare('INSERT INTO web_sesiones(token_hash,perfil_id,caduca) VALUES(?,?,?)').bind(await huella(token), p.id, Date.now() + VIDA),
   ]);
-  return json(200, { alias: p.alias, listo: !!p.listo }, { 'set-cookie': `${COOKIE}=${token}; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=${VIDA / 1000}` });
+  const h = new Headers(cab);
+  h.append('set-cookie', `${COOKIE}=${token}; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=${VIDA / 1000}`);
+  const ap = extra.aparato as { id?: string; secreto?: string } | null | undefined;
+  if (ap?.id && ap.secreto) h.append('set-cookie', `${COOKIE_AP}=${ap.id}:${ap.secreto}; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=${VIDA / 1000}`);
+  const { aparato, abierto, status, error, ...visible } = extra;
+  // La caja cerrada no impide entrar: la pantalla pide el kit o el código anterior para abrirla.
+  return new Response(JSON.stringify({ alias: p.alias, listo: !!p.listo, candado: abierto ? 'abierto' : 'cerrado', ...visible }), { status: 200, headers: h });
 }
 export async function llaveWeb(codigo: string) {
   const hex = await huella('void-web-v1:' + codigo);
@@ -64,7 +93,7 @@ export async function entradaWeb(req: Request, env: EntradaEnv, publicar: (req: 
         env.DB.prepare('DELETE FROM web_sesiones WHERE perfil_id=?').bind(enlace.perfil_id)
       ]);
       const p=await env.DB.prepare('SELECT p.id,p.alias,w.listo,w.recuperacion_hash,w.alojamiento_prueba FROM perfiles p JOIN web_vaults w ON w.perfil_id=p.id WHERE p.id=?').bind(enlace.perfil_id).first<Propietario>();
-      return entrar(p!,req,env);
+      return entrar(p!,req,env,await abrirCandado(env,p!,req,'codigo',b.recuperacion));
     }
     if (ruta === '/crear' && req.method === 'POST') {
       const b = await leer(req), alias = typeof b.alias === 'string' ? b.alias.trim() : '';
@@ -93,26 +122,64 @@ export async function entradaWeb(req: Request, env: EntradaEnv, publicar: (req: 
         // Reclamar antes de sembrar: una huella ajena nunca crea una caja con palabras.
         const r = await publicar(new Request(req.url, { method: 'POST', headers: { authorization: 'Bearer ' + llave, 'content-type': 'application/json' }, body: JSON.stringify({ huella: b.huella, cuento: b.cuento }) }));
         if (!r.ok) return r;
-        const nube = await env.NUBE.fetch(new Request('https://privado/crear', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ alias, prueba, llave, respuestas: b.respuestas, propuesta: b.propuesta }) }));
+        const nube = await env.NUBE.fetch(new Request('https://privado/crear', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ alias, prueba, llave, codigo: b.recuperacion, respuestas: b.respuestas, propuesta: b.propuesta }) }));
         if (!nube.ok) return fallo(503, 'No hemos podido preparar tu espacio. Vuelve a intentarlo: no se crea otro vault ni se pierden tus respuestas.');
+        const creado = await nube.json() as { kit?: string };
         await env.DB.prepare('UPDATE web_vaults SET listo=1 WHERE perfil_id=?').bind(p.id).run();
         p.listo = 1;
+        const abierto = await abrirCandado(env, p, req, 'codigo', b.recuperacion);
+        return entrar(p, req, env, { ...abierto, kit: creado.kit || abierto.kit || null });
       }
-      return entrar(p, req, env);
+      return entrar(p, req, env, await abrirCandado(env, p, req, 'codigo', b.recuperacion));
+    }
+    if (ruta === '/entrar' && req.method === 'POST' && RE_KIT.test(((await req.clone().json().catch(() => ({}))) as { kit?: string }).kit || '')) {
+      // Perdiste tu código: el kit abre el candado, Void te da un código nuevo (una vez) y el viejo deja de abrir.
+      const b = await leer(req);
+      if (typeof b.alias !== 'string' || !b.alias.trim()) return fallo(401, 'Escribe el nombre de tu vault y tu kit.');
+      const p = await env.DB.prepare('SELECT p.id,p.alias,w.listo,w.recuperacion_hash,w.alojamiento_prueba FROM perfiles p JOIN web_vaults w ON w.perfil_id=p.id WHERE p.alias=? AND w.listo=1').bind(b.alias.trim()).first<Propietario>();
+      if (!p || !env.NUBE) return fallo(401, 'El nombre o el kit no coinciden.');
+      const abierto = await abrirCandado(env, p, req, 'kit', b.kit);
+      if (!abierto.abierto) return fallo(401, 'El nombre o el kit no coinciden.');
+      const nuevo = 'vr_' + [...crypto.getRandomValues(new Uint8Array(32))].map(x => x.toString(16).padStart(2, '0')).join('');
+      const r = await candado(env, p, 'codigo-nuevo', { secreto: nuevo });
+      if (!r.ok) return fallo(503, 'Tu vault se abrió, pero no pudimos crear tu código nuevo. Vuelve a entrar con tu kit.');
+      await env.DB.batch([
+        env.DB.prepare('UPDATE web_vaults SET alojamiento_prueba=COALESCE(alojamiento_prueba,recuperacion_hash),recuperacion_hash=? WHERE perfil_id=?').bind(await huella(nuevo), p.id),
+        env.DB.prepare('DELETE FROM web_sesiones WHERE perfil_id=?').bind(p.id),
+      ]);
+      return entrar(p, req, env, { ...abierto, codigoNuevo: nuevo });
     }
     if (ruta === '/entrar' && req.method === 'POST') {
       const b = await leer(req);
       if (typeof b.alias !== 'string' || !RE_CODIGO.test(b.recuperacion || '')) return fallo(401, 'El nombre o el código no coinciden.');
-      const p = await env.DB.prepare('SELECT p.id,p.alias,w.listo,w.recuperacion_hash FROM perfiles p JOIN web_vaults w ON w.perfil_id=p.id WHERE (?=\'\' OR p.alias=?) AND w.recuperacion_hash=?').bind(b.alias.trim(),b.alias.trim(), await huella(b.recuperacion)).first<Propietario>();
+      const p = await env.DB.prepare('SELECT p.id,p.alias,w.listo,w.recuperacion_hash,w.alojamiento_prueba FROM perfiles p JOIN web_vaults w ON w.perfil_id=p.id WHERE (?=\'\' OR p.alias=?) AND w.recuperacion_hash=?').bind(b.alias.trim(),b.alias.trim(), await huella(b.recuperacion)).first<Propietario>();
       if (!p) return fallo(401, 'El nombre o el código no coinciden.');
       if (!p.listo) return fallo(409, 'Tu espacio está a medio preparar. Vuelve al cuento en el navegador donde empezaste y pulsa Crear mi espacio.');
-      return entrar(p, req, env);
+      return entrar(p, req, env, await abrirCandado(env, p, req, 'codigo', b.recuperacion));
     }
     const p = await sesion(req, env);
     if (!p) return fallo(401, 'Entra con el nombre y el código de tu espacio.');
     if (ruta === '/yo' && req.method === 'GET') {
       const h = await env.DB.prepare('SELECT datos,semilla FROM huellas WHERE perfil_id=?').bind(p.id).first<{datos:string;semilla:string|null}>();
       return json(200, { alias: p.alias, listo: !!p.listo, huella: h ? JSON.parse(h.datos) : null, semilla: h?.semilla || p.alias });
+    }
+    if (ruta === '/candado' && req.method === 'GET' && env.NUBE && p.listo) {
+      const r = await candado(env, p, 'estado');
+      return new Response(r.body, { status: r.status, headers: cab });
+    }
+    if (ruta === '/candado' && req.method === 'POST' && env.NUBE && p.listo) {
+      const b = await leer(req);
+      if (b.accion === 'abrir') {
+        if (!(RE_KIT.test(b.secreto || '') || RE_CODIGO.test(b.secreto || ''))) return fallo(400, 'Pega tu kit o tu código.');
+        const d = await abrirCandado(env, p, req, RE_KIT.test(b.secreto) ? 'kit' : 'codigo', b.secreto);
+        if (!d.abierto) return fallo(401, 'Esa llave no abre tu vault.');
+        const h = new Headers(cab), ap = d.aparato as { id: string; secreto: string } | null;
+        if (ap) h.append('set-cookie', `${COOKIE_AP}=${ap.id}:${ap.secreto}; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=${VIDA / 1000}`);
+        return new Response(JSON.stringify({ abierto: true, kit: d.kit || null }), { status: 200, headers: h });
+      }
+      if (!['confirmar', 'kit-nuevo'].includes(b.accion)) return fallo(400, 'Esa acción no existe.');
+      const r = await candado(env, p, b.accion, {});
+      return new Response(r.body, { status: r.status, headers: cab });
     }
     if (ruta === '/archivo' && req.method === 'GET' && env.NUBE && p.listo) {
       const r = await recuperarArchivo(env, p);
@@ -157,7 +224,11 @@ export async function entradaWeb(req: Request, env: EntradaEnv, publicar: (req: 
     if (ruta === '/salir' && req.method === 'POST') {
       const token = req.headers.get('cookie')!.split(';').map(s => s.trim()).find(s => s.startsWith(COOKIE + '='))!.slice(COOKIE.length + 1);
       await env.DB.prepare('DELETE FROM web_sesiones WHERE token_hash=?').bind(await huella(token)).run();
-      return json(200, { saliste: true }, { 'set-cookie': `${COOKIE}=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0` });
+      if (p.aparato && env.NUBE) await candado(env, p, 'olvidar', { id: p.aparato.slice(0, 16) }).catch(() => null);
+      const h = new Headers(cab);
+      h.append('set-cookie', `${COOKIE}=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0`);
+      h.append('set-cookie', `${COOKIE_AP}=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0`);
+      return new Response(JSON.stringify({ saliste: true }), { status: 200, headers: h });
     }
     if (ruta.startsWith('/agente/') && env.NUBE && p.listo) {
       const api = ruta.slice('/agente'.length);
@@ -181,7 +252,7 @@ export async function entradaWeb(req: Request, env: EntradaEnv, publicar: (req: 
         if(!Array.isArray(b.answers)||b.answers.length>10||b.answers.some((a:unknown)=>!Array.isArray(a)||a.length>20||a.some(s=>typeof s!=='string'||s.length>3000)))return fallo(400,'Las respuestas no son válidas.');
         Object.keys(b).forEach(k=>{if(k!=='answers')delete b[k];});
       }
-      const r = await env.NUBE.fetch(new Request('https://privado/agente' + api, { method: req.method, headers: { 'x-void-alias': p.alias, 'x-void-prueba': p.alojamiento_prueba || p.recuperacion_hash, 'content-type': 'application/json' }, body: b ? JSON.stringify(b) : undefined }));
+      const r = await env.NUBE.fetch(new Request('https://privado/agente' + api, { method: req.method, headers: { 'x-void-alias': p.alias, 'x-void-prueba': p.alojamiento_prueba || p.recuperacion_hash, 'content-type': 'application/json', ...(p.aparato ? { 'x-void-aparato': p.aparato } : {}) }, body: b ? JSON.stringify(b) : undefined }));
       return new Response(r.body, { status: r.status, headers: cab });
     }
     return fallo(404, 'Esa pantalla no existe.');
@@ -221,10 +292,10 @@ export async function alojarExistente(req:Request,env:EntradaEnv,p:{id:number;al
 }
 
 /** Exportación privada para verificar y recuperar únicamente el vault de la llave vigente. */
-export async function recuperarArchivo(env:EntradaEnv,p:{id:number;alias:string}):Promise<Response>{
+export async function recuperarArchivo(env:EntradaEnv,p:{id:number;alias:string;aparato?:string}):Promise<Response>{
   if(!env.NUBE)return fallo(503,'El alojamiento no está disponible.');
   const propia=await env.DB.prepare('SELECT recuperacion_hash,alojamiento_prueba,listo FROM web_vaults WHERE perfil_id=?').bind(p.id).first<Propietario>();
   if(!propia?.listo)return fallo(404,'Tu vault todavía no está alojado.');
-  const r=await env.NUBE.fetch(new Request('https://privado/archivo',{headers:{'x-void-alias':p.alias,'x-void-prueba':propia.alojamiento_prueba || propia.recuperacion_hash}}));
+  const r=await env.NUBE.fetch(new Request('https://privado/archivo',{headers:{'x-void-alias':p.alias,'x-void-prueba':propia.alojamiento_prueba || propia.recuperacion_hash,...(p.aparato?{'x-void-aparato':p.aparato}:{})}}));
   return new Response(r.body,{status:r.status,headers:{'content-type':r.ok?'application/gzip':'application/json','cache-control':'no-store','x-content-type-options':'nosniff'}});
 }

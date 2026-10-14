@@ -40,7 +40,7 @@ async function sesion(req: Request, env: EntradaEnv): Promise<Propietario | null
 const pruebaDe = (p: Propietario) => p.alojamiento_prueba || p.recuperacion_hash;
 /** Habla con el candado de la caja de esta persona. */
 function candado(env: EntradaEnv, p: Propietario, accion: string, body?: unknown) {
-  return env.NUBE!.fetch(new Request('https://privado/candado/' + accion, { method: body === undefined ? 'GET' : 'POST', headers: { 'x-void-alias': p.alias, 'x-void-prueba': pruebaDe(p), 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) }));
+  return env.NUBE!.fetch(new Request('https://privado/candado/' + accion, { method: body === undefined ? 'GET' : 'POST', headers: { 'x-void-alias': p.alias, 'x-void-prueba': pruebaDe(p), 'content-type': 'application/json', ...(p.aparato ? { 'x-void-aparato': p.aparato } : {}) }, body: body === undefined ? undefined : JSON.stringify(body) }));
 }
 /** Abre el candado al entrar y deja recordado este aparato. Si el vault aún no tiene candado y se entra con el
  *  código, se le pone (y se migra): la respuesta trae el kit, que se enseña una sola vez. */
@@ -183,7 +183,7 @@ export async function entradaWeb(req: Request, env: EntradaEnv, publicar: (req: 
         if (ap) h.append('set-cookie', `${COOKIE_AP}=${ap.id}:${ap.secreto}; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=${VIDA / 1000}`);
         return new Response(JSON.stringify({ abierto: true, kit: d.kit || null }), { status: 200, headers: h });
       }
-      if (!['confirmar', 'kit-nuevo'].includes(b.accion)) return fallo(400, 'Esa acción no existe.');
+      if (!['confirmar', 'kit-nuevo', 'despertar', 'dormir'].includes(b.accion)) return fallo(400, 'Esa acción no existe.');
       const r = await candado(env, p, b.accion, {});
       return new Response(r.body, { status: r.status, headers: cab });
     }

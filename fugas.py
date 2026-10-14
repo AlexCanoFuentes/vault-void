@@ -14,7 +14,12 @@ de autor:
     y «clave = "..."» con valor;
   - correos (menos los de ejemplo y los «noreply»);
   - teléfonos de España, Colombia y Argentina, y cualquiera con prefijo internacional;
-  - nombres de las personas de los vaults.
+  - nombres de las personas de los vaults;
+  - el diario interno del vault (marcas de confirmado/asumido/pendiente y citas con fecha de quien
+    lo construye): solo en los ficheros de hoy, en los mensajes nuevos y en lo que se va a commitear,
+    nunca en la historia, que las guarda y no se reescribe (14-oct).
+
+  python3 fugas.py --preparado            solo lo que se va a commitear (lo llama .githooks/pre-commit)
 
 Los nombres no están escritos aquí: estarían publicados en el propio escáner. Se guarda su sha256 y
 se compara con el de cada palabra. Es una tapa, no un candado: un nombre corto se adivina probando.
@@ -43,6 +48,22 @@ def _cargar_nombres():
 
 NOMBRES, SOLO_CON_MAYUSCULA = _cargar_nombres()
 
+
+def _cargar_aceptadas():
+    """Lo que ya está en la historia y no se puede quitar sin forzar main de un repo público (14-oct).
+
+    Una línea por hallazgo aceptado en .fugas-aceptadas: la huella del commit (su mensaje) o la del
+    fichero viejo (blob), y el motivo detrás de #. Solo vale para la historia: lo de hoy salta siempre.
+    """
+    p = Path(__file__).resolve().parent / ".fugas-aceptadas"
+    if not p.is_file():
+        return set()
+    return {l.split("#", 1)[0].strip() for l in p.read_text(encoding="utf-8").splitlines()
+            if l.split("#", 1)[0].strip()}
+
+
+ACEPTADAS = _cargar_aceptadas()
+
 SECRETOS = [
     ("clave privada", r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
     ("token de GitHub", r"\b(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{20,})"),
@@ -70,6 +91,11 @@ PALABRA = re.compile(r"[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+")
 COMPILADOS = ([(n, re.compile(p)) for n, p in SECRETOS] + [(n, re.compile(p)) for n, p in TELEFONOS])
 RE_CORREO = re.compile(CORREO)
 
+# El diario del vault en un repo público (14-oct): PRODUCT.md llevaba conversaciones y decisiones
+# internas con sus marcas. Los patrones van partidos para que este fichero no se detecte a sí mismo.
+DIARIO = re.compile(r"\[(?:CO" r"NF|AS" r"UM|PENDI" r"ENTE)\b")
+CITA = re.compile(r"\[Al" r"ex, ")
+
 
 def h(texto):
     return hashlib.sha256(texto.encode("utf-8")).hexdigest()
@@ -86,10 +112,17 @@ def nombres_extra(fichero):
     return {h(l.strip().lower()) for l in Path(fichero).read_text(encoding="utf-8").splitlines() if l.strip()}
 
 
-def revisar_texto(texto, nombres):
-    """Devuelve [(línea, tipo, trozo tapado)]."""
+def revisar_texto(texto, nombres, diario=False, citas=False):
+    """Devuelve [(línea, tipo, trozo tapado)]. `diario` mira las marcas del vault; `citas`, además,
+    las citas con fecha, que solo se miran en lo nuevo (las viejas de void.py esperan a la base siguiente)."""
     salida = []
     for n, linea in enumerate(texto.splitlines(), 1):
+        if diario:
+            for m in DIARIO.finditer(linea):
+                salida.append((n, "diario", m.group(0)[:5] + "…"))
+        if citas:
+            for m in CITA.finditer(linea):
+                salida.append((n, "diario", m.group(0)[:3] + "…"))
         for tipo, rx in COMPILADOS:
             for m in rx.finditer(linea):
                 salida.append((n, tipo, tapar(m.group(0))))
@@ -115,10 +148,10 @@ def escanear(raiz, nombres=None):
     nombres = NOMBRES | (nombres or set())
     hallazgos = []
 
-    def mirar(donde, datos):
+    def mirar(donde, datos, diario=False):
         if b"\0" in datos[:8000]:
             return
-        for n, tipo, trozo in revisar_texto(datos.decode("utf-8", "replace"), nombres):
+        for n, tipo, trozo in revisar_texto(datos.decode("utf-8", "replace"), nombres, diario=diario):
             hallazgos.append((donde, n, tipo, trozo))
 
     codigo, salida = git(raiz, "ls-files", "-z", "--cached", "--others", "--exclude-standard")
@@ -131,7 +164,7 @@ def escanear(raiz, nombres=None):
         p = raiz / ruta
         mirar("nombre de fichero", ruta.encode("utf-8"))
         if p.is_file():
-            mirar(ruta, p.read_bytes())
+            mirar(ruta, p.read_bytes(), diario=ruta != "fugas.py")
 
     if codigo == 0:
         _, objetos = git(raiz, "rev-list", "--objects", "--all")
@@ -141,12 +174,18 @@ def escanear(raiz, nombres=None):
             if len(partes) != 2 or partes[0] in vistos:
                 continue
             vistos.add(partes[0])
+            if partes[0] in ACEPTADAS:
+                continue
             c, tipo = git(raiz, "cat-file", "-t", partes[0])
             if tipo.strip() == b"blob":
                 _, datos = git(raiz, "cat-file", "blob", partes[0])
                 mirar("historia: " + partes[1], datos)
-        _, log = git(raiz, "log", "--all", "--format=%H%n%an <%ae>%n%cn <%ce>%n%B%n----")
-        mirar("mensajes y autores de commit", log)
+        # Commit a commit, para que cada hallazgo lleve su huella y se pueda aceptar uno sin aceptar el resto.
+        _, log = git(raiz, "log", "--all", "-z", "--format=%H%n%an <%ae>%n%cn <%ce>%n%B")
+        for bloque in log.split(b"\0"):
+            sha = bloque[:40].decode("ascii", "replace")
+            if bloque.strip() and sha not in ACEPTADAS:
+                mirar("commit " + sha[:8], bloque)
 
     return sorted(set(hallazgos))
 
@@ -169,9 +208,23 @@ def main(argv):
         i = args.index("--mensaje")
         texto = Path(args[i + 1]).read_text(encoding="utf-8", errors="replace")
         texto = "\n".join(l for l in texto.splitlines() if not l.startswith("#"))
-        hallazgos = revisar_texto(texto, NOMBRES | nombres_extra(extra))
+        hallazgos = revisar_texto(texto, NOMBRES | nombres_extra(extra), diario=True, citas=True)
         for n, tipo, trozo in hallazgos:
             print("mensaje del commit:{}: {}: {}".format(n, tipo, trozo))
+        return 1 if hallazgos else 0
+    if "--preparado" in args:
+        # Solo las líneas que este commit AÑADE: lo viejo no bloquea, lo nuevo no entra (14-oct).
+        raiz = Path(__file__).resolve().parent
+        _, diff = git(raiz, "diff", "--cached", "-U0", "--no-color", "--no-ext-diff")
+        hallazgos, fichero = [], None
+        for linea in diff.decode("utf-8", "replace").splitlines():
+            if linea.startswith("+++ "):
+                fichero = linea[6:] if linea.startswith("+++ b/") else None
+            elif linea.startswith("+") and fichero and fichero != "fugas.py":
+                for _, tipo, trozo in revisar_texto(linea[1:], NOMBRES | nombres_extra(extra), True, True):
+                    hallazgos.append((fichero, tipo, trozo))
+        for donde, tipo, trozo in hallazgos:
+            print("preparado: {}: {}: {}".format(donde, tipo, trozo))
         return 1 if hallazgos else 0
     raiz = Path(args[0]) if args else Path(__file__).resolve().parent
     hallazgos = escanear(raiz, nombres_extra(extra))

@@ -24,7 +24,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 /*
-  Empezar en Void, v3 (10-oct): tu vault nace como una huella [Alex, 10-oct: «vamos a quitar el espacio»].
+  Empezar en Void, v3 (10-oct): tu vault nace como una huella.
   Lo que cuentas se deshace en tinta que cae por gravedad hacia el centro y, al llegar, siembra la química de tu
   huella (Gray-Scott, la misma del lienzo). Cada pregunta tiene su color; lo que callas deja un hueco donde no crece
   nada, igual que en el lienzo. Sustituye a v2 (tu-planeta, el planeta y su disco de polvo), que redirige aquí.
@@ -316,8 +316,7 @@ function soltar(texto) {
   }
   setTimeout(() => { i++; if (i < 7) contar(); else formada(); }, quieto ? 600 : (texto ? 3200 : 1600));
 }
-/* La huella del cuento entra en el lienzo y se queda [Alex, 10-oct: «cada huella creada va de forma persistente y al
-   dia al lienzo»]. Solo viajan cifras: cuántas respuestas, cuántas calladas, cuánto se contó y el color; nunca las
+/* La huella del cuento entra en el lienzo y se queda, persistente y al día. Solo viajan cifras: cuántas respuestas, cuántas calladas, cuánto se contó y el color; nunca las
    palabras. El navegador guarda su contraseña (token) para actualizarla, y el vault la hereda al nacer. */
 let token = null;
 try { token = localStorage.getItem("void-huella-cuento"); } catch (e) {}

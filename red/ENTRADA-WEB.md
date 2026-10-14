@@ -1,6 +1,6 @@
 # Entrada alojada · 2026-10-11
 
-[CONF] Publicada por orden de la persona responsable del producto. El recorrido crea un vault alojado con nombre nuevo, enlaza la huella del cuento, conserva las respuestas literalmente dentro del archivo privado y permite conversar y volver con la misma identidad.
+Publicada por orden de la persona responsable del producto. El recorrido crea un vault alojado con nombre nuevo, enlaza la huella del cuento, conserva las respuestas literalmente dentro del archivo privado y permite conversar y volver con la misma identidad.
 
 ## Operación
 

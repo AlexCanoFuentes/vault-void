@@ -135,11 +135,11 @@ components:
 
 **Creative North Star: "El lienzo de huellas"**
 
-[CONF] Void conserva su mundo visual existente: un fondo de carbón cálido y huellas orgánicas de muchos colores. Instrument Serif da voz a los títulos y IBM Plex Mono ordena la interfaz. El ámbar señala las acciones, mientras el color personal vive principalmente en la huella.
+Void conserva su mundo visual existente: un fondo de carbón cálido y huellas orgánicas de muchos colores. Instrument Serif da voz a los títulos y IBM Plex Mono ordena la interfaz. El ámbar señala las acciones, mientras el color personal vive principalmente en la huella.
 
-[CONF] La interfaz permanece sobria para que el lienzo tenga presencia sin competir con las palabras. Los paneles flotantes usan bordes tenues y fondos cálidos; el espacio de conversaciones adapta la misma identidad a una columna de lectura. La huella mantiene su semilla y tono al regresar, en vez de estrenar una identidad visual.
+La interfaz permanece sobria para que el lienzo tenga presencia sin competir con las palabras. Los paneles flotantes usan bordes tenues y fondos cálidos; el espacio de conversaciones adapta la misma identidad a una columna de lectura. La huella mantiene su semilla y tono al regresar, en vez de estrenar una identidad visual.
 
-[CONF] El vacío de portada se puede recorrer en cualquier dirección, sin borde de atlas ni sitios reservados. La superficie de experiencia deja espacio al plano y sus huellas reales; conectar un vault existente o a medida usa una columna operativa legible dentro de la misma identidad. El alcance infinito es espacial, sin rellenar el mundo con vaults inventados. Cada huella tiene sitio y textura propios aunque comparta semilla visual con otra; al vincularse, la huella del cuento conserva su forma y tono y toma el sitio del perfil.
+El vacío de portada se puede recorrer en cualquier dirección, sin borde de atlas ni sitios reservados. La superficie de experiencia deja espacio al plano y sus huellas reales; conectar un vault existente o a medida usa una columna operativa legible dentro de la misma identidad. El alcance infinito es espacial, sin rellenar el mundo con vaults inventados. Cada huella tiene sitio y textura propios aunque comparta semilla visual con otra; al vincularse, la huella del cuento conserva su forma y tono y toma el sitio del perfil.
 
 **Key Characteristics:**
 

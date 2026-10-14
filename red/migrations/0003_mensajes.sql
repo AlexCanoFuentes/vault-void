@@ -1,7 +1,7 @@
 -- Mensajes de Void (ticket VV-008, M1). Van cifrados de extremo a extremo (HPKE, RFC 9180, en void.py): aquí solo se
 -- guarda el sobre, que la red no puede abrir. La red sabe quién escribe a quién, cuándo y el tipo; nada más.
 -- Un mensaje vive aquí solo hasta que el vault del destinatario lo recoge (entonces se borra) y, si nadie lo recoge,
--- como mucho 180 días [Alex, 10-oct: «o incluso un espacio específico dentro del vault»].
+-- como mucho 180 días.
 
 ALTER TABLE perfiles ADD COLUMN clave_publica TEXT;   -- X25519 en base64 (32 bytes); NULL hasta que la publica su vault
 

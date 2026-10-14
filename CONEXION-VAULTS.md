@@ -1,6 +1,6 @@
 # Conectar vaults existentes y a medida · 2026-10-12
 
-[CONF] El plano humano abre el vault real de su dueño conservando su alias, huella, archivos, plantilla e historial. No crea otro perfil ni vuelve a pedir las respuestas del cuento. Los vaults a medida siguen este mismo camino; el cobro queda fuera de esta entrega.
+El plano humano abre el vault real de su dueño conservando su alias, huella, archivos, plantilla e historial. No crea otro perfil ni vuelve a pedir las respuestas del cuento. Los vaults a medida siguen este mismo camino; el cobro queda fuera de esta entrega.
 
 El cliente `conectar_vault.py` primero describe la copia local sin enviar nada. Solo con `--confirmar-alojamiento` usa automáticamente la llave propia del vault para preparar el vínculo. Conserva el original completo y su historial: también archivos ignorados, `.env`, `.pem`, `.key`, personalizaciones, dependencias y configuración del remoto, tras consentimiento explícito. No muestra sus valores. Los enlaces internos se materializan y sus destinos quedan en el manifiesto privado; un enlace externo, circular o un archivo especial detiene la copia. Los commits previos se conservan y deben revisarse también. Las conversaciones SQLite bajo `.agente` se copian con su API de backup. La copia privada conserva las claves propias de Void. No hay sincronización posterior entre el ordenador y Void.
 

@@ -1,6 +1,6 @@
 # Revisión de entrada · 2026-10-11
 
-[CONF] Se conserva el mundo visual existente. Se amplía la huella a cuatro tonos deterministas y se aclara el recorrido alojado.
+Se conserva el mundo visual existente. Se amplía la huella a cuatro tonos deterministas y se aclara el recorrido alojado.
 
 Revisor independiente de acabado, en modo de solo lectura, revisó código y capturas de escritorio y móvil. Disposición final: `ship` para el alcance revisado.
 

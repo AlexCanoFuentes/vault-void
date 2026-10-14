@@ -1292,8 +1292,32 @@ class Fugas(unittest.TestCase):
         git(self.repo, "-c", "user.email=" + correo, "-c", "user.name=x", "commit", "-q",
             "--allow-empty", "--author", "x <" + correo + ">", "-m", "va con " + _rev("nauJ"))
         tipos = {t for d, _, t, _ in self.fugas.escanear(self.repo, self.nombres_de_prueba())
-                 if d == "mensajes y autores de commit"}
+                 if d.startswith("commit ")}
         self.assertEqual(tipos, {"correo", "nombre"}, "no mira el autor y el mensaje de cada commit")
+
+    def test_el_diario_del_vault_salta_hoy_y_no_en_la_historia(self):
+        """14-oct: PRODUCT.md llevaba el diario interno. Hoy salta; lo que quedó en la historia no grita."""
+        marca = "[CO" + "NF]"
+        (self.repo / "nota.md").write_text("decidido " + marca + " ayer\n", encoding="utf-8")
+        self.assertIn("diario", {t for _, _, t, _ in self.fugas.escanear(self.repo)}, "no ve el diario de hoy")
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-q", "-m", "con diario")
+        (self.repo / "nota.md").unlink()
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-q", "-m", "sin diario")
+        self.assertEqual(self.fugas.escanear(self.repo), [], "la historia no se reescribe y no puede gritar")
+
+    def test_el_mensaje_no_lleva_diario_ni_citas(self):
+        for texto in ("base: algo [AS" + "UM]", "web: x [Al" + "ex, 14-oct: «y»]"):
+            self.assertIn("diario", {t for _, t, _ in self.fugas.revisar_texto(texto, set(), True, True)}, texto)
+        self.assertEqual(self.fugas.revisar_texto("web: el lienzo con zoom", set(), True, True), [])
+
+    def test_lo_aceptado_de_la_historia_no_salta_y_lo_demas_si(self):
+        self.assertIn("043268d2d5b267bfb620d41e9a48f497bb8e1e8d", self.fugas.ACEPTADAS)
+        git(self.repo, "-c", "user.email=x@example.com", "-c", "user.name=x", "commit", "-q",
+            "--allow-empty", "-m", "va con " + _rev("nauJ"))
+        tipos = {t for d, _, t, _ in self.fugas.escanear(self.repo, self.nombres_de_prueba()) if d.startswith("commit ")}
+        self.assertIn("nombre", tipos, "aceptar un commit viejo no puede tapar uno nuevo")
 
     def test_nombre_de_fichero(self):
         (self.repo / ("notas-" + _rev("ogeid") + ".md")).write_text("x\n", encoding="utf-8")

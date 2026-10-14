@@ -1,0 +1,4 @@
+# Hallazgos de la HISTORIA aceptados: no se pueden quitar sin forzar main de un repo público, y eso no se hace.
+# Uno por línea: la huella (commit o fichero viejo) y, detrás de #, por qué se acepta. Lo de hoy salta siempre.
+043268d2d5b267bfb620d41e9a48f497bb8e1e8d  # 9-oct: mensaje de commit con el nombre de un usuario de la medición. El candado de mensajes nació el 10-oct por esto.
+cd8e7386aefa9205fb4bcd89fa4c06bf5542d1d8  # 13-oct: red/pruebas/entrada-web.mjs con dos claves inventadas de prueba; no son secretos, corregido el 14-oct.

@@ -1,0 +1,10 @@
+#!/bin/sh
+# Este repo es público: lo que se va a commitear pasa el detector de fugas antes de existir.
+# Mira solo las líneas nuevas: secretos, correos, teléfonos, nombres y el diario interno del vault.
+# Salida a propósito, dicha en voz alta: VOID_A_PROPOSITO=1 git commit ...
+[ "${VOID_A_PROPOSITO:-0}" = "1" ] && { echo "pre-commit: saltado A PROPÓSITO (VOID_A_PROPOSITO=1)." >&2; exit 0; }
+raiz=$(git rev-parse --show-toplevel)
+if ! python3 "$raiz/fugas.py" --preparado; then
+  echo "CANDADO: este commit mete en un repo público algo que no debe salir (arriba, qué y dónde). El diario y las citas viven en el vault privado." >&2
+  exit 1
+fi

@@ -5,13 +5,14 @@ async function apiEntrada(ruta, datos) {
 }
 function crearAlojado() {
   if(!guardada || !token || !semillaCuento){formada();return;}
-  decir('', 'Ponle un nombre a <em>tu espacio</em>.', 'Aquí podrás guardar ideas y pedir ayuda. Se quedarán al volver.');
+  paso = 'alta';
+  decir('', 'Ponle un nombre a <em>tu espacio</em>.', 'Aquí vivirá tu cuaderno. Podrás guardar ideas y pedir ayuda.');
   let pendiente;
   try { pendiente = JSON.parse(localStorage.getItem('void-alta-pendiente') || 'null'); } catch {}
   if (!pendiente) { const a=crypto.getRandomValues(new Uint8Array(32)); pendiente={recuperacion:'vr_'+Array.from(a,x=>x.toString(16).padStart(2,'0')).join(''),alias:''}; }
   const conservar = () => { try { localStorage.setItem('void-alta-pendiente',JSON.stringify(pendiente)); } catch {} };
   conservar();
-  abajo.innerHTML = `<form id="alta-web" class="tres" style="width:min(520px,100%)"><label for="nombre-espacio">Nombre de tu espacio</label><input id="nombre-espacio" value="${esc(pendiente.alias)}" required pattern="[a-z0-9\\-]{3,24}" minlength="3" maxlength="24" autocomplete="username" placeholder="por ejemplo: mi-cuaderno" aria-describedby="nombre-ayuda"><p id="nombre-ayuda">Entre 3 y 24 letras minúsculas, números o guiones. El nombre y la huella de colores son públicos; tus palabras son privadas.</p><label class="consentimiento"><input type="checkbox" id="acepto" required> Quiero guardar mis respuestas en mi vault alojado en Void.</label><p>Se guardan cerradas con tu candado: cuando tu espacio duerme, solo tus llaves lo abren. Mientras trabajas, el asistente y Void pueden leerlas. El piloto no cobra.</p><button class="principal" id="crear-espacio">Crear mi espacio</button><p id="alta-estado" role="status"></p></form><div class="fila"><button class="texto" id="volver-respuestas">Revisar mis respuestas</button><a class="texto" href="/mi-vault">Ya creé mi espacio</a></div>`;
+  abajo.innerHTML = `<form id="alta-web" class="tres" style="width:min(520px,100%)"><label for="nombre-espacio">Nombre de tu espacio</label><input id="nombre-espacio" value="${esc(pendiente.alias)}" required pattern="[a-z0-9\\-]{3,24}" minlength="3" maxlength="24" autocomplete="username" placeholder="por ejemplo: mi-cuaderno" aria-describedby="nombre-ayuda"><p id="nombre-ayuda">Entre 3 y 24 letras minúsculas, números o guiones. El nombre y la huella de colores son públicos; tus palabras son privadas.</p><label class="consentimiento"><input type="checkbox" id="acepto" required> Quiero guardar mis respuestas en mi espacio de Void.</label><p>Se guardan cerradas con tu candado: cuando tu espacio duerme, solo tus llaves lo abren. Mientras trabajas, el asistente y Void pueden leerlas. El piloto no cobra.</p><button class="principal" id="crear-espacio">Crear mi espacio</button><p id="alta-estado" role="status"></p></form><div class="fila"><button class="texto" id="volver-respuestas">Revisar mis respuestas</button><a class="texto" href="/mi-vault">Ya creé mi espacio</a></div>`;
   document.getElementById('volver-respuestas').onclick = porDentro;
   const form=document.getElementById('alta-web'),nombre=document.getElementById('nombre-espacio'),estado=document.getElementById('alta-estado'),boton=document.getElementById('crear-espacio');
   nombre.oninput=()=>{pendiente.alias=nombre.value;conservar();};
@@ -23,6 +24,8 @@ function crearAlojado() {
       const limpiar=()=>{try{localStorage.removeItem('void-alta-pendiente');localStorage.removeItem('void-cuento-borrador');}catch{}};
       // Con candado (14-oct): el candado se cierra y tus dos llaves vuelan a ti. Se enseñan una sola vez.
       if(creado.kit&&window.VoidCandado){
+        paso = 'llaves';
+        document.body.classList.add('con-llaves');
         decir('', '', '');
         VoidCandado.pantallaLlaves(abajo,{alias:pendiente.alias,codigo:pendiente.recuperacion,kit:creado.kit,alListo:async()=>{await apiEntrada('candado',{accion:'confirmar'});limpiar();location.assign('/mi-vault');}});
         return;

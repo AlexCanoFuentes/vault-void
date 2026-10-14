@@ -21,6 +21,8 @@
 .vc-llave code{display:block;font:12px/1.5 var(--mono,monospace);overflow-wrap:anywhere;color:var(--acento-2,#F8CB86);user-select:all;margin-bottom:10px}
 .vc-llave button{font-size:13px;padding:9px 14px}
 .vc-llaves.una{grid-template-columns:1fr;max-width:340px;margin-inline:auto}
+.vc-pantalla h2{font:400 clamp(28px,4.4vw,36px)/1.12 var(--serif,"Instrument Serif",Georgia,serif);letter-spacing:-.01em;color:var(--tinta,#ECE7DE)}
+.vc-pantalla h2 em{font-style:italic}
 .vc-nota{font-size:14px;color:var(--secundaria,var(--tinta-2,#B3AC9F));max-width:34em}
 @media(max-width:560px){.vc-llaves{grid-template-columns:1fr}}`;
   document.head.append(estilo);

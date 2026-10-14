@@ -45,7 +45,7 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
 .volver:hover{color:var(--tinta)}
 .voz{position:fixed;left:0;right:0;top:calc(52px + env(safe-area-inset-top,0px));z-index:3;padding-inline:20px;text-align:center;pointer-events:none;transition:opacity .8s}
 .paso{color:var(--tenue)}
-.dice{font-family:var(--serif);font-size:clamp(26px,7vw,40px);line-height:1.12;margin:0 auto;max-width:18em;text-wrap:balance}
+.dice{font-family:var(--serif);font-size:clamp(26px,7vw,40px);line-height:1.12;margin:0 auto;max-width:18em;text-wrap:balance;font-weight:400}
 .dice em{font-style:italic;color:var(--verde)}
 .sub{color:var(--tinta-2);margin:12px auto 0;max-width:34em;font-size:14px}
 .abajo{position:fixed;left:0;right:0;bottom:0;z-index:4;padding:12px 16px calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:center;gap:10px}
@@ -72,6 +72,16 @@ button:focus-visible,a:focus-visible,textarea:focus-visible{outline:2px solid va
 .tres input:not([type=checkbox]){display:block;width:100%;margin:8px 0;padding:12px;background:var(--vacio);border:1px solid var(--linea);border-radius:8px;color:var(--tinta);font:inherit}
 .consentimiento{display:flex;gap:10px;align-items:flex-start;font-size:14px}.consentimiento input{margin-top:5px;accent-color:var(--acento)}
 .abajo:has(#alta-web),.abajo:has(#codigo-vuelta){max-height:70dvh;overflow:auto;background:var(--vacio)}
+#cuaderno{position:fixed;z-index:1;transform:translate(-50%,-50%);pointer-events:none}
+#cuaderno .vc{max-width:none}
+.abajo:has(.vc-pantalla){top:48px;max-height:calc(100dvh - 48px);overflow:auto;background:var(--vacio)}
+body.con-llaves #c,body.con-llaves #cuaderno{display:none}
+body.compacta{overflow:auto}
+.compacta #c,.compacta #cuaderno{display:none}
+.compacta .voz{position:relative;top:auto;padding-top:56px}
+.compacta .abajo{position:relative;bottom:auto;max-height:none;overflow:visible;margin-top:20px}
+.compacta .abajo:has(.vc-pantalla){top:auto;margin-top:48px}
+.con-llaves .voz{display:none}
 @media (prefers-reduced-motion:reduce){.voz{transition:none}}
 </style>
 </head>
@@ -86,24 +96,27 @@ button:focus-visible,a:focus-visible,textarea:focus-visible{outline:2px solid va
 <script src="/huella.js"></script>
 <script src="/candado.js"></script>
 <script src="/entrada.js"></script>
+<script src="/cuaderno.js"></script>
 <script>
 /* Lo que se cuenta: siete preguntas, las de la plantilla (plantilla/criterio/apuntes.md). Cada una con su color:
    el lienzo es de la gente, así que la huella trae muchos (Alex, 9-oct). La interfaz sigue sobria. */
 const CAPAS = [
-  {n: "Quién eres",       h: 14,  dice: "Toda huella empieza por <em>quién eres</em>.", sub: "Dime cómo te llamas y a qué te dedicas.", pregunta: "¿Cómo te llamas y a qué te dedicas?"},
+  {n: "Quién eres",       h: 14,  dice: "La primera página es para <em>ti</em>.", sub: "Dime cómo te llamas y a qué te dedicas.", pregunta: "¿Cómo te llamas y a qué te dedicas?"},
   {n: "Con qué trabajas", h: 36,  dice: "Ahora, lo que te <em>rodea</em> al trabajar.", sub: "Qué haces con IA, qué sin ella, y con qué herramientas.", pregunta: "¿Qué haces con IA y qué sin ella, y con qué herramientas?"},
   {n: "Desde dónde",      h: 56,  dice: "Desde dónde lo vas a <em>usar</em>.", sub: "¿Sobre todo el móvil, o un ordenador?", pregunta: "¿Usas PC (Windows o Mac) o sobre todo el móvil? ¿Tienes cuenta de GitHub y de Claude?"},
   {n: "Lo que te agobia", h: 96,  dice: "Lo que te <em>agobia</em>, o se te escapa.", sub: "Aquí no hay respuesta mala.", pregunta: "¿Qué te agobia o se te escapa?"},
   {n: "Hacia dónde",      h: 150, dice: "Hacia dónde <em>quieres</em> ir.", sub: "Lo que quieres conseguir, dicho a tu manera.", pregunta: "¿Qué quieres conseguir?"},
-  {n: "Lo que no entra",  h: 186, dice: "Lo que nunca debe <em>entrar</em>.", sub: "Lo que tu vault no debería guardar.", pregunta: "¿Qué no debería entrar en tu vault?"},
-  {n: "Lo que esperas",   h: 208, dice: "Y la última: qué <em>esperas</em> de este sitio.", sub: "Lo que sepas de un vault, y lo que esperas de él.", pregunta: "¿Qué sabes de un vault como este y qué esperas de él?"}
+  {n: "Lo que no entra",  h: 186, dice: "Lo que nunca debe <em>entrar</em>.", sub: "Lo que no quieres guardar aquí.", pregunta: "¿Qué no debería entrar en tu vault?"},
+  {n: "Lo que esperas",   h: 208, dice: "Y la última: qué <em>esperas</em> de este sitio.", sub: "Qué esperas poder hacer aquí.", pregunta: "¿Qué sabes de un vault como este y qué esperas de él?"}
 ];
 function hsl(h, s, l) {
   const a = s * Math.min(l, 1 - l), k = n => (n + h / 30) % 12;
   return [0, 8, 4].map(n => Math.round(255 * (l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1)))));
 }
 CAPAS.forEach(c => { c.c = hsl(c.h, 0.72, 0.6); });
-const quieto = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const movimiento = matchMedia('(prefers-reduced-motion: reduce)');
+let quieto = movimiento.matches;
+movimiento.addEventListener('change', e => { quieto = e.matches; });
 let paso = "inicio", i = 0, respuestas = Array(7).fill(undefined), propuesta = null;
 let borrador=null, campoFinal=null, semillaCuento=null, tonoPersonal;
 try {borrador=JSON.parse(localStorage.getItem('void-cuento-borrador')||'null');const guardado=localStorage.getItem('void-tono');tonoPersonal=guardado===null?undefined:Number(guardado);}catch{}
@@ -182,30 +195,46 @@ const cv = document.getElementById("c"), x = cv.getContext("2d"), off = document
 off.width = off.height = N;
 let W, H, D, CX, CY, R, luz = 0, t0 = performance.now(), gotas = [];
 function tam() {
+  if (gotas.length) { depositarCapa(gotas[0].capa); gotas = []; }
+  marcoTinta = null;
+  document.body.classList.toggle('compacta', (visualViewport?.height || innerHeight) < 560);
   D = Math.min(2, devicePixelRatio || 1); W = cv.width = innerWidth * D; H = cv.height = innerHeight * D;
   colocar();
 }
 function colocar() { /* la huella va en el hueco libre entre el texto de arriba y los botones de abajo */
+  if (marcoTinta) { ({CX, CY, R} = marcoTinta); return; }
   const arriba = voz.getBoundingClientRect().bottom * D, abajoTop = abajo.getBoundingClientRect().top * D;
   const alto = Math.max(120 * D, abajoTop - arriba - 24 * D);
   CX = W / 2; CY = arriba + 12 * D + alto / 2; R = Math.min(W * 0.42, alto * 0.47);
 }
-function palabrasATinta(texto, capa) {
+let marcoTinta = null;
+const depositadas = new Set();
+function depositarCapa(capa) {
+  if (depositadas.has(capa)) return;
+  depositadas.add(capa);
+  for (let s = 0; s < 12; s++) {
+    const a = capa / 7 * Math.PI * 2 - Math.PI / 2 + (Math.random() - .5) * .8;
+    const r = N * (.18 + Math.random() * .22);
+    sembrar(N / 2 + r * Math.cos(a), N / 2 + r * Math.sin(a), capa);
+  }
+}
+function palabrasATinta(texto, capa, origen) {
   const lienzo = document.createElement("canvas"), o = lienzo.getContext("2d");
-  const ancho = Math.min(W * 0.86, 560 * D); lienzo.width = ancho; lienzo.height = 200 * D;
+  const ancho = Math.max(1, origen.width - 36) * D;
+  lienzo.width = ancho; lienzo.height = Math.max(1, origen.height - 14) * D;
   o.font = `${15 * D}px "IBM Plex Mono", monospace`; o.fillStyle = "#fff";
   const lineas = []; let l = "";
   for (const pal of texto.split(/\s+/)) {
     if (o.measureText(l + " " + pal).width > ancho - 20 * D && l) { lineas.push(l); l = pal; } else l = l ? l + " " + pal : pal;
   }
   if (l) lineas.push(l);
-  lineas.slice(0, 7).forEach((ln, k) => o.fillText(ln, 10 * D, (24 + k * 22) * D));
+  lineas.slice(0, 7).forEach((ln, k) => o.fillText(ln, 10 * D, (24 + k * 22 - origen.scrollTop) * D));
   const img = o.getImageData(0, 0, lienzo.width, lienzo.height).data, salto = Math.max(2, Math.round(2 * D)), nuevas = [];
-  const GM = 9000 * (R / (140 * D)) * D;
+  const GM = 1400 * D * R * R;
   for (let yy = 0; yy < lienzo.height; yy += salto) for (let xx = 0; xx < lienzo.width; xx += salto) {
     if (img[(yy * lienzo.width + xx) * 4 + 3] > 120) {
-      const px = (W - ancho) / 2 + xx - CX, py = H - 70 * D - 160 * D + yy - CY, r = Math.hypot(px, py) || 1;
-      const v = Math.sqrt(GM / r) * 0.55;
+      const px = (origen.left + 8) * D + xx - CX, py = (origen.top + 4) * D + yy - CY, r = Math.hypot(px, py) || 1;
+      const v = Math.sqrt(GM / r) * 0.2;
       nuevas.push({x: px, y: py, vx: -py / r * v, vy: px / r * v, capa, vida: 1, prof: 0.12 + 0.7 * Math.sqrt(Math.random())}); /* cae hasta su profundidad: en el borde la química está en vacío */
     }
   }
@@ -214,20 +243,21 @@ function palabrasATinta(texto, capa) {
   return nuevas.length;
 }
 function moverTinta(dt) {
-  const GM = 9000 * (R / (140 * D)) * D, roce = Math.pow(0.982, dt);
-  for (const p of gotas) {
-    const r2 = p.x * p.x + p.y * p.y, r = Math.sqrt(r2) || 1, a = GM / r2;
-    p.vx += -p.x / r * a * dt; p.vy += -p.y / r * a * dt; p.vx *= roce; p.vy *= roce;
-    p.x += p.vx * dt; p.y += p.vy * dt;
-    if (r < R * 0.92 * p.prof) { /* llega a su sitio dentro de la huella y siembra ahí */
-      if (Math.random() < 0.08) { /* cada respuesta, en su gajo: siete gajos, siete colores */
-        const ang = (p.capa / 7) * 6.2832 - 1.5708 + (Math.random() - 0.5) * 0.8, rr = N * 0.42 * p.prof;
-        sembrar(N / 2 + rr * Math.cos(ang), N / 2 + rr * Math.sin(ang), p.capa);
-      }
+  // Segundos, subpasos de hasta 1/120 s y gravedad suavizada en el centro.
+  const pasos = Math.max(1, Math.ceil(dt * 120)), h = dt / pasos;
+  const GM = 1400 * D * R * R, roce = Math.exp(-2 * h);
+  for (let s = 0; s < pasos; s++) for (const p of gotas) {
+    if (!p.vida) continue;
+    const a = GM / Math.pow(p.x * p.x + p.y * p.y + (12 * D) ** 2, 1.5);
+    p.vx = (p.vx - p.x * a * h) * roce;
+    p.vy = (p.vy - p.y * a * h) * roce;
+    p.x += p.vx * h; p.y += p.vy * h;
+    if (Math.hypot(p.x, p.y) < R * .42) {
+      depositarCapa(p.capa);
       p.vida = 0;
     }
   }
-  gotas = gotas.filter(p => p.vida > 0);
+  gotas = gotas.filter(p => p.vida);
 }
 function pintarHuella() {
   const img = ox.createImageData(N, N), d = img.data, pulso = luz ? 0.85 + 0.15 * Math.sin(performance.now() / 700) : 1;
@@ -239,16 +269,14 @@ function pintarHuella() {
   ox.putImageData(img, 0, 0);
 }
 function pintar() {
-  const ahora = performance.now(), dt = Math.min(3, (ahora - t0) / 16.67); t0 = ahora;
+  const ahora = performance.now(), dt = Math.min(.05, (ahora - t0) / 1000); t0 = ahora;
   colocar();
-  if (!campoFinal) {if (!quieto) { moverTinta(dt); pasoQuimica(6); } pintarHuella();}
+  if (!campoFinal && !quieto && gotas.length) { moverTinta(dt); pasoQuimica(6); pintarHuella(); }
   x.fillStyle = "#12110E"; x.fillRect(0, 0, W, H);
   x.imageSmoothingEnabled = true; x.imageSmoothingQuality = "high";
-  x.drawImage(off, CX - R, CY - R, 2 * R, 2 * R);
-  if (paso === "inicio" || paso === "contar") { // el sitio de tu huella, mientras está vacío
-    x.setLineDash([2 * D, 6 * D]); x.strokeStyle = "rgba(236,231,222,.14)"; x.lineWidth = D;
-    x.beginPath(); x.arc(CX, CY, R * 0.92, 0, 6.283); x.stroke(); x.setLineDash([]);
-  }
+  const cuento = ['inicio', 'contar', 'formada'].includes(paso);
+  if (!cuento || VoidCuaderno.revelada) x.drawImage(off, CX - R, CY - R, 2 * R, 2 * R);
+  VoidCuaderno.colocar(CX, CY, R, D, cuento);
   for (const p of gotas) { const c = CAPAS[p.capa].c; x.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`; x.fillRect(CX + p.x, CY + p.y, 1.6 * D, 1.6 * D); }
   requestAnimationFrame(pintar);
 }
@@ -258,64 +286,83 @@ const voz = document.getElementById("voz"), abajo = document.getElementById("aba
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
 const recorte = (s, n = 80) => { s = s.trim().replace(/\s+/g, " "); return s.length > n ? s.slice(0, n).replace(/\s\S*$/, "") + "…" : s; };
 function decir(capa, dice, sub) {
-  voz.style.opacity = 0;
-  setTimeout(() => {
-    voz.innerHTML = `<p class="dice">${dice}</p>` + (sub || capa ? `<p class="sub">${sub || ""}${capa ? `<span class="paso">${sub ? " · " : ""}${capa}</span>` : ""}</p>` : "");
-    voz.style.opacity = 1;
-  }, quieto ? 0 : 450);
+  voz.innerHTML = `<h1 class="dice">${dice}</h1>` +
+    (sub || capa ? `<p class="sub">${sub || ""}${capa ? `<span class="paso">${sub ? " · " : ""}${capa}</span>` : ""}</p>` : "");
+  voz.style.opacity = 1;
 }
 function nombre() { const r = respuestas[0], m = r && r.match(/(?:me llamo|soy)\s+([^\s,.;:]+)/i); return m && /^[A-ZÁÉÍÓÚÑ]/.test(m[1]) ? m[1] : null; }
 
 function inicio() {
-  paso = "inicio";
-  decir("", "Un espacio para <em>lo tuyo</em>.", "Guarda tus ideas y tareas, pide ayuda y retómalas al volver. Cuéntanos siete cosas para prepararlo a tu medida; puedes dejar cualquiera vacía.");
-  abajo.innerHTML = `<div class="fila"><button class="principal" id="ir">${borrador ? 'Continuar donde lo dejé':'Preparar mi espacio'}</button><a class="boton" href="/mi-vault">Volver a mi espacio</a></div>
-    <p class="pista">Sin instalar nada. Al terminar podrás escribir, por ejemplo: «Ayúdame a organizar mi semana».</p>`;
-  document.getElementById("ir").onclick = () => {
-    let visto = false; try { visto = localStorage.getItem("void-tres-cosas") === "1"; } catch (e) {}
-    if (borrador && Array.isArray(borrador.respuestas) && borrador.respuestas.length===7) {respuestas=borrador.respuestas;i=Math.min(7,Math.max(0,Number(borrador.pos)||0));propuesta=borrador.propuesta||null;if(i===7)formada();else contar();}
-    else if (visto) { i = 0; contar(); } else tresCosas();
+  paso = 'inicio';
+  campoFinal = null; guardada = null; semillaCuento = null;
+  depositadas.clear();
+  VoidCuaderno.reiniciar();
+  const continuar = borrador && Array.isArray(borrador.respuestas) &&
+    borrador.respuestas.length === 7 &&
+    borrador.respuestas.every(r => r == null || typeof r === 'string');
+  const pos = continuar ? Math.min(7, Math.max(0, Math.floor(Number(borrador.pos) || 0))) : 0;
+  VoidCuaderno.llenar(continuar ? borrador.respuestas : [], pos, CAPAS.map(k => k.c));
+  decir('', continuar ? 'Tu cuaderno <em>sigue aquí</em>.' : 'Este será <em>tu cuaderno</em>.',
+    'Vamos a llenarlo contigo. Son siete preguntas cortas. Puedes dejar cualquiera en blanco.');
+  abajo.innerHTML = `<div class="fila"><button class="principal" id="ir">${continuar ? 'Seguir con mi cuaderno' : 'Escribir la primera página'}</button></div>
+    <p class="pista">Tus respuestas quedan en este navegador. Al terminar, una huella hecha de cifras irá al lienzo; tus palabras no. Después podrás guardarlas en tu espacio privado.</p>
+    <a class="texto" href="/mi-vault">Ya tengo mi espacio</a>`;
+  document.getElementById('ir').onclick = () => {
+    if (continuar) {
+      respuestas = borrador.respuestas;
+      i = pos;
+      propuesta = borrador.propuesta || null;
+    } else { i = 0; }
+    if (i === 7) formada(); else contar();
   };
-}
-function tresCosas() {
-  decir("", "Antes de empezar, <em>tres cosas</em>.", "");
-  abajo.innerHTML = `<div class="tres"><p>Lo que escribas aquí no sale de esta pantalla. Tu huella sí entra en el lienzo de Void, y se queda: solo su forma, hecha de cifras.</p>
-    <p>Las respuestas se conservan en este navegador para continuar si cierras la página. Al final decidirás si guardarlas en tu espacio privado en Void.</p>
-    <p>El piloto no cobra. Antes de guardar en la nube verás quién puede acceder a tus palabras.</p></div>
-    <div class="fila"><button class="principal" id="sigamos">Sigamos</button></div>`;
-  document.getElementById("sigamos").onclick = () => { try { localStorage.setItem("void-tres-cosas", "1"); } catch (e) {} i = 0; contar(); };
 }
 function contar() {
   paso = "contar"; const k = CAPAS[i];
+  VoidCuaderno.llenar(respuestas, i, CAPAS.map(k => k.c));
   decir(`${k.n} · ${i + 1} de 7`, k.dice, k.sub);
   abajo.innerHTML = `<div class="campo"><label class="sr" for="t">${esc(k.pregunta)}</label>
       <textarea id="t" rows="1" placeholder="Escribe o dicta…"></textarea>
       <button class="principal" id="soltar" disabled aria-label="Guardar respuesta y continuar">Continuar</button></div>
-    <div class="fila"><button class="texto" id="callar">Déjalo vacío por ahora</button></div>`;
+    <div class="fila"><button class="texto" id="callar">Dejar esta página en blanco</button></div>`;
   const t = document.getElementById("t"), b = document.getElementById("soltar");
   t.maxLength=3000;t.value=respuestas[i]||'';
   t.oninput = () => { b.disabled = !t.value.trim(); t.style.height = "52px"; t.style.height = Math.min(140, t.scrollHeight) + "px";respuestas[i]=t.value;guardarBorrador(i); };t.oninput();
-  t.onkeydown = e => { if (e.key === "Enter" && !e.shiftKey && t.value.trim()) { e.preventDefault(); b.click(); } };
+  t.onkeydown = e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing && t.value.trim()) { e.preventDefault(); b.click(); } };
   b.onclick = () => soltar(t.value.trim());
   document.getElementById("callar").onclick = () => soltar(null);
   setTimeout(() => t.focus({preventScroll: true}), 300);
 }
-function soltar(texto) {
-  respuestas[i] = texto; abajo.innerHTML = "";
-  guardarBorrador(i+1);
-  const k = CAPAS[i];
+async function soltar(texto) {
+  const capa = i, t = document.getElementById('t');
+  const rect = t.getBoundingClientRect();
+  const origen = {left:rect.left, top:rect.top, width:rect.width, height:rect.height, scrollTop:t.scrollTop};
+  abajo.querySelectorAll('button').forEach(b => b.disabled = true);
+  t.readOnly = true;
+  respuestas[capa] = texto;
+  guardarBorrador(capa + 1);
+  colocar();
+  marcoTinta = {CX, CY, R};
   if (texto) {
-    palabrasATinta(texto, i);
-    if (quieto) { // sin movimiento: la tinta siembra directamente y la química crece de golpe
-      for (let s = 0; s < 40; s++) { const a = Math.random() * 6.283, r = N * 0.4 * Math.sqrt(Math.random()); sembrar(N / 2 + r * Math.cos(a), N / 2 + r * Math.sin(a), i); }
-      gotas = []; pasoQuimica(500);
+    if (quieto || document.body.classList.contains('compacta')) depositarCapa(capa);
+    else {
+      t.style.color = 'transparent';
+      t.style.caretColor = 'transparent';
+      if (!palabrasATinta(texto, capa, origen)) depositarCapa(capa);
+      await new Promise(resolve => {
+        const comprobar = () => {
+          if (document.hidden || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            depositarCapa(capa); gotas = [];
+          }
+          if (!gotas.length) resolve(); else requestAnimationFrame(comprobar);
+        };
+        comprobar();
+      });
     }
-    decir(k.n, "…", "");
-  } else {
-    hueco(i);
-    decir(k.n, "Se queda un <em>hueco</em>.", "Sin inventar nada. Lo puedes contar otro día.");
-  }
-  setTimeout(() => { i++; if (i < 7) contar(); else formada(); }, quieto ? 600 : (texto ? 3200 : 1600));
+  } else { hueco(capa); }
+  marcoTinta = null;
+  VoidCuaderno.llenar(respuestas, capa + 1, CAPAS.map(k => k.c));
+  i++;
+  if (i < 7) contar(); else formada();
 }
 /* La huella del cuento entra en el lienzo y se queda, persistente y al día. Solo viajan cifras: cuántas respuestas, cuántas calladas, cuánto se contó y el color; nunca las
    palabras. El navegador guarda su contraseña (token) para actualizarla, y el vault la hereda al nacer. */
@@ -342,15 +389,16 @@ function guardarEnElLienzo() {
 }
 function formada() {
   paso = "formada"; const n = nombre();
-  decir("", n ? `Es la huella de <em>${esc(n)}</em>.` : "Esta es <em>tu huella</em>.", "Tus respuestas forman la huella. Su paleta de colores y su semilla se conservan para reconocerla al volver.");
+  VoidCuaderno.llenar(respuestas, 7, CAPAS.map(k => k.c));
+  decir("", "Tu cuaderno va a dejar <em>su huella</em>.", "Al lienzo irá su forma, hecha de cifras. Tus palabras se quedan aquí.");
   abajo.innerHTML = `<div class="fila"><button class="principal" id="seguir" disabled>Guardando tu huella…</button><button id="dentro">Revisar mis respuestas</button></div><p class="pista" id="estado-huella" role="status"></p>`;
   document.getElementById("dentro").onclick = porDentro;
   const b=document.getElementById('seguir'),estado=document.getElementById('estado-huella');
-  async function guardar(){b.disabled=true;b.textContent='Guardando tu huella…';await guardarEnElLienzo();b.disabled=false;if(guardada&&token&&semillaCuento){b.textContent='Continuar a mi espacio';estado.textContent='Tu huella está guardada. Será la misma al volver.';b.onclick=proponer;}else{b.textContent='Volver a guardar mi huella';estado.textContent='No hemos podido guardar tu huella. Tus respuestas siguen aquí. '+(errorHuella||'Vuelve a intentarlo en un momento.');b.onclick=guardar;}}
+  async function guardar(){b.disabled=true;b.textContent='Guardando tu huella…';await guardarEnElLienzo();if(guardada&&token&&semillaCuento){await VoidCuaderno.imprimir();decir("", n ? `Es la huella de <em>${esc(n)}</em>.` : "Esta es <em>tu huella</em>.", "Tu cuaderno deja esta huella en el lienzo. Tus palabras no se muestran allí.");b.disabled=false;b.textContent='Seguir con mi cuaderno';estado.textContent='Tu huella está guardada. Será la misma al volver.';b.onclick=proponer;}else{b.disabled=false;b.textContent='Volver a guardar mi huella';estado.textContent='No hemos podido guardar tu huella. Tus respuestas siguen aquí. '+(errorHuella||'Vuelve a intentarlo en un momento.');b.onclick=guardar;}}
   guardar();
 }
 function porDentro() {
-  hoja.innerHTML = `<div class="hoja" role="dialog" aria-label="Tu vault por dentro"><h3>Tu vault, por dentro</h3>
+  hoja.innerHTML = `<div class="hoja" role="dialog" aria-label="Tus respuestas"><h3>Las páginas de tu cuaderno</h3>
     ${CAPAS.map((k, j) => `<div class="item"><b><span class="punto" style="background:rgb(${k.c.join(",")})"></span>${k.n}</b>${respuestas[j] ? `<span class="cita">«${esc(respuestas[j])}»</span>` : `<span class="hueco">[sin contestar]</span>`}</div>`).join("")}
     <div class="fila" style="margin-top:14px"><button class="principal" id="cerrar">Volver a tu huella</button></div></div>`;
   document.getElementById("cerrar").onclick = () => { hoja.innerHTML = ""; };
@@ -372,11 +420,9 @@ function proponer() {
   document.getElementById("no").onclick = () => { propuesta = null;guardarBorrador(7); despertar(false); };
 }
 function despertar(seQueda) {
-  paso = "despertar"; abajo.innerHTML = "";
-  decir("", seQueda ? "Se <em>queda</em>." : "Fuera. <em>Decidido por ti.</em>", "");
-  const arranque = performance.now();
-  (function subir() { luz = Math.max(0.01, Math.min(1, (performance.now() - arranque - 1200) / 1400)); if (luz < 1) requestAnimationFrame(subir); })();
-  setTimeout(viva, quieto ? 400 : 3200);
+  paso = 'despertar';
+  luz = 1;
+  viva();
 }
 function textoParaAsistente() {
   /* Las siete respuestas, tal cual, para pegárselas al asistente en una carpeta vacía: /empezar las usa en vez de volver a
@@ -423,8 +469,9 @@ function vivaLocal() {
 }
 
 addEventListener("resize", tam);
+window.visualViewport?.addEventListener("resize", tam);
 tam(); reiniciarCampo(); requestAnimationFrame(pintar); inicio();
-apiEntrada('yo').then(d=>{paso='viva';semillaCuento=d.semilla;if(d.huella){campoFinal=VoidHuella.crear([{alias:d.alias,semilla:d.semilla,huella:d.huella}],N,0);campoFinal.paso(900);campoFinal.pintar(ox,false);}decir('', 'Tu espacio ya <em>te espera</em>.', 'Puedes retomar tus ideas y conversaciones en @'+esc(d.alias)+'.');abajo.innerHTML='<div class="fila"><a class="boton" href="/mi-vault">Abrir mi espacio</a></div>';}).catch(()=>{});
+apiEntrada('yo').then(d=>{if(paso!=='inicio')return;paso='viva';semillaCuento=d.semilla;if(d.huella){campoFinal=VoidHuella.crear([{alias:d.alias,semilla:d.semilla,huella:d.huella}],N,0);campoFinal.paso(900);campoFinal.pintar(ox,false);}decir('', 'Tu espacio ya <em>te espera</em>.', 'Puedes retomar tus ideas y conversaciones en @'+esc(d.alias)+'.');abajo.innerHTML='<div class="fila"><a class="boton" href="/mi-vault">Abrir mi espacio</a></div>';}).catch(()=>{});
 </script>
 </body>
 </html>

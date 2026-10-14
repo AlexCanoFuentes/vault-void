@@ -119,6 +119,11 @@ details[open] summary::after{content:"−"}
 .mandos .cuantas{color:var(--tenue);font-size:12px;padding:0 4px}
 .pista{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:3;font-size:11px;color:var(--tenue);max-width:280px;text-align:right;transition:opacity .8s}
 .pista.fuera{opacity:0}
+.mandos{display:block;border:0}
+.mandos>summary{min-height:44px;padding:8px 12px;border:1px solid var(--linea);border-radius:10px;background:var(--panel);font-size:12px}
+.mandos .herramientas{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;margin-top:8px;max-width:340px}
+.mandos .herramientas button,.mandos .herramientas label{min-height:44px}
+
 
 /* la ficha de una huella: flota sobre el lienzo, junto a donde la tocaste */
 .ficha{position:fixed;z-index:6;width:min(300px,calc(100% - 32px));background:var(--panel-solido);border:1px solid var(--linea);border-radius:12px;padding:14px 16px;display:grid;gap:8px;font-size:13px;color:var(--tinta-2)}
@@ -139,27 +144,29 @@ details[open] summary::after{content:"−"}
 <body>
 <canvas id="lienzo" aria-label="El lienzo de Void: la huella de cada vault. Arrastra para moverte, acércate con la rueda o pellizcando, y toca una huella para ver de quién es."></canvas>
 
-<div class="mandos" role="toolbar" aria-label="Mandos del lienzo">
-  <span class="cuantas" id="cuantas"></span>
-  <button type="button" id="alejar" aria-label="Alejar">−</button>
-  <button type="button" id="acercar" aria-label="Acercar">+</button>
-  <button type="button" id="encuadrar" aria-label="Ver todas las huellas">todas</button>
-  <label for="grav"><input type="checkbox" id="grav"> gravedad</label>
-  <button type="button" id="regresar" hidden>Volver a las huellas</button>
-</div>
+<details class="mandos">
+  <summary><span>Explorar</span><span class="cuantas" id="cuantas"></span></summary>
+  <div class="herramientas" role="toolbar" aria-label="Mandos del lienzo">
+    <button type="button" id="alejar" aria-label="Alejar">−</button>
+    <button type="button" id="acercar" aria-label="Acercar">+</button>
+    <button type="button" id="encuadrar">Ver todas</button>
+    <label for="grav"><input type="checkbox" id="grav"> gravedad</label>
+    <button type="button" id="regresar" hidden>Volver a las huellas</button>
+  </div>
+</details>
 
-<nav class="menu" id="menu" aria-label="Void">
+<nav class="menu plegado" id="menu" aria-label="Void">
   <div class="cab">
     <div class="fila">
       <h1>Vault <em>Void</em></h1>
-      <button class="plegar" id="plegar" type="button" aria-expanded="true" aria-controls="menu" aria-label="Plegar el menú">–</button>
+      <button class="plegar" id="plegar" type="button" aria-expanded="false" aria-controls="menu" aria-label="Abrir el menú">+</button>
     </div>
-    <p class="lema">Un espacio para guardar tus ideas y tareas, pedir ayuda para trabajarlas y retomarlas cuando vuelvas. Ese espacio es tu <b>vault</b>.</p>
+    <p class="lema">Un cuaderno para tus ideas, con una IA que te ayuda a seguir. Aquí se ve su huella, no tus palabras.</p>
     <p class="lema ejemplo">Por ejemplo: «Ayúdame a organizar mi semana». Tú decides qué guardar y qué hacer.</p>
   </div>
   <div class="acciones">
-    <a class="primario" href="/tu-huella">Crear mi espacio</a>
-    <a class="secundario" href="/mi-vault">Volver a mi espacio</a>
+    <a class="primario" href="/tu-huella">Crear el mío</a>
+    <a class="secundario" href="/mi-vault">Volver al mío</a>
     <a class="secundario" href="/conectar-vault">Conectar mi vault</a>
   </div>
   <div class="tengo" id="tengo-panel" hidden>
@@ -221,11 +228,13 @@ details[open] summary::after{content:"−"}
   <a id="f-enlace" href="/">Ver su sitio →</a>
 </div>
 
-<p class="pista" id="pista">Arrastra para moverte · rueda o pellizca para acercarte · toca una huella</p>
+<p class="pista" id="pista">Toca una huella. En «Explorar» puedes verlas todas.</p>
 <noscript><p style="position:fixed;inset:auto 16px 16px;max-width:30rem">Para ver el lienzo hace falta JavaScript. Qué es Void: <a href="/que-es">vaultvoid.app/que-es</a>.</p></noscript>
 
 <script src="/huella.js"></script>
 <script src="/vacio.js"></script>
+<script src="/candado.js"></script>
+<script src="/historia.js"></script>
 <script>
 (function () {
   "use strict";
@@ -242,12 +251,20 @@ details[open] summary::after{content:"−"}
 
   function tam() {
     W = innerWidth; H = innerHeight; dpr = Math.min(devicePixelRatio || 1, 2);
-    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); encuadrar(true); sucio = true;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    if (primerPlano && fuentePortada) enfocarPortada(fuentePortada,true);
+    else encuadrar(true);
+    sucio = true;
   }
   function caja() {
     if (!campo || !campo.territorios.length) return { x0:-180,y0:-180,x1:180,y1:180 };
     var x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
-    campo.territorios.concat(campo.libres).forEach(function (t) { x0 = Math.min(x0, t.x - t.tam); y0 = Math.min(y0, t.y - t.tam); x1 = Math.max(x1, t.x + t.tam); y1 = Math.max(y1, t.y + t.tam); });
+    // Solo las huellas que existen: los sitios libres ensanchaban la caja y las huellas salían diminutas (14-oct).
+    campo.territorios.forEach(function (t) { x0 = Math.min(x0, t.x - t.tam); y0 = Math.min(y0, t.y - t.tam); x1 = Math.max(x1, t.x + t.tam); y1 = Math.max(y1, t.y + t.tam); });
+    // Con muy pocas huellas, un margen mínimo para que una sola no ocupe la pantalla entera.
+    var minimo = 160, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    if (x1 - x0 < minimo) { x0 = cx - minimo / 2; x1 = cx + minimo / 2; }
+    if (y1 - y0 < minimo) { y0 = cy - minimo / 2; y1 = cy + minimo / 2; }
     return { x0: x0, y0: y0, x1: x1, y1: y1 };
   }
   function encuadrar(sinAnimar) {
@@ -265,6 +282,7 @@ details[open] summary::after{content:"−"}
     vuelo = { de: { x: vista.x, y: vista.y, s: vista.s }, a: meta, t0: performance.now() };
   }
   function zoom(f, px, py) {
+    primerPlano=false; vuelo=null;
     // Solo límites numéricos: no hay marco, casillas ni tope de desplazamiento del mundo.
     var s2 = Math.max(.000001, Math.min(10000, vista.s * f));
     if (px == null) { px = W / 2; py = H / 2; }
@@ -274,22 +292,97 @@ details[open] summary::after{content:"−"}
   function aMundo(px, py) { return { x: vista.x + (px - W / 2) / vista.s, y: vista.y + (py - H / 2) / vista.s }; }
   function aPantalla(x, y) { return { x: W / 2 + (x - vista.x) * vista.s, y: H / 2 + (y - vista.y) * vista.s }; }
 
+
+  var historia = null, fuentePortada = null, territorioPortada = null;
+  var primerPlano = true;
+
+  function prepararHistoria() {
+    if (!campo) return null; // Aún cargando.
+    if (!campo.territorios.length) return false;
+    if (fuentePortada) return fuentePortada;
+    if (!territorioPortada) {
+      territorioPortada = campo.territorios.slice()
+        .sort(function(a,b) { return b.tam-a.tam || a.posicion-b.posicion; })[0];
+    }
+    var t = territorioPortada, v = {x:t.x,y:t.y,s:1};
+    // Con una ventana de 1 px solo avanza esta textura: 32 pasos por fotograma.
+    if (campo.avanzar(v,1,1,true,false)) return null;
+    var c = document.createElement("canvas");
+    c.width = c.height = 220;
+    var ox = c.getContext("2d");
+    campo.pintar(ox,v,220,220,0,true);
+    var datos = ox.getImageData(0,0,220,220).data;
+    var x0=220,y0=220,x1=-1,y1=-1;
+    for (var y=0;y<220;y++) for (var x=0;x<220;x++) {
+      var i=(y*220+x)*4;
+      var tinta=Math.max(Math.abs(datos[i]-18),
+        Math.abs(datos[i+1]-17),Math.abs(datos[i+2]-14));
+      if (datos[i+3] && tinta>=8) {
+        x0=Math.min(x0,x);y0=Math.min(y0,y);
+        x1=Math.max(x1,x);y1=Math.max(y1,y);
+      }
+    }
+    if (x1<0) return false;
+    x0=Math.max(0,x0-5); y0=Math.max(0,y0-5);
+    x1=Math.min(219,x1+5); y1=Math.min(219,y1+5);
+    var recorte=document.createElement("canvas");
+    recorte.width=x1-x0+1; recorte.height=y1-y0+1;
+    recorte.getContext("2d").drawImage(c,x0,y0,recorte.width,
+      recorte.height,0,0,recorte.width,recorte.height);
+    fuentePortada={canvas:recorte,t:t,x0:x0,y0:y0};
+    return fuentePortada;
+  }
+
+  function enfocarPortada(f,sinAnimar) {
+    if (!primerPlano) return;
+    var m=$("menu").getBoundingClientRect(), movil=W<700;
+    var izquierda=movil?20:Math.min(m.right+24,W-160);
+    var derecha=W-20, arriba=76;
+    var abajo=movil?Math.max(arriba+80,m.top-20):H-48;
+    var ancho=Math.max(80,derecha-izquierda);
+    var alto=Math.max(80,abajo-arriba);
+    var lado=Math.min(movil?164:210,ancho*.72,alto*.62);
+    var s=lado/Math.max(f.canvas.width,f.canvas.height);
+    var cx=izquierda+ancho/2,cy=arriba+alto/2;
+    var wx=f.t.x-110+f.x0+f.canvas.width/2;
+    var wy=f.t.y-110+f.y0+f.canvas.height/2;
+    var meta={s:s,x:wx-(cx-W/2)/s,y:wy-(cy-H/2)/s};
+    if (sinAnimar || quieto) { vuelo=null;vista=meta;sucio=true; }
+    else vuela(meta);
+  }
+
+  function destinoHistoria(f) {
+    var p=aPantalla(f.t.x-110+f.x0,f.t.y-110+f.y0);
+    return {x:p.x,y:p.y,w:f.canvas.width*vista.s,h:f.canvas.height*vista.s};
+  }
+
+  function verTodas() {
+    primerPlano=false; cierraFicha(); encuadrar();
+  }
+
   function dibuja(now) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = "#12110E"; ctx.fillRect(0, 0, W, H);
     ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
-    var visibles=campo?campo.pintar(ctx,vista,W,H,now||0,quieto):0;
+    var visibles=campo?campo.pintar(ctx,vista,W,H,now||0,
+      quieto || primerPlano || !!(historia && historia.activa)):0;
+    // Mientras dura la historia, la huella protagonista no se ve: aparece cuando el cuaderno la entrega (14-oct).
+    if (historia && historia.activa && fuentePortada) {
+      var t=fuentePortada.t, p=aPantalla(t.x-110,t.y-110);
+      ctx.fillStyle="#12110E";ctx.fillRect(p.x,p.y,220*vista.s,220*vista.s);
+    }
     $("regresar").hidden=!campo || !campo.territorios.length || visibles>0;
     if (sel && sel.x != null) { var p = aPantalla(sel.x, sel.y); ctx.strokeStyle = "rgba(242,169,59,.8)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(p.x, p.y, sel.tam * vista.s * 1.04, 0, 6.2832); ctx.stroke(); }
   }
 
   function bucle(now) {
+    if (historia) historia.paso(now);
     if (vuelo) {
       var k = Math.min(1, (now - vuelo.t0) / 650), e = 1 - Math.pow(1 - k, 3);
       vista.x = vuelo.de.x + (vuelo.a.x - vuelo.de.x) * e; vista.y = vuelo.de.y + (vuelo.a.y - vuelo.de.y) * e; vista.s = vuelo.de.s + (vuelo.a.s - vuelo.de.s) * e;
       sucio = true; if (k >= 1) vuelo = null;
     }
-    if(campo && !document.hidden && (sucio || !quieto || pendiente)){
+    if(campo && !(historia && historia.activa) && !document.hidden && (sucio || !quieto || pendiente)){
       pendiente=campo.avanzar(vista,W,H,quieto,$("grav").checked);sucio=true;
     }
     if (sucio) { dibuja(now); sucio = false; }
@@ -327,16 +420,17 @@ details[open] summary::after{content:"−"}
   cv.addEventListener("wheel", function (e) { e.preventDefault(); fueraPista(); zoom(Math.exp(-e.deltaY * .0015), e.clientX, e.clientY); }, { passive: false });
   $("acercar").addEventListener("click", function () { zoom(1.4); });
   $("alejar").addEventListener("click", function () { zoom(1 / 1.4); });
-  $("encuadrar").addEventListener("click", function () { cierraFicha(); encuadrar(); });
+  $("encuadrar").addEventListener("click", verTodas);
   $("grav").addEventListener("change", function () { sucio = true; });
-  $("regresar").addEventListener("click",function(){cierraFicha();encuadrar();});
+  $("regresar").addEventListener("click",verTodas);
   addEventListener("keydown", function (e) {
-    if (e.target.closest && e.target.closest("input,textarea")) return;
-    if (e.key === "+" || e.key === "=") zoom(1.3); else if (e.key === "-") zoom(1 / 1.3); else if (e.key === "0") encuadrar();
+    if (historia && historia.activa) return;
+    if (e.target.closest && e.target.closest("input,textarea,button,a,summary,select,[contenteditable]")) return;
+    if (e.key === "+" || e.key === "=") zoom(1.3); else if (e.key === "-") zoom(1 / 1.3); else if (e.key === "0") verTodas();
     else if (e.key === "Escape") cierraFicha();
-    else if (/^Arrow/.test(e.key)) { var d = 60 / vista.s; if (e.key === "ArrowLeft") vista.x -= d; if (e.key === "ArrowRight") vista.x += d; if (e.key === "ArrowUp") vista.y -= d; if (e.key === "ArrowDown") vista.y += d; sucio = true; }
+    else if (/^Arrow/.test(e.key)) { primerPlano=false;vuelo=null; var d = 60 / vista.s; if (e.key === "ArrowLeft") vista.x -= d; if (e.key === "ArrowRight") vista.x += d; if (e.key === "ArrowUp") vista.y -= d; if (e.key === "ArrowDown") vista.y += d; sucio = true; }
   });
-  function fueraPista() { $("pista").classList.add("fuera"); }
+  function fueraPista() { primerPlano=false; $("pista").classList.add("fuera"); }
 
   function libreEn(m) {
     if (!campo) return null;
@@ -404,6 +498,7 @@ details[open] summary::after{content:"−"}
     }).join("") : '<li><span class="ss">Todavía no hay ninguna. La primera puede ser la tuya.</span></li>';
     lh.querySelectorAll("button").forEach(function (b) {
       b.addEventListener("click", function () {
+        primerPlano=false;
         var t = campo.territorios[+b.dataset.i], s = Math.max(vista.s, ajuste * 2.2);
         var movil = W < 700, cy = movil ? H * .28 : H / 2, cx = movil ? W / 2 : Math.min(392, W * .35) + (W - Math.min(392, W * .35)) / 2;
         vuela({ s: s, x: t.x - (cx - W / 2) / s, y: t.y - (cy - H / 2) / s });
@@ -417,7 +512,10 @@ details[open] summary::after{content:"−"}
   $("plegar").addEventListener("click", function () {
     var m = $("menu"), p = m.classList.toggle("plegado");
     this.setAttribute("aria-expanded", String(!p)); this.textContent = p ? "+" : "–"; this.setAttribute("aria-label", p ? "Abrir el menú" : "Plegar el menú");
-    if (W < 700) encuadrar();
+    if (W < 700) {
+      if (primerPlano && fuentePortada) enfocarPortada(fuentePortada,false);
+      else encuadrar();
+    }
   });
   if (innerWidth < 700) { $("menu").classList.add("plegado"); $("plegar").textContent = "+"; $("plegar").setAttribute("aria-expanded", "false"); $("plegar").setAttribute("aria-label", "Abrir el menú"); }
   $("ir-perfil").addEventListener("submit", function (e) { e.preventDefault(); var v = ($("alias").value || "").trim().toLowerCase(); if (/^[a-z0-9-]{3,24}$/.test(v)) location.href = "/@" + v; });
@@ -484,6 +582,10 @@ details[open] summary::after{content:"−"}
 
   /* ── arranque */
   tam(); addEventListener("resize", tam, { passive: true });
+  if (window.VoidHistoria) historia=VoidHistoria.iniciar({
+    preparar:prepararHistoria,enfocar:enfocarPortada,destino:destinoHistoria,
+    repintar:function(){sucio=true;}
+  });
   requestAnimationFrame(bucle);
   async function traerHuellas(){var lista=[],cursor=null;do{var r=await fetch("https://red.vaultvoid.app/v1/huellas"+(cursor?'?cursor='+encodeURIComponent(cursor):''),{headers:{accept:'application/json'}});if(!r.ok)throw new Error(r.status);var d=await r.json();lista=lista.concat(d.huellas||[]);cursor=d.siguiente||null;}while(cursor);arranca(lista);}
   traerHuellas()

@@ -37,6 +37,8 @@ Tu huella en el lienzo de Void (opcional; solo cifras, nunca nada de dentro del 
   python herramientas/void.py huella --publicar [--tono 0-359] [--cuento vc_…]   las manda; Void dibuja con ellas tu huella
                                                 y la mantiene al día en cada «estado» y «actualizar»
   python herramientas/void.py huella --retirar  la quita del lienzo
+  python herramientas/void.py huella --al-dia   la pone al día en silencio, como mucho una vez por hora; nunca falla
+                                                (para la apertura del vault: así el lienzo no enseña cifras viejas)
 
 Opciones:
   --huella H          (empezar) la huella de la plantilla que publica vaultvoid.app/empezar. Sin ella
@@ -1197,6 +1199,9 @@ def orden_llave(vault, que):
 
 TIPOS_DE_APUNTE = ("Elegí", "Descarté", "Regla", "Corregí", "Aplacé")
 RE_APUNTE = re.compile(r"^- \*\*(?:{})\*\*".format("|".join(TIPOS_DE_APUNTE)))
+# Dentro de una carpeta «criterio» cuenta cualquier apunte (Al agente, Decidí, Definí...), no solo los cinco tipos
+#: en su vault se quedaban fuera 43. Rótulo de una a tres palabras; «[sin contestar]» no lo es.
+RE_APUNTE_CRITERIO = re.compile(r"^- \*\*[A-ZÁÉÍÓÚÑ]\w*(?: \w+){0,2}\*\* ·")
 
 
 def cifras_huella(vault, tono=None):
@@ -1206,8 +1211,13 @@ def cifras_huella(vault, tono=None):
     criterio: Elegí, Descarté, Regla, Corregí, Aplacé), proyectos (ficheros de proyecto) y calladas (preguntas del
     montaje sin contestar). Nada de nombres, textos ni rutas."""
     def contar_git(*args):
+        # 16-oct: un fallo de git contaba como cero, y una huella real salió con días y commits a 0.
+        # Un dato que falta no es un cero: no se manda.
         codigo, salida = git(vault, *args, comprobar=False)
-        return salida.split() if codigo == 0 else []
+        if codigo != 0:
+            raise Fallo("No he podido leer el historial de git de tu vault, así que no mando tu huella: "
+                        "saldría con ceros que no son verdad.")
+        return salida.split()
     primero = contar_git("log", "--reverse", "--format=%ct")
     dias = max(0, int((time.time() - int(primero[0])) // 86400)) if primero else 0
     pulso = len(contar_git("log", "--since=30.days", "--format=%h"))
@@ -1215,6 +1225,7 @@ def cifras_huella(vault, tono=None):
     for raiz, dirs, ficheros in os.walk(str(vault)):
         dirs[:] = [d for d in dirs if not d.startswith(".") and d not in ("node_modules", "herramientas", "archivo")]   # el archivo repite los apuntes
         rel = Path(raiz).relative_to(vault).as_posix()
+        en_criterio = "criterio" in Path(rel).parts
         for nombre in ficheros:
             if not nombre.endswith(".md"):
                 continue
@@ -1224,7 +1235,7 @@ def cifras_huella(vault, tono=None):
                 lineas = (Path(raiz) / nombre).read_text(encoding="utf-8", errors="replace").splitlines()
             except OSError:
                 continue
-            decisiones += sum(1 for l in lineas if RE_APUNTE.match(l))
+            decisiones += sum(1 for l in lineas if RE_APUNTE.match(l) or (en_criterio and RE_APUNTE_CRITERIO.match(l)))
             if nombre == "apuntes.md" and Path(rel).name == "criterio":
                 calladas += sum(1 for l in lineas if l.startswith("- **[sin contestar]**"))
     h = {"version": 1, "dias": min(dias, 36500), "pulso": min(pulso, 100000), "decisiones": min(decisiones, 100000),
@@ -1251,20 +1262,30 @@ def publicar_huella(vault, llave, tono=None, cuento=None):
     marca = ruta_marca_huella(vault)
     if dentro(vault, marca.parent) and not marca.is_symlink() and llave_ignorada(vault):
         marca.parent.mkdir(exist_ok=True)
-        marca.write_text(json.dumps({"tono": (r.get("huella") or {}).get("tono", tono)}) + "\n", encoding="utf-8")
+        marca.write_text(json.dumps({"tono": (r.get("huella") or {}).get("tono", tono), "publicada": int(time.time())}) + "\n",
+                         encoding="utf-8")
     return h, r
 
 
-def huella_al_dia(vault):
+UNA_HORA = 3600
+
+
+def huella_al_dia(vault, cada=None):
     """Si la huella está en el lienzo, la pone al día con las cifras de hoy [Alex, 10-oct: «cada huella creada va de forma
-    persistente y al dia al lienzo»]. Solo cifras; si no hay red, lo dice en una línea y sigue."""
+    persistente y al dia al lienzo»]. Solo cifras; si no hay red, lo dice en una línea y sigue.
+    cada: segundos que tienen que haber pasado desde la última vez (la apertura la llama con una hora)."""
     marca, llave = ruta_marca_huella(vault), leer_llave(vault)
     if not llave or not marca.is_file() or marca.is_symlink():
         return
     try:
-        tono = json.loads(marca.read_text(encoding="utf-8")).get("tono")
-    except (ValueError, AttributeError):
-        tono = None
+        guardado = json.loads(marca.read_text(encoding="utf-8"))
+    except ValueError:
+        guardado = {}
+    if not isinstance(guardado, dict):
+        guardado = {}
+    tono, cuando = guardado.get("tono"), guardado.get("publicada")
+    if cada and isinstance(cuando, int) and 0 <= time.time() - cuando < cada:
+        return
     try:
         h, r = publicar_huella(vault, llave, tono if isinstance(tono, int) else None)
         print("Tu huella en el lienzo, al día: {} días · {} en el último mes · {} decisiones · {} proyectos.".format(
@@ -1273,7 +1294,15 @@ def huella_al_dia(vault):
         print("No he podido poner al día tu huella en el lienzo: {}".format(str(e).split(". ")[0]))
 
 
-def orden_huella(vault, publicar, retirar, tono, cuento=None):
+def orden_huella(vault, publicar, retirar, tono, cuento=None, al_dia=False):
+    if al_dia:
+        # La apertura del vault la llama: nunca falla ni la para.
+        try:
+            vault_conectado(vault)
+            huella_al_dia(vault, cada=UNA_HORA)
+        except Exception as e:   # noqa: BLE001  ni la red ni un vault a medias pueden parar la apertura
+            print("No he podido poner al día tu huella en el lienzo: {}".format(str(e).split(". ")[0]))
+        return 0
     vault_conectado(vault)
     if tono is not None:
         if not re.fullmatch(r"\d{1,3}", tono) or int(tono) > 359:
@@ -1997,7 +2026,7 @@ def main(argv):
         elif a == "--todos" and orden == "mensajes":
             opciones[a] = True
             i += 1
-        elif a in ("--publicar", "--retirar") and orden == "huella":
+        elif a in ("--publicar", "--retirar", "--al-dia") and orden == "huella":
             opciones[a] = True
             i += 1
         elif len(sueltos) < cuantos and (not a.startswith("-") or len(sueltos) == 2):
@@ -2052,7 +2081,8 @@ def main(argv):
         if orden == "confiar":
             return orden_confiar(vault, sueltos[0] if sueltos else None)
         if orden == "huella":
-            return orden_huella(vault, opciones.get("--publicar"), opciones.get("--retirar"), opciones.get("--tono"), opciones.get("--cuento"))
+            return orden_huella(vault, opciones.get("--publicar"), opciones.get("--retirar"), opciones.get("--tono"), opciones.get("--cuento"),
+                                opciones.get("--al-dia"))
     except Fallo as e:
         print(str(e), file=sys.stderr)
         return 1

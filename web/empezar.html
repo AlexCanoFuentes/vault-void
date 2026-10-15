@@ -126,9 +126,9 @@ footer p{color:var(--tenue)}
 <section>
 <h3>Paso 3 · Baja <code>void.py</code> y comprueba su huella</h3>
 <p>La huella (sha256) de <code>void.py</code> que publica esta página es:</p>
-<p><code class="huella" id="huella">db2171d8bd772cad7b2946398c72d1f33ab82f03f66857353350466451a72a63</code></p>
+<p><code class="huella" id="huella">9c4bc1a962003b0942b05e8e883092fa6b98ed3509cad65caabf4a930ab1c41a</code></p>
 <p>Esta orden lo baja de GitHub, calcula su huella y <strong>solo lo guarda en <code>herramientas/void.py</code> si cuadra</strong> con la de arriba. No lo ejecuta. Ejecútala desde la carpeta (es igual en Mac, Linux y Windows; cambia <code>python3</code> por el nombre del paso 1):</p>
-<pre><code>python3 -c "import hashlib,os,urllib.request as u;h='db2171d8bd772cad7b2946398c72d1f33ab82f03f66857353350466451a72a63';d=u.urlopen('https://raw.githubusercontent.com/AlexCanoFuentes/vault-void/main/void.py',timeout=30).read();r=hashlib.sha256(d).hexdigest();ok=r==h;ok and (os.makedirs('herramientas',exist_ok=True),open('herramientas/void.py','wb').write(d));print('Huella OK: '+r if ok else 'NO CUADRA: ha llegado '+r);raise SystemExit(0 if ok else 1)"</code></pre>
+<pre><code>python3 -c "import hashlib,os,urllib.request as u;h='9c4bc1a962003b0942b05e8e883092fa6b98ed3509cad65caabf4a930ab1c41a';d=u.urlopen('https://raw.githubusercontent.com/AlexCanoFuentes/vault-void/main/void.py',timeout=30).read();r=hashlib.sha256(d).hexdigest();ok=r==h;ok and (os.makedirs('herramientas',exist_ok=True),open('herramientas/void.py','wb').write(d));print('Huella OK: '+r if ok else 'NO CUADRA: ha llegado '+r);raise SystemExit(0 if ok else 1)"</code></pre>
 <ul>
 <li>Si dice <strong><code>Huella OK</code></strong>, sigue.</li>
 <li>Si dice <strong><code>NO CUADRA</code></strong>, <strong>para</strong>. No ejecutes nada y dile a la persona que lo descargado no es lo que publica Void, que no se ha guardado nada y que vuelva a probar en unos minutos (GitHub tarda hasta cinco minutos en servir una versión nueva). Si se repite, que avise a quien le pasó Void.</li>
@@ -138,7 +138,7 @@ footer p{color:var(--tenue)}
 
 <section>
 <h3>Paso 4 · Pon la plantilla</h3>
-<pre><code>python3 herramientas/void.py empezar --huella 84ca924a6b4a8a789095a45371a44775fd6fe23bede045c93513ba1a52dce482</code></pre>
+<pre><code>python3 herramientas/void.py empezar --huella 6a0868c6a8aae2605bc4ebab87d395930a4c8ba477850af149b56753e1f2fe53</code></pre>
 <p>Baja la plantilla del vault, comprueba que es la que publica esta página (la huella de detrás de <code>--huella</code>) y que cada fichero cuadra con ella <strong>antes de escribir nada</strong>, y la deja en <strong>un commit</strong> <code>vault: plantilla &lt;versión&gt; de Void</code>. Enséñale a la persona lo que diga, tal cual.</p>
 <ul>
 <li>Si dice que <strong>la huella no cuadra</strong>, <strong>para</strong>: no ha escrito nada. Dile que vuelva a probar en unos minutos y, si se repite, que avise a quien le pasó Void.</li>

@@ -2290,6 +2290,55 @@ class RedDeVoid(Caso):
         self.assertEqual(correr("huella", "--publicar", "--cuento", "no-vale", "--vault", v)[0], 1, "un --cuento roto no se para")
         self.assertEqual(correr("huella", "--publicar", "--tono", "999", "--vault", v)[0], 1, "un tono fuera de la rueda no se para")
 
+    def test_huella_sin_git_no_publica_ceros(self):
+        """16-oct: una huella real salió con días y commits a 0 porque un fallo de git contaba como cero.
+        Un dato que falta no es un cero: si git no se puede leer, no se manda y se dice."""
+        v = self.conectado()
+        self.alta(v)
+        self.red.huellas.clear()
+        (v / ".git" / "HEAD").write_text("ref: refs/heads/no-existe\n", encoding="utf-8")
+        codigo, out, err = correr("huella", "--publicar", "--vault", v)
+        self.assertNotIn("nube", self.red.huellas, "con git roto ha publicado la huella (con ceros)")
+        self.assertEqual(codigo, 1, "con git roto no avisa")
+        self.assertIn("git", out + err)
+        correr("estado", "--vault", v)
+        self.assertNotIn("nube", self.red.huellas, "con git roto, «estado» la pone al día con ceros")
+
+    def test_decisiones_cuenta_todos_los_apuntes_del_criterio(self):
+        """16-oct: cuenta todo apunte de criterio (Al agente, Decidí...), no solo los cinco tipos.
+        Fuera de una carpeta criterio solo cuentan los cinco de siempre, y «[sin contestar]» nunca es una decisión."""
+        criterio = ("- **Elegí** · negocio · uno\n- **Al agente** · proceso · dos\n- **Decidí** · producto · tres\n"
+                    "- **[sin contestar]** · algo\n").encode("utf-8")
+        otra = "- **Al agente** · no es criterio\n- **Elegí** · sí cuenta\n- **Nota importante** · tampoco\n".encode("utf-8")
+        v = self.conectado({"README.md": b"# Mi vault\n", "criterio/apuntes.md": criterio, "notas/otra.md": otra})
+        self.alta(v)
+        self.assertEqual(self.red.huellas["nube"]["decisiones"], 4, "no cuenta bien las decisiones")
+
+    def test_huella_al_dia_una_vez_por_hora_y_nunca_falla(self):
+        """16-oct: «huella --al-dia» la pone al día sola, como mucho una vez por hora, en silencio,
+        y sin red sale bien: la llama la apertura del vault y no puede pararla."""
+        v = self.conectado()
+        self.alta(v)
+        self.red.huellas.clear()
+        codigo, out, err = correr("huella", "--al-dia", "--vault", v)
+        self.assertNotIn("nube", self.red.huellas, "recién publicada al darse de alta, «--al-dia» la vuelve a mandar")
+        marca = v / ".void" / "huella"
+        marca.write_text(json.dumps({"tono": 14}) + "\n", encoding="utf-8")   # una marca de antes, sin la hora
+        codigo, out, err = correr("huella", "--al-dia", "--vault", v)
+        self.assertEqual(codigo, 0, err)
+        self.assertIn("nube", self.red.huellas, "«--al-dia» no la pone al día")
+        self.red.huellas.clear()
+        codigo, out, err = correr("huella", "--al-dia", "--vault", v)
+        self.assertEqual(codigo, 0, err)
+        self.assertNotIn("nube", self.red.huellas, "«--al-dia» la manda dos veces en la misma hora")
+        os.environ["VOID_RED"] = "https://127.0.0.1:9"
+        try:
+            marca.write_text(json.dumps({"tono": 14}) + "\n", encoding="utf-8")   # sin la hora: toca mandarla
+            codigo, out, err = correr("huella", "--al-dia", "--vault", v)
+        finally:
+            os.environ["VOID_RED"] = self.red.url
+        self.assertEqual(codigo, 0, "sin red, «--al-dia» falla y pararía la apertura")
+
     def test_registrar_guarda_la_llave_y_la_deja_fuera_de_git(self):
         v = self.conectado()
         out = self.alta(v)
@@ -2609,6 +2658,16 @@ SABOTAJES = [
     ("red: una llave que no vale no se explica",
      [("    if codigo == 401:\n        raise Fallo(MSG_LLAVE_NO_VALE if llave else MSG_SIN_LLAVE)\n", "")],
      ["RedDeVoid.test_llave_falsa_da_un_error_de_una_frase"]),
+    ("red: la huella publica ceros si git falla",
+     [("        if codigo != 0:\n            raise Fallo(\"No he podido leer el historial de git", "        if False:\n            raise Fallo(\"No he podido leer el historial de git"),
+      ("        return salida.split()\n    primero", "        return salida.split() if codigo == 0 else []\n    primero")],
+     ["RedDeVoid.test_huella_sin_git_no_publica_ceros"]),
+    ("red: las decisiones solo cuentan los cinco tipos",
+     [("RE_APUNTE.match(l) or (en_criterio and RE_APUNTE_CRITERIO.match(l))", "RE_APUNTE.match(l)")],
+     ["RedDeVoid.test_decisiones_cuenta_todos_los_apuntes_del_criterio"]),
+    ("red: --al-dia manda la huella cada vez",
+     [("    if cada and isinstance(cuando, int)", "    if False and isinstance(cuando, int)")],
+     ["RedDeVoid.test_huella_al_dia_una_vez_por_hora_y_nunca_falla"]),
     ("red: estado no dice lo que te han escrito",
      [("    estado_red(vault)\n    huella_al_dia(vault)\n    return 0", "    huella_al_dia(vault)\n    return 0")],
      ["RedDeVoid.test_avisar_llega_al_estado_del_creador"]),

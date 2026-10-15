@@ -15,7 +15,11 @@ Aunque la sesión empiece con una pregunta directa y no con «abrir»:
 ```
 git fetch --quiet
 git status -sb | head -1
+python herramientas/void.py huella --al-dia
 ```
+
+La última línea pone al día tu huella en el lienzo de Void, si la tienes publicada: solo cifras, como mucho una vez
+por hora y sin parar nada si no hay red.
 
 ## Cómo contestar
 

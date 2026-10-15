@@ -1,9 +1,9 @@
 {
-  "version": "0.0.11",
+  "version": "0.0.12",
   "ficheros": {
     ".claude/encerrado.json": "eec25e9d797c7c27781fb9a05ca9bd3889db13c652db55dc8ab62f6719b09e6a",
     ".codex/config.toml": "cfc04062c7202287399afc910a42b9b909fd09ad37379b16e2f71e62f04470de",
-    "AGENTS.md": "93746e1ab45ff8065ab2506c5b95b12772228ca932ea7425169ba491050c7eb4",
+    "AGENTS.md": "b59d6a9cc1b77e79424f0ebf1e44ccf2c385c463339b09a69c70110f89aeb67c",
     "CLAUDE.md": "8e9e3e44a9dd3aae3bb4efdd1218cf66f249a28b809e49b9797ac5d0cca23eac",
     "herramientas/candados_comunes.py": "098329176cb8262e519090f1de5530762eacdfec74deda78fea77bc9081e9f55",
     "herramientas/conectar_vault.py": "e1b7f2fde8cd7c851c2122d1151861c75557cdc52fa34d96909c49bf1bbbadde",
@@ -11,6 +11,6 @@
     "herramientas/kernel_ejemplo.json": "e186c753c9e480f50a93ba6cf3dfb1e3e8658be0dfe991f2a16acb60046a8837",
     "herramientas/pruebas_comunes.py": "f312d9f949c2dea1b4feb6fd6e1009d3afcf5fd03cab99431735a4ad83939397",
     "herramientas/pruebas_kernel.py": "d7a3ed550f548b27d131ac3ef4f0ab002ff2cdf563fdfcbdc68535bd41a02890",
-    "herramientas/void.py": "db2171d8bd772cad7b2946398c72d1f33ab82f03f66857353350466451a72a63"
+    "herramientas/void.py": "9c4bc1a962003b0942b05e8e883092fa6b98ed3509cad65caabf4a930ab1c41a"
   }
 }

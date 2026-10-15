@@ -1,6 +1,6 @@
 /** VV-010 · Credenciales aleatorias, sesiones privadas y alojamiento por binding. */
 import { huella, llaveNueva, problemaAlias, problemaHuella } from './reglas.js';
-import {catalogoModelos,proveedoresWeb,pedirCaja} from './modelos-web.js';
+import {catalogoModelos,proveedoresWeb,pedirCaja,PROVEEDORES_PORTERO} from './modelos-web.js';
 
 export interface EntradaEnv {
   DB: D1Database;
@@ -205,14 +205,20 @@ export async function entradaWeb(req: Request, env: EntradaEnv, publicar: (req: 
       if(!proveedor)return fallo(400,'Elige un proveedor de la lista.');
       const metodo=proveedor.metodos.find(m=>m.indice===b.metodo);
       if(b.accion==='desconectar'){
+        // Fase 2b: la llave de API la guarda el portero. Se quita de allí y, si hubiera una suscripción, también de OpenCode.
+        if(PROVEEDORES_PORTERO.includes(proveedor.id)){const rp=await pedirCaja(env,p,'/portero/'+proveedor.id,'DELETE');if(!rp.ok)return fallo(rp.status===423?423:503,rp.status===423?'Tu vault está cerrado: entra con tu código.':'No se pudo desconectar. Vuelve a intentarlo.');}
         const r=await pedirCaja(env,p,'/agente/auth/'+proveedor.id,'DELETE');
         return r.ok&&await r.json()===true?json(200,{desconectado:true}):fallo(503,'No se pudo desconectar. Vuelve a intentarlo.');
       }
       if(!metodo||b.consentimiento!==true)return fallo(400,'Confirma la conexión y el consumo en tu propia cuenta.');
       if(b.accion==='clave'&&metodo.tipo==='api'){
         if(typeof b.clave!=='string'||b.clave.length<8||b.clave.length>8192||/[\x00-\x20\x7f]/.test(b.clave))return fallo(400,'Escribe una clave de API válida, sin espacios.');
-        const r=await pedirCaja(env,p,'/agente/auth/'+proveedor.id,'PUT',{type:'api',key:b.clave});
-        return r.ok&&await r.json()===true?json(200,{conectado:true,validacion:'primer-uso'}):fallo(r.status===409?409:503,r.status===409?'Espera a que termine el asistente antes de cambiar sus conexiones.':'No se pudo guardar la conexión. Vuelve a intentarlo.');
+        // Fase 2b: la llave va al portero, cifrada con tu candado; el asistente la usa sin verla. Nunca a auth.json.
+        if(!PROVEEDORES_PORTERO.includes(proveedor.id))return fallo(400,'Ese proveedor todavía no tiene portero.');
+        const r=await pedirCaja(env,p,'/portero/'+proveedor.id,'PUT',{clave:b.clave});
+        if(r.ok)return json(200,{conectado:true,validacion:'primer-uso'});
+        const d=await r.json().catch(()=>({})) as {error?:string};
+        return fallo([400,409,423].includes(r.status)?r.status:503,r.status===423?'Tu vault está cerrado: entra con tu código.':r.status===409?'Espera a que termine el asistente antes de cambiar sus conexiones.':r.status===400&&d.error?d.error:'No se pudo guardar la conexión. Vuelve a intentarlo.');
       }
       if(b.accion==='autorizar'&&metodo.tipo==='oauth'){
         const inputs:Record<string,string>={};

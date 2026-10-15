@@ -1,5 +1,7 @@
 import type {EntradaEnv} from './entrada-web.js';
 export interface DuenoModelos {alias:string;recuperacion_hash:string;alojamiento_prueba?:string;aparato?:string}
+/** Los proveedores con portero de llaves (fase 2b). La misma lista que void-nube/worker/src/portero-caja.js e imagen/portero.py. */
+export const PROVEEDORES_PORTERO=['anthropic','openai','openrouter','deepseek','mistral','groq'];
 export function pedirCaja(env:EntradaEnv,p:DuenoModelos,ruta:string,method='GET',body?:unknown){
   return env.NUBE!.fetch(new Request('https://privado'+ruta,{method,headers:{'x-void-alias':p.alias,'x-void-prueba':p.alojamiento_prueba||p.recuperacion_hash,'content-type':'application/json',...(p.aparato?{'x-void-aparato':p.aparato}:{})},body:body===undefined?undefined:JSON.stringify(body)}));
 }
@@ -21,5 +23,5 @@ export async function proveedoresWeb(env:EntradaEnv,p:DuenoModelos){
   const conexiones=await c.json() as Record<string,string>;
   return {proveedores:d.all.filter(x=>/^[a-z0-9-]{1,80}$/.test(x.id)&&auth[x.id]?.length).map(x=>({id:x.id,nombre:x.name||x.id,conectado:!!conexiones[x.id]||x.id!=='opencode'&&d.connected.includes(x.id),
     metodos:auth[x.id].map((m,indice)=>({indice,tipo:m.type,nombre:m.label,campos:(m.prompts||[]).map(q=>({key:q.key,type:q.type,message:q.message,options:q.options,condition:q.condition}))}))
-      .filter(m=>['api','oauth'].includes(m.tipo)&&!(x.id==='anthropic'&&m.tipo==='oauth')&&!(x.id==='openai'&&m.tipo==='oauth'&&/browser/i.test(m.nombre)&&!/headless/i.test(m.nombre)))}))};
+      .filter(m=>(m.tipo==='api'&&PROVEEDORES_PORTERO.includes(x.id)||m.tipo==='oauth')&&!(x.id==='anthropic'&&m.tipo==='oauth')&&!(x.id==='openai'&&m.tipo==='oauth'&&/browser/i.test(m.nombre)&&!/headless/i.test(m.nombre)))})).filter(x=>x.metodos.length)};
 }

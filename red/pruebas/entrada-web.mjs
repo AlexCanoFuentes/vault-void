@@ -15,9 +15,11 @@ export class Container extends DurableObject {
   async getState(){return {status:'healthy'};}async startAndWaitForPorts(){}renewActivityTimeout(){}async destroy(){}
   async fetch(req){const u=new URL(req.url),c=await this.ctx.storage.get('config');let lista=await this.ctx.storage.get('sesiones')||[];
     const auth=await this.ctx.storage.get('auth_fixture')||{};
+    // Fase 2b: una llave de API vive en el portero y OpenCode la ve por su configuración, no por auth.json.
+    const conectados={...auth};for(const [k,v] of Object.entries(await this.ctx.storage.get('web_conexiones')||{}))if(v==='api')conectados[k]=true;
     const modelos={opencode:{id:'opencode',name:'OpenCode de prueba',models:{'space-bunny-free':{name:'Gratuito de prueba',cost:{input:0,output:0}},'longcat-2.5-preview-free':{name:'Segundo gratuito de prueba',cost:{input:0,output:0}},'pago-no-conectado':{name:'Pago de prueba',cost:{input:1,output:1}}}},openai:{id:'openai',name:'OpenAI de prueba',models:{'modelo-fixture-pago':{name:'Modelo de pago inventado',cost:{input:1,output:1}}}}};
-    if(u.pathname==='/config/providers')return Response.json({providers:[modelos.opencode,...auth.openai?[modelos.openai]:[]],default:{opencode:'space-bunny-free'}});
-    if(u.pathname==='/provider')return Response.json({all:Object.values(modelos),connected:['opencode',...Object.keys(auth)]});
+    if(u.pathname==='/config/providers')return Response.json({providers:[modelos.opencode,...conectados.openai?[modelos.openai]:[]],default:{opencode:'space-bunny-free'}});
+    if(u.pathname==='/provider')return Response.json({all:Object.values(modelos),connected:['opencode',...Object.keys(conectados)]});
     if(u.pathname==='/provider/auth')return Response.json({opencode:[{type:'api',label:'API Key'}],openai:[{type:'oauth',label:'ChatGPT Pro/Plus (browser)'},{type:'oauth',label:'ChatGPT Pro/Plus (headless)'},{type:'api',label:'API Key'}]});
     if(u.pathname.startsWith('/auth/')){const id=u.pathname.split('/')[2];if(req.method==='DELETE')delete auth[id];else auth[id]=await req.json();await this.ctx.storage.put('auth_fixture',auth);return Response.json(true);}
     if(u.pathname==='/instance/dispose')return Response.json(true);

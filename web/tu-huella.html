@@ -194,10 +194,15 @@ function hueco(capa) {
 const cv = document.getElementById("c"), x = cv.getContext("2d"), off = document.createElement("canvas"), ox = off.getContext("2d");
 off.width = off.height = N;
 let W, H, D, CX, CY, R, luz = 0, t0 = performance.now(), gotas = [];
+// En el móvil, la barra de direcciones y el teclado cambian la altura a cada rato. Eso ya no corta la tinta que está
+// cayendo: solo un cambio de ancho (girar el teléfono) la deja caer de golpe y recoloca la huella (15-oct).
+let anchoPrevio = innerWidth;
 function tam() {
-  if (gotas.length) { depositarCapa(gotas[0].capa); gotas = []; }
-  marcoTinta = null;
-  document.body.classList.toggle('compacta', (visualViewport?.height || innerHeight) < 560);
+  const gira = Math.abs(innerWidth - anchoPrevio) > 2;
+  anchoPrevio = innerWidth;
+  if (gira && gotas.length) { depositarCapa(gotas[0].capa); gotas = []; }
+  if (gira || !gotas.length) marcoTinta = null;
+  document.body.classList.toggle('compacta', innerHeight < 560); // la altura de la página, no la que deja el teclado: con el teclado abierto el dibujo y la tinta se escondían justo mientras se escribe (15-oct)
   D = Math.min(2, devicePixelRatio || 1); W = cv.width = innerWidth * D; H = cv.height = innerHeight * D;
   colocar();
 }

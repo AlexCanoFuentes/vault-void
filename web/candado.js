@@ -376,7 +376,14 @@ async function volar(d, destino, retraso = 0, lado = -1) {
   vcPreparar(d);
   await vcReloj(d, retraso, () => {});
 
-  const fin = destino.getBoundingClientRect();
+  let fin = destino.getBoundingClientRect();
+  // En el móvil el hueco de la llave suele quedar debajo, fuera de la pantalla, y el vuelo se saltaba: la llave
+  // aparecía sin más (15-oct). Se acerca el hueco a la vista y se vuelve a medir.
+  if (!d.omitir && !quieto() && fin.width > 0 && (fin.top < 0 || fin.bottom > innerHeight)) {
+    destino.scrollIntoView({ block: 'nearest' });
+    await new Promise(r => requestAnimationFrame(r));
+    fin = destino.getBoundingClientRect();
+  }
   const matriz = d.partes.candado.getScreenCTM();
 
   if (

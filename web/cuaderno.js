@@ -91,7 +91,10 @@
         requestAnimationFrame(revelar);
       };
       const omitir = () => animacion?.finish();
-      addEventListener('resize', omitir);
+      // En el móvil, la barra de direcciones y el teclado cambian la altura y disparan «resize»: eso no la salta.
+      // Solo un cambio de ancho (girar el teléfono) la termina de golpe (15-oct).
+      const ancho0 = innerWidth, siGira = () => { if (Math.abs(innerWidth - ancho0) > 2) omitir(); };
+      addEventListener('resize', siGira);
       media.addEventListener('change', omitir);
       document.addEventListener('visibilitychange', omitir);
       requestAnimationFrame(revelar);
@@ -100,7 +103,7 @@
         finalizar();
         animacion.cancel();
         animacion = null;
-        removeEventListener('resize', omitir);
+        removeEventListener('resize', siGira);
         media.removeEventListener('change', omitir);
         document.removeEventListener('visibilitychange', omitir);
       }

@@ -272,10 +272,25 @@ body.vh-activa .pista{
         anterior = 0;
       }, op);
 
-      addEventListener('resize', () => terminar(), op);
+      // En el móvil, la barra de direcciones cambia la ALTURA al esconderse o salir al tocar la pantalla, y eso
+      // dispara «resize». Antes cerraba la historia nada más empezar (medido el 15-oct en un iPhone emulado).
+      // Solo un cambio de ANCHO (girar el teléfono, otra ventana) la cierra; la altura se recoloca y sigue.
+      const anchoInicial = innerWidth;
+      addEventListener('resize', () => {
+        if (Math.abs(innerWidth - anchoInicial) > 2) terminar();
+        else medir();
+      }, op);
       reducida.addEventListener('change', () => terminar(), op);
 
       dialogo.showModal();
+      medir();
+
+      document.body.classList.add('vh-activa');
+      if (!estatica) pintar();
+      salir.focus({ preventScroll: true });
+    }
+
+    function medir() {
       colocarBoton();
 
       const r = escena.getBoundingClientRect();
@@ -290,10 +305,6 @@ body.vh-activa .pista{
       capa.height = Math.round(innerHeight * dpr);
       capa.style.width = innerWidth + 'px';
       capa.style.height = innerHeight + 'px';
-
-      document.body.classList.add('vh-activa');
-      if (!estatica) pintar();
-      salir.focus({ preventScroll: true });
     }
 
     function pintar() {

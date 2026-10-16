@@ -64,7 +64,7 @@ try{
   await prueba('OAuth remoto nativo y desconexión, sin ofrecer callback localhost',async()=>{const proveedores=(await pedir('/v1/web/proveedores',undefined,a.cookie)).d.proveedores,openai=proveedores.find(p=>p.id==='openai');assert.deepEqual(openai.metodos.map(m=>m.indice),[1,2]);const body={proveedor:'openai',metodo:1,consentimiento:true};assert.equal((await pedir('/v1/web/proveedores',{...body,accion:'autorizar'},a.cookie)).status,200);assert.equal((await pedir('/v1/web/proveedores',{...body,accion:'completar'},a.cookie)).status,200);assert.equal((await pedir('/v1/web/proveedores',{proveedor:'openai',accion:'desconectar'},a.cookie)).status,200);assert.ok(!(await pedir('/v1/web/modelos',undefined,a.cookie)).d.modelos.some(m=>m.providerID==='openai'));});
   await prueba('descarga privada por cookie y capacidad sin crear una cuenta ficticia',async()=>{assert.equal((await pedir('/v1/web/archivo')).status,401);const r=await mf.dispatchFetch(URL_BASE+'/v1/web/archivo',{headers:{cookie:a.cookie}});assert.equal(r.status,200);assert.match(r.headers.get('content-disposition'),/void-cuaderno-a/);assert.ok(gunzipSync(Buffer.from(await r.arrayBuffer())).includes(Buffer.from('Literal, con saltos.')));assert.equal((await pedir('/v1/web/capacidad')).d.disponible,false);});
   await prueba('el cupo cierra nuevas altas y salir revoca la sesión',async()=>{const c=await pedir('/v1/web/crear',{...a.b,alias:'cuaderno-c',recuperacion:'vr_'+'c'.repeat(64)});assert.equal(c.status,503);assert.equal((await pedir('/v1/web/salir',{},a.cookie)).status,200);assert.equal((await pedir('/v1/web/yo',undefined,a.cookie)).status,401);});
-  await probarExistentes({root,mf,db,pedir,prueba,URL_BASE,huella,servir:process.argv.includes('--servir-existentes')});
+  if(!process.argv.includes('--solo-passkey')) await probarExistentes({root,mf,db,pedir,prueba,URL_BASE,huella,servir:process.argv.includes('--servir-existentes')});
   // ---- el candado del dueño (fase 2a, 14-oct). Con su propio vault: las pruebas de arriba vacían los perfiles. ----
   await db.prepare('DELETE FROM web_sesiones').run();await db.prepare('DELETE FROM web_vaults').run();
   const v=await alta('candado-a','e');
@@ -78,6 +78,16 @@ try{
     const filas=JSON.stringify(await db.prepare('SELECT * FROM web_vaults').all());assert.ok(!filas.includes(v.d.kit.slice(3,30)),'el kit está en D1');
   });
   let llaves=galletas(v);
+  await prueba('passkey: lista privada, alta con llave reciente y protección de origen',async()=>{
+    assert.equal((await pedir('/v1/web/passkey/lista',{},llaves)).status,200);
+    assert.equal((await pedir('/v1/web/passkey/crear',{secreto:v.b.recuperacion})).status,401);
+    assert.equal((await pedir('/v1/web/passkey/crear',{},llaves)).status,401);
+    assert.equal((await pedir('/v1/web/passkey/crear',{secreto:v.b.recuperacion},llaves,'https://ajeno.invalid')).status,403);
+    const r=await pedir('/v1/web/passkey/crear',{secreto:v.b.recuperacion},llaves);
+    assert.equal(r.status,200,r.text);assert.equal(r.d.opciones.authenticatorSelection.userVerification,'required');
+    assert.equal(r.d.opciones.rp.id,'localhost');assert.ok(r.d.opciones.extensions.prf.eval.first);
+    assert.equal((await pedir('/v1/web/passkey/opciones',{alias:v.b.alias})).status,404);
+  });
   await prueba('candado: dormida, ni Void ni la caja abren el vault; con la llave del aparato se abre sola',async()=>{
     assert.ok(llaves.includes('__Host-void-ap='),'no se recordó el aparato');
     await dormir(v.b.alias);assert.equal(await desdeDentro(v.b.alias),423,'la caja dormida entrega el vault sin su dueño');
@@ -111,7 +121,7 @@ try{
   if(process.argv.includes('--servir')||process.argv.includes('--servir-existentes')){
     // Las personas de las comprobaciones se retiran solo de este entorno inventado para probar altas en navegador.
     if(!process.argv.includes('--servir-existentes')){await db.prepare('DELETE FROM perfiles').run();await db.prepare('DELETE FROM huellas_cuento').run();}
-    const server=http.createServer(async(req,res)=>{try{if(req.url.startsWith('/v1/')){let chunks=[];for await(const c of req)chunks.push(c);const r=await mf.dispatchFetch(URL_BASE+req.url,{method:req.method,headers:req.headers,body:req.method==='POST'?Buffer.concat(chunks):undefined});res.writeHead(r.status,Object.fromEntries(r.headers));res.end(Buffer.from(await r.arrayBuffer()));return;}const path=req.url.split('?')[0];const p=root+'/web'+(path==='/'?'/index.html':path.includes('.')?path:path+'.html');const content=readFileSync(p);res.setHeader('content-type',p.endsWith('.css')?'text/css':p.endsWith('.js')?'text/javascript':p.endsWith('.svg')?'image/svg+xml':p.endsWith('.png')?'image/png':'text/html');res.end(content);}catch{res.writeHead(404);res.end('No encontrado');}});
+    const server=http.createServer(async(req,res)=>{try{if(req.url.startsWith('/v1/')){let chunks=[];for await(const c of req)chunks.push(c);const r=await mf.dispatchFetch(URL_BASE+req.url,{method:req.method,headers:req.headers,body:req.method==='POST'?Buffer.concat(chunks):undefined});res.writeHead(r.status,{...Object.fromEntries(r.headers),...(r.headers.getSetCookie().length?{'set-cookie':r.headers.getSetCookie()}:{})});res.end(Buffer.from(await r.arrayBuffer()));return;}const path=req.url.split('?')[0];const p=root+'/web'+(path==='/'?'/index.html':path.includes('.')?path:path+'.html');const content=readFileSync(p);res.setHeader('content-type',p.endsWith('.css')?'text/css':p.endsWith('.js')?'text/javascript':p.endsWith('.svg')?'image/svg+xml':p.endsWith('.png')?'image/png':'text/html');res.end(content);}catch{res.writeHead(404);res.end('No encontrado');}});
     await new Promise(ok=>server.listen(puerto,'127.0.0.1',ok));console.log('Vista local en '+URL_BASE+'; datos inventados.');await new Promise(()=>{});
   }
 }finally{await mf.dispose();}

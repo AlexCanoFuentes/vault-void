@@ -77,6 +77,24 @@ export async function entradaWeb(req: Request, env: EntradaEnv, publicar: (req: 
   if (!['GET', 'POST'].includes(req.method)) return fallo(405, 'Método no permitido.');
   if (req.method === 'POST' && req.headers.get('origin') !== url.origin) return fallo(403, 'Abre esta pantalla desde Void para continuar.');
   try {
+    if (ruta.startsWith('/passkey/') && req.method === 'POST') {
+      const accion = ruta.slice('/passkey/'.length);
+      if (!['lista','crear','atestiguar','confirmar','opciones','entrar','quitar'].includes(accion)) return fallo(404, 'Esa acción no existe.');
+      if (!env.NUBE) return fallo(503, 'El alojamiento no está disponible.');
+      const b = await leer(req), publica = accion === 'opciones' || accion === 'entrar';
+      const p = publica
+        ? typeof b.alias === 'string' && /^[a-z0-9-]{3,24}$/.test(b.alias)
+          ? await env.DB.prepare('SELECT p.id,p.alias,w.listo,w.recuperacion_hash,w.alojamiento_prueba FROM perfiles p JOIN web_vaults w ON w.perfil_id=p.id WHERE p.alias=? AND w.listo=1').bind(b.alias).first<Propietario>() : null
+        : await sesion(req, env);
+      if (!p?.listo) return fallo(401, 'Entra con tu nombre de espacio y tu código o kit.');
+      // El cliente no elige el origen, la vinculación de sesión ni el aparato que se sustituye.
+      const anterior = galleta(req, COOKIE_AP);
+      const datos = { ...b, origen: url.origin, vinculo: publica ? '' : await huella(galleta(req, COOKIE)!),
+        reemplazar: anterior && RE_APARATO.test(anterior) ? anterior.slice(0,16) : undefined };
+      const r = await candado(env, p, 'passkey-' + accion, datos);
+      if (accion === 'entrar' && r.ok) return entrar(p, req, env, await r.json() as Record<string, unknown>);
+      return new Response(r.body, { status:r.status, headers:cab });
+    }
     if (ruta === '/capacidad' && req.method === 'GET') {
       const usados = await env.DB.prepare('SELECT COUNT(*) n FROM web_vaults').first<{n:number}>();
       const limite = Number(env.TOPE_WEB || 0);

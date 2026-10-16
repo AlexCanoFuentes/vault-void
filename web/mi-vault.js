@@ -56,7 +56,7 @@
   for(const b of $('ejemplos').children)b.onclick=()=>{$('texto').value=b.textContent;$('texto').focus();};
   $('reintentar').onclick=async()=>{$('reintentar').disabled=true;try{await listar();if(sesion)await cargar(generacion);await window.VoidModelos?.recargar();$('reintentar').hidden=true;}catch(e){falloCarga(e);}finally{$('reintentar').disabled=false;}};
   $('descargar-vault').onclick=async()=>{const b=$('descargar-vault');if(b.disabled)return;const g=generacion,alias=dueno?.alias;b.disabled=true;$('archivo-estado').textContent='Preparando la descarga de la última copia guardada…';try{const r=await fetch('/v1/web/archivo');if(!r.ok)throw new Error('No pudimos descargar tu copia. Vuelve a intentarlo.');const blob=await r.blob();if(g!==generacion||alias!==dueno?.alias)return;const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='void-'+alias+'.tgz';a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);$('archivo-estado').textContent='Descarga preparada. Guarda el archivo en un lugar privado.';}catch(e){if(g===generacion)$('archivo-estado').textContent=e.message;}finally{b.disabled=false;}};
-  window.VoidEspacio={api,zona,estado,get dueno(){return dueno;},get ocupado(){return ocupado;}};
+  window.VoidEspacio={api,zona,estado,abrirPasskey:async()=>{$('cerrado').hidden=true;await abrir(await api('yo'));},get dueno(){return dueno;},get ocupado(){return ocupado;}};
   addEventListener('void-modelos',()=>ocupadoAhora(ocupado));
   addEventListener('beforeunload',e=>{if(dueno&&$('texto').value.trim()){e.preventDefault();e.returnValue='';}});
   api('yo').then(abrir).catch(e=>{acceso();if(!e.message.includes('Entra con'))$('login-estado').textContent=e.message;});

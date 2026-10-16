@@ -21,7 +21,7 @@
   ],
   "services": [{ "binding": "NUBE", "service": "void-nube-prueba", "entrypoint": "VoidAlojamiento" }],
   // Piloto autorizado por Alex el 11-oct-2026, limitado a las tres cajas ya disponibles.
-  "vars": { "TOPE_WEB": "3" },
+  "vars": { "TOPE_WEB": "50" },
   "d1_databases": [
     {
       "binding": "DB",

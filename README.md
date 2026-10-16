@@ -7,7 +7,7 @@ El canal por el que un arreglo hecho una vez llega a todos los vaults.
 - `void.py`: el cliente. Cada vault lleva una copia en `herramientas/void.py`.
 - `estrellas/` y `catalogo.json`: el catálogo de estrellas (abajo).
 
-## Qué lleva la base (0.0.12)
+## Qué lleva la base (0.0.13)
 
 Incluye las reglas comunes, los candados y KERNEL con sus disparadores. Lo que cambia de un
 vault a otro (el nombre, el idioma y el criterio propio) se queda en cada vault.
@@ -166,7 +166,7 @@ comando o ejecútalo tú en una terminal.
 ## Para quien mantiene la base
 
 ```
-python3 regenerar_manifiesto.py --version 0.0.12 --plantilla 0.0.10   # copia void.py a la base, rehace el manifiesto y pone
+python3 regenerar_manifiesto.py --version 0.0.13 --plantilla 0.0.10   # copia void.py a la base, rehace el manifiesto y pone
                                                 # la huella de void.py en web/entrar.*
 python3 pruebas.py                              # pruebas
 python3 pruebas.py --sabotaje                   # rompe cada candado y comprueba que las pruebas lo cazan
@@ -190,7 +190,7 @@ para entrar en el catálogo. No toca nada fuera de esa carpeta.
 
 ## Versiones e hitos [2026-10-10]
 
-La revisión actual es **0.0.12, desarrollo**: `VERSION` y el manifiesto de la base. La plantilla va por
+La revisión actual es **0.0.13, desarrollo**: `VERSION` y el manifiesto de la base. La plantilla va por
 la 0.0.10 y la red y la antena llevan su propio número en su `package.json`. Cada versión de la base lleva
 su marca en git desde la 0.0.9 (`git tag`). Las versiones de las estrellas son independientes. No se
 incrementa la versión por cada arreglo.

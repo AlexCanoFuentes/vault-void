@@ -589,6 +589,17 @@ class Red(Caso):
 # ---------------------------------------------------------------- el repo
 
 class Repo(unittest.TestCase):
+    def test_lo_que_se_reparte_funciona_con_python_3_8(self):
+        """16-oct: conectar_vault.py usaba Path.is_relative_to (Python 3.9) y la guía promete 3.8. Ninguna herramienta que
+        llega a los vaults puede usar lo que 3.8 no tiene."""
+        de_39 = ("is_relative_to", "removeprefix", "removesuffix", "zoneinfo")
+        malos = []
+        for f in [AQUI / "void.py", AQUI / "conectar_vault.py", *sorted((AQUI / "base" / "herramientas").glob("*.py"))]:
+            for n, linea in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
+                if any(x in linea for x in de_39) and not linea.lstrip().startswith("#"):
+                    malos.append("{}:{}".format(f.name, n))
+        self.assertEqual(malos, [], "usa algo que Python 3.8 no tiene")
+
     def test_un_vault_nuevo_se_monta_con_la_base_y_pasa_sus_pruebas(self):
         tmp = Path(tempfile.mkdtemp(prefix="void-montar-"))
         try:

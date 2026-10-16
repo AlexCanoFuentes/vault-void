@@ -21,6 +21,15 @@ MAX_ARCHIVO=128*1024*1024
 TAM_PARTE=512*1024
 MAX_CLARO=200*1024*1024
 USER_AGENT='VoidVault/0.0.11 (+https://vaultvoid.app)'
+
+def dentro_de(ruta, base):
+    """Si una ruta está dentro de otra, como en Python 3.9, pero en 3.8: la guía promete 3.8 (16-oct)."""
+    try:
+        ruta.relative_to(base)
+        return True
+    except ValueError:
+        return False
+
 def archivos(vault):
     """Inventario completo. No lee contenidos, no sigue enlaces externos ni omite ignorados."""
     vault=Path(vault).resolve()
@@ -31,7 +40,7 @@ def archivos(vault):
     seleccion=[]
     def recorrer(base,ancestros):
         real=base.resolve(strict=True)
-        if not real.is_relative_to(vault):
+        if not dentro_de(real, vault):
             raise ValueError('Hay un enlace fuera del vault; no se omite ni se copia sin revisar su dueño.')
         if real in ancestros:
             raise ValueError('Hay un enlace circular; no se omite: corrígelo antes de copiar.')
@@ -41,7 +50,7 @@ def archivos(vault):
                 raise ValueError('Hay una ruta incompatible con la copia segura; no se omite ningún dato.')
             if p.is_symlink():
                 destino=p.resolve(strict=True)
-                if not destino.is_relative_to(vault):
+                if not dentro_de(destino, vault):
                     raise ValueError('Hay un enlace fuera del vault; no se omite ni se copia sin revisar su dueño.')
             else:destino=p
             modo=destino.stat().st_mode
@@ -101,7 +110,7 @@ def empaquetar(vault,rutas,para_envio=True):
                 tar.addfile(info)
             for ruta in rutas:
                 p=vault/ruta
-                if not p.resolve(strict=True).is_relative_to(vault) or firma(p)!=firmas[ruta]:
+                if not dentro_de(p.resolve(strict=True), vault) or firma(p)!=firmas[ruta]:
                     raise ValueError('Un archivo cambió durante la copia; no se envía una copia incompleta.')
                 origen=copias.get(ruta,p);arcname=trasladados.get(ruta,ruta)
                 # Materializa enlaces internos para el importador; el manifiesto conserva su forma original.

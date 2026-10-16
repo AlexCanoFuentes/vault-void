@@ -588,6 +588,83 @@ class Red(Caso):
 
 # ---------------------------------------------------------------- el repo
 
+class Turno(unittest.TestCase):
+    """Fase 1 [16-oct]: juntar la copia de Void con el vault del PC por turnos, sin perder nada de ningún lado."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        spec = importlib.util.spec_from_file_location("turno", str(AQUI / "turno.py"))
+        self.T = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.T)
+        self.pc = hacer_vault(self.tmp / "pc", {"README.md": b"# vault\n", "notas.md": b"uno\ndos\n",
+                                               "bitacora.md": b"- inicio\n", ".gitattributes": b"bitacora.md merge=union\n"})
+        self.void = self.tmp / "void"
+        subprocess.run(["git", "clone", "-q", str(self.pc), str(self.void)], check=True)
+
+    def tearDown(self):
+        shutil.rmtree(str(self.tmp), ignore_errors=True)
+
+    def escribe(self, v, ruta, texto, mensaje="cambio"):
+        (v / ruta).write_text(texto, encoding="utf-8")
+        git(v, "add", "-A")
+        git(v, "commit", "-q", "-m", mensaje)
+
+    def test_solo_void_escribio_el_pc_avanza(self):
+        self.escribe(self.void, "nuevo.md", "de Void\n", "checkpoint: guardado al rato")
+        r = self.T.juntar(self.pc, self.void)
+        self.assertEqual(r["resultado"], "avanza", r)
+        self.assertEqual((self.pc / "nuevo.md").read_text(encoding="utf-8"), "de Void\n")
+
+    def test_solo_el_pc_escribio_no_cambia_nada(self):
+        self.escribe(self.pc, "nuevo.md", "del PC\n")
+        antes = git(self.pc, "rev-parse", "HEAD")[1]
+        r = self.T.juntar(self.pc, self.void)
+        self.assertEqual(r["resultado"], "void_detras", r)
+        self.assertEqual(git(self.pc, "rev-parse", "HEAD")[1], antes)
+        self.assertIn("turno", r["mensaje"])
+
+    def test_los_dos_en_ficheros_distintos_se_juntan(self):
+        self.escribe(self.void, "de-void.md", "v\n")
+        self.escribe(self.pc, "del-pc.md", "p\n")
+        r = self.T.juntar(self.pc, self.void)
+        self.assertEqual(r["resultado"], "unido", r)
+        self.assertTrue((self.pc / "de-void.md").exists() and (self.pc / "del-pc.md").exists())
+        self.assertEqual(len(git(self.pc, "rev-list", "--parents", "-n1", "HEAD")[1].split()), 3, "no hay commit de unión")
+
+    def test_lo_que_solo_crece_se_junta_sin_choque(self):
+        self.escribe(self.void, "bitacora.md", "- inicio\n- desde Void\n")
+        self.escribe(self.pc, "bitacora.md", "- inicio\n- desde el PC\n")
+        r = self.T.juntar(self.pc, self.void)
+        self.assertEqual(r["resultado"], "unido", r)
+        b = (self.pc / "bitacora.md").read_text(encoding="utf-8")
+        self.assertIn("desde Void", b)
+        self.assertIn("desde el PC", b)
+
+    def test_la_misma_linea_cambiada_en_los_dos_es_un_choque_y_no_toca_nada(self):
+        self.escribe(self.void, "notas.md", "uno\nDOS desde Void\n")
+        self.escribe(self.pc, "notas.md", "uno\nDOS desde el PC\n")
+        antes = git(self.pc, "rev-parse", "HEAD")[1]
+        r = self.T.juntar(self.pc, self.void)
+        self.assertEqual(r["resultado"], "choque", r)
+        self.assertIn("notas.md", r["ficheros"])
+        self.assertEqual(git(self.pc, "rev-parse", "HEAD")[1], antes, "un choque ha cambiado el PC")
+        self.assertEqual(git(self.pc, "status", "--porcelain")[1].strip(), "", "un choque ha dejado el PC a medias")
+        self.assertIn("DOS desde el PC", (self.pc / "notas.md").read_text(encoding="utf-8"))
+
+    def test_con_cambios_sin_guardar_no_hace_nada(self):
+        self.escribe(self.void, "nuevo.md", "de Void\n")
+        (self.pc / "notas.md").write_text("a medio escribir\n", encoding="utf-8")
+        r = self.T.juntar(self.pc, self.void)
+        self.assertEqual(r["resultado"], "sin_guardar", r)
+        self.assertFalse((self.pc / "nuevo.md").exists())
+        self.assertEqual((self.pc / "notas.md").read_text(encoding="utf-8"), "a medio escribir\n")
+
+    def test_historias_sin_nada_en_comun_no_se_juntan(self):
+        otra = hacer_vault(self.tmp / "otra", {"README.md": b"# otra historia\n"})
+        r = self.T.juntar(self.pc, otra)
+        self.assertEqual(r["resultado"], "sin_comun", r)
+
+
 class Repo(unittest.TestCase):
     def test_lo_que_se_reparte_funciona_con_python_3_8(self):
         """16-oct: conectar_vault.py usaba Path.is_relative_to (Python 3.9) y la guía promete 3.8. Ninguna herramienta que

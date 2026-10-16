@@ -62,7 +62,8 @@ async function entrar(p: Propietario, req: Request, env: EntradaEnv, extra: Reco
   h.append('set-cookie', `${COOKIE}=${token}; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=${VIDA / 1000}`);
   const ap = extra.aparato as { id?: string; secreto?: string } | null | undefined;
   if (ap?.id && ap.secreto) h.append('set-cookie', `${COOKIE_AP}=${ap.id}:${ap.secreto}; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=${VIDA / 1000}`);
-  const { aparato, abierto, status, error, ...visible } = extra;
+  else if (extra.olvidaAparato) h.append('set-cookie', `${COOKIE_AP}=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0`);
+  const { aparato, abierto, status, error, olvidaAparato, ...visible } = extra;
   // La caja cerrada no impide entrar: la pantalla pide el kit o el código anterior para abrirla.
   return new Response(JSON.stringify({ alias: p.alias, listo: !!p.listo, candado: abierto ? 'abierto' : 'cerrado', ...visible }), { status: 200, headers: h });
 }
@@ -93,6 +94,8 @@ export async function entradaWeb(req: Request, env: EntradaEnv, publicar: (req: 
         reemplazar: anterior && RE_APARATO.test(anterior) ? anterior.slice(0,16) : undefined };
       const r = await candado(env, p, 'passkey-' + accion, datos);
       if (accion === 'entrar' && r.ok) return entrar(p, req, env, await r.json() as Record<string, unknown>);
+      // Al dar de alta una passkey, este navegador olvida la llave de su aparato: desde ahora se entra con la passkey.
+      if (accion === 'confirmar' && r.ok) { const h = new Headers(cab); h.append('set-cookie', `${COOKIE_AP}=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0`); const { olvidaAparato, ...d } = await r.json() as Record<string, unknown>; return new Response(JSON.stringify(d), { status: r.status, headers: h }); }
       return new Response(r.body, { status:r.status, headers:cab });
     }
     if (ruta === '/capacidad' && req.method === 'GET') {

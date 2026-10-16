@@ -7,7 +7,7 @@ El canal por el que un arreglo hecho una vez llega a todos los vaults.
 - `void.py`: el cliente. Cada vault lleva una copia en `herramientas/void.py`.
 - `estrellas/` y `catalogo.json`: el catálogo de estrellas (abajo).
 
-## Qué lleva la base (0.0.9)
+## Qué lleva la base (0.0.12)
 
 Incluye las reglas comunes, los candados y KERNEL con sus disparadores. Lo que cambia de un
 vault a otro (el nombre, el idioma y el criterio propio) se queda en cada vault.
@@ -28,7 +28,7 @@ vault a otro (el nombre, el idioma y el criterio propio) se queda en cada vault.
 Al conectar un vault que ya tiene `AGENTS.md` o `CLAUDE.md`, si el tramo de la base está tal cual,
 `void.py` le pone las marcas alrededor y no cambia nada más.
 
-## La plantilla de un vault nuevo (0.0.9)
+## La plantilla de un vault nuevo (0.0.10)
 
 `plantilla/` es con lo que empieza un vault en una carpeta vacía (vaultvoid.app/empezar, abajo).
 Es lo que tenían en común los tres primeros vaults, montados a mano el 1-oct, **sin nada de
@@ -166,7 +166,7 @@ comando o ejecútalo tú en una terminal.
 ## Para quien mantiene la base
 
 ```
-python3 regenerar_manifiesto.py --version 0.0.9 --plantilla 0.0.9   # copia void.py a la base, rehace el manifiesto y pone
+python3 regenerar_manifiesto.py --version 0.0.12 --plantilla 0.0.10   # copia void.py a la base, rehace el manifiesto y pone
                                                 # la huella de void.py en web/entrar.*
 python3 pruebas.py                              # pruebas
 python3 pruebas.py --sabotaje                   # rompe cada candado y comprueba que las pruebas lo cazan
@@ -190,9 +190,10 @@ para entrar en el catálogo. No toca nada fuera de esa carpeta.
 
 ## Versiones e hitos [2026-10-10]
 
-La revisión actual es **0.0.9, desarrollo**. `VERSION` identifica Void; los manifiestos de base y
-plantilla y los paquetes de la red y antena llevan esta revisión. Las versiones de las estrellas
-son independientes. No se incrementa la versión por cada arreglo.
+La revisión actual es **0.0.12, desarrollo**: `VERSION` y el manifiesto de la base. La plantilla va por
+la 0.0.10 y la red y la antena llevan su propio número en su `package.json`. Cada versión de la base lleva
+su marca en git desde la 0.0.9 (`git tag`). Las versiones de las estrellas son independientes. No se
+incrementa la versión por cada arreglo.
 
 - **0.0.x:** construcción y pruebas de desarrollo, sin prometer beta.
 - **0.1.0:** beta con vaults reales conectados y un hito relevante confirmado por Alex. Un post de

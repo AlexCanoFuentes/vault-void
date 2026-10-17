@@ -35,6 +35,8 @@ from unittest import mock
 
 AQUI = Path(__file__).resolve().parent
 sys.path.insert(0, str(AQUI))
+import conectar_vault as REF_E
+E = REF_E
 import void as REF  # noqa: E402  la versión buena, para montar los datos de las pruebas
 import regenerar_manifiesto  # noqa: E402
 import formato as REF_F  # noqa: E402
@@ -2573,9 +2575,222 @@ class RedDeVoid(Caso):
         self.assertEqual(self.red.perfiles, {})
 
 
+
+class ConexionExcluir(Caso):
+    """Exclusiones con datos ficticios y Git real, sin un servicio remoto."""
+
+    def vault(self):
+        return hacer_vault(self.tmp / 'seleccion', {
+            'README.md': b'Contenido permitido\n',
+            'CRM/clientes.txt': b'MARCADOR-EXCLUIDO-ACTUAL\n',
+            'CRM-antiguo.txt': b'Vecino permitido\n',
+            'borrado.txt': b'MARCADOR-EXCLUIDO-HISTORIA\n',
+            '.gitignore': b'ignorado/\n.void/\n.agente/\n',
+        })
+
+    def paquete(self, v, excluir):
+        return E.empaquetar(v, E.archivos(v, excluir=excluir), excluir=excluir)
+
+    def restaurar(self, datos):
+        import tarfile
+        destino = self.tmp / 'restaurado'
+        destino.mkdir()
+        with tarfile.open(fileobj=io.BytesIO(datos), mode='r:gz') as t:
+            # Solo archivos creados por este ensayo; evita extractall dependiente de Python nuevo.
+            for miembro in t:
+                p = destino / miembro.name
+                if miembro.isdir():
+                    p.mkdir(parents=True, exist_ok=True)
+                else:
+                    self.assertTrue(miembro.isfile())
+                    p.parent.mkdir(parents=True, exist_ok=True)
+                    p.write_bytes(t.extractfile(miembro).read())
+        return destino
+
+    def test_historia_objetos_y_original_intacto(self):
+        v = self.vault()
+        git(v, 'tag', 'antes')
+        git(v, 'branch', 'otra')
+        (v / 'borrado.txt').unlink()
+        git(v, 'add', '-A'); git(v, 'commit', '-qm', 'retirado')
+        (v / 'CRM/clientes.txt').write_bytes(b'MARCADOR-EXCLUIDO-STASH\n')
+        git(v, 'stash', 'push', '-qm', 'guardado')
+        git(v, 'gc')
+        (v / 'ignorado').mkdir(); (v / 'ignorado/nota').write_bytes(b'Ignorado permitido')
+        antes = {p.relative_to(v).as_posix(): p.read_bytes() for p in v.rglob('*') if p.is_file()}
+        datos = self.paquete(v, ['CRM', 'borrado.txt'])
+        self.assertTrue(E.verificar(datos)['verificado'])
+        r = self.restaurar(datos)
+        self.assertFalse((r / 'CRM').exists())
+        self.assertFalse((r / 'borrado.txt').exists())
+        self.assertEqual((r / 'CRM-antiguo.txt').read_bytes(), b'Vecino permitido\n')
+        self.assertEqual((r / 'ignorado/nota').read_bytes(), b'Ignorado permitido')
+        self.assertEqual(git(r, 'rev-list', '--all', '--count'), (0, '1\n'))
+        self.assertEqual(git(r, 'remote')[1], '')
+        self.assertEqual(git(r, 'ls-tree', '-r', 'HEAD')[1], '')
+        objetos = git(r, 'cat-file', '--batch-all-objects', '--batch-check=%(objectname) %(objecttype)')[1]
+        self.assertTrue(objetos.strip())
+        for linea in objetos.splitlines():
+            oid, tipo = linea.split()
+            contenido = git(r, 'cat-file', tipo, oid)[1]
+            self.assertNotIn('MARCADOR-EXCLUIDO', contenido)
+        self.assertNotIn(b'MARCADOR-EXCLUIDO', __import__('gzip').decompress(datos))
+        despues = {p.relative_to(v).as_posix(): p.read_bytes() for p in v.rglob('*') if p.is_file()}
+        self.assertEqual(antes, despues)
+
+    def test_previa_sin_contenidos_ni_red_y_cli_repetida(self):
+        v = self.vault()
+        out = io.StringIO()
+        with mock.patch.object(Path, 'open', side_effect=AssertionError('no leer contenido')), \
+                mock.patch.object(E, 'subir', side_effect=AssertionError('no enviar')), redirect_stdout(out):
+            E.conectar(v, excluir=['CRM/', 'borrado.txt'])
+        self.assertIn('CRM', out.getvalue())
+        self.assertIn('historial nuevo', out.getvalue())
+        self.assertIn('No se ha enviado nada', out.getvalue())
+        for ruta in ['conectar_vault.py', 'base/herramientas/conectar_vault.py']:
+            r = subprocess.run([sys.executable, str(AQUI / ruta), '--vault', str(v),
+                                '--excluir', 'CRM', '--excluir', 'borrado.txt'], capture_output=True)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            self.assertIn(b'CRM', r.stdout)
+
+    def test_rutas_invalidas_y_ruta_historica(self):
+        v = self.vault()
+        for ruta in ['', '.', '/', '../CRM', 'x/../CRM', '/CRM', 'C:/CRM', 'CRM\\x',
+                     'CRM*', 'CRM?', '[CRM]', 'x\nCRM', '.git/config']:
+            with self.subTest(ruta=ruta), self.assertRaises(ValueError):
+                E.archivos(v, excluir=[ruta])
+        self.assertIn('README.md', E.archivos(v, excluir=['historico-inexistente']))
+        self.assertNotIn('CRM/clientes.txt', E.archivos(v, excluir=['./CRM/']))
+
+    @unittest.skipIf(os.name == 'nt', 'enlaces requieren permisos en Windows')
+    def test_enlaces_no_reintroducen_lo_excluido(self):
+        v = self.vault()
+        (v / 'alias').symlink_to('CRM', target_is_directory=True)
+        with self.assertRaisesRegex(ValueError, 'enlace'):
+            self.paquete(v, ['CRM'])
+        (v / 'duro').hardlink_to(v / 'CRM/clientes.txt') if hasattr(Path, 'hardlink_to') else os.link(v / 'CRM/clientes.txt', v / 'duro')
+        with self.assertRaisesRegex(ValueError, 'enlace'):
+            self.paquete(v, ['CRM', 'alias'])
+        self.assertTrue(self.paquete(v, ['CRM', 'alias', 'duro']))
+        (v / 'externo').symlink_to(self.tmp / 'no-existe')
+        self.assertTrue(self.paquete(v, ['CRM', 'alias', 'duro', 'externo']))
+
+    def test_no_recorrer_excluidos_ni_repos_anidados(self):
+        v = self.vault()
+        (v / 'sub/.git').mkdir(parents=True)
+        (v / 'sub/.git/objeto').write_bytes(b'MARCADOR-EXCLUIDO-ANIDADO')
+        real = Path.iterdir
+        def listar(p):
+            if p.name in ('CRM', '.git'):
+                raise AssertionError('recorrió contenido excluido')
+            return real(p)
+        with mock.patch.object(Path, 'iterdir', listar):
+            rutas = E.archivos(v, excluir=['CRM'])
+        self.assertNotIn('sub/.git/objeto', rutas)
+        self.assertNotIn(b'MARCADOR-EXCLUIDO', __import__('gzip').decompress(self.paquete(v, ['CRM', 'borrado.txt'])))
+
+    def test_cambio_despues_de_revisar_y_limite_detienen(self):
+        v = self.vault(); rutas = E.archivos(v, excluir=['CRM'])
+        (v / 'nuevo.txt').write_bytes(b'nuevo')
+        with self.assertRaisesRegex(ValueError, 'cambi'):
+            E.empaquetar(v, rutas, excluir=['CRM'])
+        with mock.patch.object(E, 'MAX_CLARO', 1), self.assertRaisesRegex(ValueError, '200 MiB'):
+            self.paquete(v, ['CRM'])
+
+    def test_git_no_ejecuta_configuracion_hooks_ni_filtros(self):
+        v = self.vault(); marca = self.tmp / 'ejecutado'
+        hook = v / '.git/hooks/pre-commit'
+        hook.write_text('#!/bin/sh\ntouch "{}"\n'.format(marca)); hook.chmod(0o700)
+        git(v, 'config', 'filter.trampa.clean', 'touch "{}"'.format(marca))
+        (v / '.gitattributes').write_text('* filter=trampa\n')
+        # Tampoco una configuración impuesta en el entorno del proceso.
+        with mock.patch.dict(os.environ, {'GIT_DIR': str(v / '.git'), 'GIT_CONFIG_COUNT': '1',
+                                         'GIT_CONFIG_KEY_0': 'core.hooksPath', 'GIT_CONFIG_VALUE_0': str(hook.parent)}):
+            datos = self.paquete(v, ['CRM'])
+        self.assertFalse(marca.exists())
+        r = self.restaurar(datos)
+        self.assertNotIn('trampa', (r / '.git/config').read_text())
+        self.assertFalse((r / '.git/hooks/pre-commit').exists())
+
+    def test_sqlite_y_recuperacion_con_transporte_sustituido(self):
+        import sqlite3
+        v = self.vault(); (v / '.agente').mkdir(); (v / '.void').mkdir()
+        (v / '.void/llave').write_text('vv_' + 'z' * 43)
+        db = sqlite3.connect(str(v / '.agente/chat.db'))
+        self.addCleanup(db.close)
+        db.execute('PRAGMA journal_mode=WAL'); db.execute('CREATE TABLE nota(texto)')
+        db.execute("INSERT INTO nota VALUES('permitido')"); db.commit()
+        out = io.StringIO(); enviados = []
+        def subir(endpoint, credencial, datos):
+            enviados.append(datos)
+            return {'archivo_sha256': E.hashlib.sha256(datos).hexdigest(), 'enlace': 've_' + 't' * 43}
+        class Red:
+            def open(self, req, timeout): return io.BytesIO(enviados[-1])
+        with mock.patch.object(E, 'subir', subir), mock.patch.object(E.urllib.request, 'build_opener', return_value=Red()), redirect_stdout(out):
+            E.conectar(v, confirmado=True, excluir=['CRM', 'borrado.txt'])
+        self.assertEqual(len(enviados), 1)
+        r = self.restaurar(enviados[0])
+        with sqlite3.connect(str(r / '.agente/chat.db')) as copia:
+            self.assertEqual(copia.execute('SELECT texto FROM nota').fetchone()[0], 'permitido')
+        self.assertNotIn('MARCADOR-EXCLUIDO', out.getvalue())
+        self.assertIn('recuperada y verificada', out.getvalue())
+
+    def test_excluir_credencial_o_caja_previa_no_se_interpreta_como_filtrado(self):
+        v = self.vault()
+        for opciones in ({'excluir':['.void'], 'confirmado':True},
+                         {'excluir':['.void/llave'], 'confirmado':True},
+                         {'excluir':['CRM'], 'alojado':True}):
+            with self.subTest(opciones=opciones), mock.patch.object(E, 'subir') as subir, self.assertRaises(ValueError):
+                E.conectar(v, **opciones)
+            subir.assert_not_called()
+
+    def test_auxiliares_sqlite_excluidos_y_directorios_vacios(self):
+        v = self.vault()
+        (v / 'CRM.db').write_bytes(b'MARCADOR-AUXILIAR-PRIVADO')
+        for sufijo in ('-wal', '-shm', '-journal'):
+            (v / ('CRM.db' + sufijo)).write_bytes(b'MARCADOR-AUXILIAR-PRIVADO')
+        (v / 'vacio').mkdir()
+        datos = self.paquete(v, ['CRM.db'])
+        self.assertNotIn(b'MARCADOR-AUXILIAR-PRIVADO', __import__('gzip').decompress(datos))
+        self.assertTrue((self.restaurar(datos) / 'vacio').is_dir())
+
+    @unittest.skipIf(os.name == 'nt', 'enlaces requieren permisos en Windows')
+    def test_cambio_durante_copia_no_lee_el_destino_del_enlace(self):
+        v = self.vault(); rutas = E.archivos(v, excluir=['CRM'])
+        abrir = E.os.open
+        def cambiado(ruta, flags, *args, **kw):
+            if str(ruta) == str(v / 'README.md'):
+                (v / 'README.md').unlink()
+                (v / 'README.md').symlink_to('CRM/clientes.txt')
+            return abrir(ruta, flags, *args, **kw)
+        with mock.patch.object(E.os, 'open', cambiado), self.assertRaises((ValueError, OSError)):
+            E.empaquetar(v, rutas, excluir=['CRM'])
+
+    def test_copia_completa_y_compatibilidad_se_conservan(self):
+        v = self.vault(); datos = E.empaquetar(v, E.archivos(v))
+        r = self.restaurar(datos)
+        self.assertEqual(git(v, 'rev-parse', 'HEAD'), git(r, 'rev-parse', 'HEAD'))
+        self.assertEqual((v / 'CRM/clientes.txt').read_bytes(), (r / 'CRM/clientes.txt').read_bytes())
+        for ruta in ['conectar_vault.py', 'base/herramientas/conectar_vault.py']:
+            ast.parse((AQUI / ruta).read_text(), feature_version=(3, 8))
+        self.assertEqual((AQUI / 'conectar_vault.py').read_bytes(), (AQUI / 'base/herramientas/conectar_vault.py').read_bytes())
+
+
 # ---------------------------------------------------------------- sabotaje
 
 SABOTAJES = [
+    ("conexión: ignora la exclusión de archivos",
+     [("return any(ruta == r or ruta.startswith(r + '/') for r in reglas)", "return False")],
+     ["ConexionExcluir.test_historia_objetos_y_original_intacto"], "conectar_vault.py"),
+    ("conexión: conserva objetos de los repos originales",
+     [("if p.name.lower() == '.git' or excluido(r, reglas):", "if excluido(r, reglas):")],
+     ["ConexionExcluir.test_historia_objetos_y_original_intacto"], "conectar_vault.py"),
+    ("conexión: omite el control de cambios tras la revisión",
+     [("if rutas != inventario[0]:", "if False:")],
+     ["ConexionExcluir.test_cambio_despues_de_revisar_y_limite_detienen"], "conectar_vault.py"),
+    ("conexión: los auxiliares de una base excluida viajan",
+     [("resultado.extend(ruta + sufijo for sufijo in ('-wal', '-shm', '-journal'))", "pass")],
+     ["ConexionExcluir.test_auxiliares_sqlite_excluidos_y_directorios_vacios"], "conectar_vault.py"),
     ("mensajes: una clave que cambia no se para",
      [("    if alias in conocidas and conocidas[alias] != nueva and not confiar:", "    if False:")],
      ["Mensajes.test_sabotajes_orden_secreto_sobre_cambiado_y_clave_cambiada"]),
@@ -2786,9 +3001,11 @@ def razon(traza):
 
 def poner_bajo_prueba(fichero, modulo):
     """Cambia el módulo que usan las pruebas: el bueno o uno saboteado."""
-    global V, VOID_PY, F, P, C, T, M
+    global V, VOID_PY, F, P, C, T, M, E
     if fichero == "void.py":
         V, VOID_PY = modulo, Path(modulo.__file__)
+    elif fichero == "conectar_vault.py":
+        E = modulo
     elif fichero == "formato.py":
         F = modulo
     elif fichero == "puerta.py":
@@ -2804,7 +3021,7 @@ def poner_bajo_prueba(fichero, modulo):
 
 
 def buenos():
-    return {"void.py": REF, "formato.py": REF_F, "puerta.py": REF_P, "regenerar_catalogo.py": REF_C, "taller.py": REF_T,
+    return {"conectar_vault.py": REF_E, "void.py": REF, "formato.py": REF_F, "puerta.py": REF_P, "regenerar_catalogo.py": REF_C, "taller.py": REF_T,
             "regenerar_manifiesto.py": regenerar_manifiesto}
 
 

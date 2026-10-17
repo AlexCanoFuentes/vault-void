@@ -6,6 +6,17 @@ export interface EntradaEnv {
   DB: D1Database;
   NUBE?: Fetcher;
   TOPE_WEB?: string;
+  /** Pase de operador para crear el alias reservado «void» (17-oct). Sin él, «void» sigue reservado para todos. */
+  PASE_RESERVADO?: string;
+}
+// El espacio del propio Void (17-oct): «void» está reservado para que nadie se haga pasar por Void. Solo el operador,
+// con su pase, puede crearlo, y solo ese alias. Se compara el resumen de los dos en tiempo constante.
+async function conPaseReservado(req: Request, env: EntradaEnv, alias: string): Promise<boolean> {
+  const pase = env.PASE_RESERVADO, dado = req.headers.get('x-void-pase');
+  if (alias !== 'void' || !pase || pase.length < 32 || !dado) return false;
+  const [a, b] = await Promise.all([pase, dado].map(async (t) => new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)))));
+  let d = 0; for (let i = 0; i < a.length; i++) d |= a[i] ^ b[i];
+  return d === 0;
 }
 interface Propietario { id: number; alias: string; listo: number; recuperacion_hash: string; alojamiento_prueba?: string; aparato?: string }
 const COOKIE = '__Host-void';
@@ -121,7 +132,7 @@ export async function entradaWeb(req: Request, env: EntradaEnv, publicar: (req: 
     }
     if (ruta === '/crear' && req.method === 'POST') {
       const b = await leer(req), alias = typeof b.alias === 'string' ? b.alias.trim() : '';
-      const mal = problemaAlias(alias) || problemaHuella(b.huella);
+      const mal = (await conPaseReservado(req, env, alias) ? null : problemaAlias(alias)) || problemaHuella(b.huella);
       if (mal) return fallo(400, mal);
       if (!RE_CODIGO.test(b.recuperacion || '') || b.consentimiento !== true || !Array.isArray(b.respuestas) || b.respuestas.length !== 7 || b.respuestas.some((r: unknown) => r !== null && (typeof r !== 'string' || r.length > 3000))) return fallo(400, 'Faltan tus respuestas, tu código o la autorización para guardarlas.');
       if (!/^vc_[0-9a-f]{64}$/.test(b.cuento || '')) return fallo(400, 'Guarda primero tu huella: así será la misma al volver.');

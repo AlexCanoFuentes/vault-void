@@ -2656,6 +2656,19 @@ class ConexionExcluir(Caso):
             self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
             self.assertIn(b'CRM', r.stdout)
 
+    def test_mayusculas_y_tildes_no_cuelan_lo_excluido(self):
+        # ROJO (17-oct): en Mac y Windows «crm» y «CRM» son la misma carpeta; comparar distinguiendo las subía.
+        v = self.vault()
+        for regla in ['crm', 'Crm/', 'CRM']:
+            with self.subTest(regla=regla):
+                self.assertNotIn('CRM/clientes.txt', E.archivos(v, excluir=[regla]))
+                self.assertIn('CRM-antiguo.txt', E.archivos(v, excluir=[regla]))
+        (v / 'Clínica').mkdir(); (v / 'Clínica' / 'nota.txt').write_bytes(b'MARCADOR-EXCLUIDO-TILDE\n')
+        decompuesto = __import__('unicodedata').normalize('NFD', 'clínica')
+        self.assertNotIn('Clínica/nota.txt', E.archivos(v, excluir=[decompuesto]))
+        self.assertTrue(E.existe_regla(v, 'crm'))
+        self.assertFalse(E.existe_regla(v, 'no-esta'))
+
     def test_rutas_invalidas_y_ruta_historica(self):
         v = self.vault()
         for ruta in ['', '.', '/', '../CRM', 'x/../CRM', '/CRM', 'C:/CRM', 'CRM\\x',
@@ -2801,8 +2814,11 @@ SABOTAJES = [
      [("p in ('', '.', '..')", "p in ('', '.')")],
      ["DescargaEspacio.test_archivos_hostiles_no_se_extraen"], "espacio.py"),
     ("conexión: ignora la exclusión de archivos",
-     [("return any(ruta == r or ruta.startswith(r + '/') for r in reglas)", "return False")],
+     [("return any(r == _comparable(x) or r.startswith(_comparable(x) + '/') for x in reglas)", "return False")],
      ["ConexionExcluir.test_historia_objetos_y_original_intacto"], "conectar_vault.py"),
+    ("conexión: distingue mayúsculas al excluir (en Mac sube lo excluido)",
+     [("return unicodedata.normalize('NFC', ruta).casefold()", "return ruta")],
+     ["ConexionExcluir.test_mayusculas_y_tildes_no_cuelan_lo_excluido"], "conectar_vault.py"),
     ("conexión: conserva objetos de los repos originales",
      [("if p.name.lower() == '.git' or excluido(r, reglas):", "if excluido(r, reglas):")],
      ["ConexionExcluir.test_historia_objetos_y_original_intacto"], "conectar_vault.py"),

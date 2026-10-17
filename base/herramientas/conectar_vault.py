@@ -4,6 +4,7 @@ import argparse
 import getpass
 import hashlib
 import stat
+import unicodedata
 import uuid
 import io
 import json
@@ -52,8 +53,27 @@ def exclusiones(rutas):
     return tuple(sorted(set(resultado)))
 
 
+def _comparable(ruta):
+    """Sin distinguir mayúsculas ni la forma Unicode: el disco de Mac y Windows tampoco las distingue (17-oct)."""
+    return unicodedata.normalize('NFC', ruta).casefold()
+
+
 def excluido(ruta, reglas):
-    return any(ruta == r or ruta.startswith(r + '/') for r in reglas)
+    r = _comparable(ruta)
+    return any(r == _comparable(x) or r.startswith(_comparable(x) + '/') for x in reglas)
+
+
+def existe_regla(vault, regla):
+    """Si la exclusión nombra algo que está hoy en el vault, escrito con otras mayúsculas o no."""
+    actual = Path(vault)
+    for parte in regla.split('/'):
+        if not actual.is_dir() or actual.is_symlink():
+            return False
+        iguales = [p for p in actual.iterdir() if _comparable(p.name) == _comparable(parte)]
+        if not iguales:
+            return False
+        actual = iguales[0]
+    return True
 
 
 def inventario_seleccion(vault, reglas):
@@ -347,7 +367,7 @@ def conectar(vault,confirmado=False,alojado=False,excluir=()):
         print('Copia privada seleccionada: {} archivos. Se creará un historial nuevo, con un commit vacío; todos los commits, objetos y configuraciones Git originales se quedan en el ordenador.'.format(len(rutas)))
         print('Se quedan en tu ordenador:')
         for r in reglas:
-            print('  ' + r + (' (no existe ahora; puede estar en la historia)' if not os.path.lexists(str(vault/r)) else ''))
+            print('  ' + r + (' (no existe ahora; puede estar en la historia)' if not existe_regla(vault, r) else ''))
         print('También se omiten todos los repositorios .git anidados. No se puede unir esta historia nueva con turno.py. Excluye aparte las copias, exportaciones o conversaciones que contengan esos datos.')
         print('Las exclusiones no borran ninguna copia ya alojada. Repite las mismas opciones al confirmar o reintentar.')
     if not reglas: print('Se abrirá la caja actual.' if alojado else f'Copia privada completa: {len(rutas)} archivos, incluidos ignorados, personalizaciones, archivos de acceso y el historial git. Conserva el original. No sincroniza cambios posteriores con el PC.')

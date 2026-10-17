@@ -265,6 +265,19 @@ def validar_manifiesto(datos, que="la base"):
     return version, dict(ficheros)
 
 
+def anteriores_de(crudo):
+    """Las huellas de los bloques con marcas de versiones publicadas antes [17-oct]. Un bloque igual, letra a letra, a
+    uno oficial no lo cambió la persona: se puede poner al día. Si falta o está mal, no hay ninguna."""
+    try:
+        a = json.loads(crudo.decode("utf-8")).get("anteriores")
+    except (UnicodeDecodeError, ValueError, AttributeError):
+        return {}
+    if not isinstance(a, dict):
+        return {}
+    return {ruta: frozenset(h for h in hs if isinstance(h, str) and re.fullmatch(r"[0-9a-f]{64}", h))
+            for ruta, hs in a.items() if isinstance(ruta, str) and isinstance(hs, list)}
+
+
 class Fuente:
     """La base: su manifiesto y una forma de leer cada fichero. No ejecuta nada."""
 
@@ -277,6 +290,7 @@ class Fuente:
             raise Fallo("No encuentro {}/{} en {}: no he escrito nada.".format(carpeta, MANIFIESTO, descripcion))
         self.huella_manifiesto = huella(crudo)
         self.version, self.ficheros = validar_manifiesto(crudo, que)
+        self.anteriores = anteriores_de(crudo)
 
     def leer_comprobado(self):
         """Lee todos los ficheros del manifiesto y comprueba su huella. Si uno falla, no
@@ -603,7 +617,7 @@ def escribir_void_json(version, instalados, descripcion, estrellas=None):
     return (json.dumps(datos, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
 
 
-def plan(vault, actual, version, nuevos, marcas_md=True):
+def plan(vault, actual, version, nuevos, marcas_md=True, anteriores=None):
     """Decide qué pasa con cada fichero. No escribe nada.
 
     Devuelve (escrituras, borrados, instalados, avisos, resumen):
@@ -670,7 +684,9 @@ def plan(vault, actual, version, nuevos, marcas_md=True):
         if h_local == h_nueva:
             instalados[ruta] = h_nueva
             resumen["iguales"].append(ruta)
-        elif h_instalada is not None and h_local == h_instalada:
+        elif (h_instalada is not None and h_local == h_instalada) or h_local in (anteriores or {}).get(ruta, ()):
+            # Lo segundo [17-oct]: los espacios creados desde la web apuntaban la huella del fichero entero, y su
+            # bloque, oficial y sin tocar, parecía cambiado por la persona.
             escrituras[ruta] = resultado
             instalados[ruta] = h_nueva
             resumen["cambiados"].append(ruta)
@@ -1744,7 +1760,8 @@ def orden_actualizar(vault, desde, conectar):
     if crear_repo:
         vault.mkdir(parents=True, exist_ok=True)
         git(vault, "init", "-q")
-    escrituras, borrados, instalados, avisos, resumen = plan(vault, actual, fuente.version, nuevos)
+    escrituras, borrados, instalados, avisos, resumen = plan(vault, actual, fuente.version, nuevos,
+                                                            anteriores=fuente.anteriores)
     antes = (actual or {}).get("base")
     # Con --desde no se apunta la ruta: es de la máquina de quien prueba y acabaría en el commit.
     void_json = escribir_void_json(fuente.version, instalados, "copia local (--desde)"

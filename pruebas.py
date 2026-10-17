@@ -2580,6 +2580,42 @@ class RedDeVoid(Caso):
 
 
 
+class BloquesAnteriores(Caso):
+    """[17-oct] Un espacio creado desde la web apuntaba la huella del fichero entero de AGENTS.md: su bloque oficial,
+    sin tocar, parecía cambiado por la persona y nunca recibía el nuevo."""
+
+    VIEJO = "<!-- base:inicio -->\nbloque oficial viejo\n<!-- base:fin -->\n"
+    NUEVO = "# Base\n\n<!-- base:inicio -->\nbloque oficial nuevo\n<!-- base:fin -->\n"
+
+    def planear(self, bloque_local, anteriores):
+        v = self.tmp / 'espacio'; v.mkdir(exist_ok=True)
+        (v / 'AGENTS.md').write_bytes(("# Mío\n\n" + bloque_local + "\n## Lo de la persona\n").encode())
+        actual = {"base": "0.0.10", "ficheros": {"AGENTS.md": V.huella(b"el fichero entero de la base, no el bloque")}}
+        return V.plan(v, actual, "0.0.15", {"AGENTS.md": self.NUEVO.encode()}, anteriores=anteriores)
+
+    def test_bloque_oficial_viejo_se_actualiza_y_lo_personal_se_conserva(self):
+        ant = {"AGENTS.md": {V.huella(b"bloque oficial viejo\n")}}
+        esc, _, inst, _, res = self.planear(self.VIEJO, ant)
+        self.assertIn("AGENTS.md", res["cambiados"], res)
+        self.assertIn(b"bloque oficial nuevo", esc["AGENTS.md"]); self.assertIn(b"## Lo de la persona", esc["AGENTS.md"])
+        self.assertNotIn("AGENTS.md" + V.SUFIJO_NUEVA, esc)
+
+    def test_rojo_sin_anteriores_o_con_bloque_cambiado_no_se_pisa(self):
+        esc, _, _, _, res = self.planear(self.VIEJO, {})
+        self.assertIn("AGENTS.md" + V.SUFIJO_NUEVA, esc, "sin la lista, el bloque viejo se trataba como personal")
+        ant = {"AGENTS.md": {V.huella(b"bloque oficial viejo\n")}}
+        cambiado = "<!-- base:inicio -->\nbloque oficial viejo, con una frase mía\n<!-- base:fin -->\n"
+        esc, _, _, _, res = self.planear(cambiado, ant)
+        self.assertIn("AGENTS.md", res["tuyos"]); self.assertNotIn("AGENTS.md", esc)
+
+    def test_manifiesto_lleva_las_anteriores_y_se_leen(self):
+        m = json.loads((AQUI / 'base' / 'MANIFIESTO.json').read_text(encoding='utf-8'))
+        self.assertTrue(m.get("anteriores", {}).get("AGENTS.md"), "el manifiesto no lleva las huellas anteriores")
+        self.assertEqual(V.anteriores_de(json.dumps({"anteriores": {"AGENTS.md": ["x", "a" * 64]}}).encode()),
+                         {"AGENTS.md": frozenset({"a" * 64})})
+        self.assertEqual(V.anteriores_de(b"no es json"), {})
+
+
 class ConexionExcluir(Caso):
     """Exclusiones con datos ficticios y Git real, sin un servicio remoto."""
 
@@ -2823,6 +2859,9 @@ SABOTAJES = [
     ("espacio: dice «al día» sin saber nada del espacio",
      [("        return 'sin_dato', 'No se pudo comprobar", "        return 'al_dia', 'No se pudo comprobar")],
      ["SubidaEspacio.test_estado_al_dia_delante_y_sin_dato"], "espacio.py"),
+    ("base: un bloque oficial viejo cuenta como personal (los espacios web no reciben el nuevo)",
+     [("or h_local in (anteriores or {}).get(ruta, ()):", "or False:")],
+     ["BloquesAnteriores.test_bloque_oficial_viejo_se_actualiza_y_lo_personal_se_conserva"], "void.py"),
     ("conexión: distingue mayúsculas al excluir (en Mac sube lo excluido)",
      [("return unicodedata.normalize('NFC', ruta).casefold()", "return ruta")],
      ["ConexionExcluir.test_mayusculas_y_tildes_no_cuelan_lo_excluido"], "conectar_vault.py"),
@@ -2852,7 +2891,7 @@ SABOTAJES = [
      ["Actualizar.test_hash_cambiado_en_el_manifiesto", "Actualizar.test_fichero_cambiado_por_el_camino",
       "Empezar.test_fichero_cambiado_por_el_camino_no_escribe_nada"]),
     ("fichero modificado por el usuario: pisa lo suyo",
-     [("elif h_instalada is not None and h_local == h_instalada:", "elif True:")],
+     [("elif (h_instalada is not None and h_local == h_instalada) or h_local in (anteriores or {}).get(ruta, ()):", "elif True:")],
      ["Actualizar.test_fichero_modificado_por_el_usuario",
       "Actualizar.test_marcas_lo_de_dentro_cambiado_por_el_usuario", "Traer.test_no_pisa_lo_que_cambio_el_usuario"]),
     ("sin red: no da el error de una frase",

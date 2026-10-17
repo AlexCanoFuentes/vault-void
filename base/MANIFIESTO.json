@@ -1,5 +1,5 @@
 {
-  "version": "0.0.14",
+  "version": "0.0.15",
   "ficheros": {
     ".claude/encerrado.json": "eec25e9d797c7c27781fb9a05ca9bd3889db13c652db55dc8ab62f6719b09e6a",
     ".codex/config.toml": "cfc04062c7202287399afc910a42b9b909fd09ad37379b16e2f71e62f04470de",
@@ -11,6 +11,11 @@
     "herramientas/kernel_ejemplo.json": "e186c753c9e480f50a93ba6cf3dfb1e3e8658be0dfe991f2a16acb60046a8837",
     "herramientas/pruebas_comunes.py": "f312d9f949c2dea1b4feb6fd6e1009d3afcf5fd03cab99431735a4ad83939397",
     "herramientas/pruebas_kernel.py": "d7a3ed550f548b27d131ac3ef4f0ab002ff2cdf563fdfcbdc68535bd41a02890",
-    "herramientas/void.py": "9c4bc1a962003b0942b05e8e883092fa6b98ed3509cad65caabf4a930ab1c41a"
+    "herramientas/void.py": "e4cd7bd71e7843fd379038a34f404a42d518acc4c12b44e9719438e6932efc67"
+  },
+  "anteriores": {
+    "AGENTS.md": [
+      "5c83377e5e8aa3d43e22ebc5d21789470c9bd8619aca2ec0690b878ace029666"
+    ]
   }
 }

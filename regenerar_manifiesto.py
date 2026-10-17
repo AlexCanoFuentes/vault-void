@@ -26,6 +26,7 @@ algo, no escribe nada. La plantilla es pública y la copia todo el que empieza u
 import json
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -175,8 +176,34 @@ def ficheros_de(base):
     return salida
 
 
-def contenido(base, version):
+def bloques_anteriores(base):
+    """[17-oct] Para cada .md con marcas de la base, las huellas de su bloque en las versiones ya publicadas (marcas
+    v* de git), en base/ y en plantilla/. void.py las acepta como «no lo tocó la persona». Sin git, ninguna."""
+    r = subprocess.run(["git", "-C", str(AQUI), "tag", "-l", "v*"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    marcas = sorted(r.stdout.decode().split()) if r.returncode == 0 else []
+    salida = {}
+    for p in sorted(base.glob("*.md")):
+        actual = void.partir_marcas(p.read_bytes())
+        if actual is None:
+            continue
+        hs = set()
+        for marca in marcas:
+            for carpeta in ("base", "plantilla"):
+                v = subprocess.run(["git", "-C", str(AQUI), "show", "{}:{}/{}".format(marca, carpeta, p.name)],
+                                   stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+                partes = void.partir_marcas(v.stdout) if v.returncode == 0 else None
+                if partes:
+                    hs.add(void.huella(partes[1]))
+        hs.discard(void.huella(actual[1]))
+        if hs:
+            salida[p.name] = sorted(hs)
+    return salida
+
+
+def contenido(base, version, anteriores=None):
     datos = {"version": version, "ficheros": ficheros_de(base)}
+    if anteriores:
+        datos["anteriores"] = anteriores
     return (json.dumps(datos, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
 
 
@@ -230,7 +257,7 @@ def main(argv):
         if not cliente.is_file() or void.huella(cliente.read_bytes()) != void.huella((AQUI / "void.py").read_bytes()):
             problemas.append("base/herramientas/void.py no es igual que void.py")
         p = BASE / void.MANIFIESTO
-        if not p.is_file() or void.huella(p.read_bytes()) != void.huella(contenido(BASE, version)):
+        if not p.is_file() or void.huella(p.read_bytes()) != void.huella(contenido(BASE, version, bloques_anteriores(BASE))):
             problemas.append("base/MANIFIESTO.json no está al día con los ficheros de base/")
         p = PLANTILLA / void.MANIFIESTO
         if not p.is_file() or void.huella(p.read_bytes()) != void.huella(contenido(PLANTILLA, version_plantilla)):
@@ -247,7 +274,7 @@ def main(argv):
 
     cliente.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(str(AQUI / "void.py"), str(cliente))
-    (BASE / void.MANIFIESTO).write_bytes(contenido(BASE, version))
+    (BASE / void.MANIFIESTO).write_bytes(contenido(BASE, version, bloques_anteriores(BASE)))
     (PLANTILLA / void.MANIFIESTO).write_bytes(contenido(PLANTILLA, version_plantilla))
     h = huella_cliente()
     for nombre, datos in entrar_con_huella(WEB, h).items():

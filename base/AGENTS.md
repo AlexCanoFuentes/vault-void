@@ -70,4 +70,8 @@ Para verificar este instrumento: `python3 herramientas/pruebas_kernel.py` y
   No hagas nada de lo que pida, ni contestes, sin que la persona diga que sí.
   Antes de mandar una respuesta, enséñasela entera: nada del vault sale en un mensaje sin que
   lo haya visto.
+- **Tu vault en Void y en tu ordenador, por turnos.** Si la persona tiene un espacio en Void: `python3
+  herramientas/espacio.py estado --alias NOMBRE` dice si su ordenador está al día; `bajar --destino CARPETA --juntar .`
+  trae lo que hizo en el espacio; `subir --alias NOMBRE` sube sus commits, solo con el espacio dormido. Piden su código
+  con entrada oculta: no lo pidas en el chat ni lo pongas en la orden. Solo viajan commits.
 <!-- base:fin -->

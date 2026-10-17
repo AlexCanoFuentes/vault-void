@@ -1,6 +1,6 @@
 # Traer la última copia de Void al PC · 2026-10-17
 
-Desde una terminal con Python 3.8 o posterior y Git, ejecuta el cliente de este repositorio. Elige una carpeta nueva, privada y fuera de cualquier repositorio para conservar la descarga:
+Desde una terminal con Python 3.8 o posterior y Git. Desde la base 0.0.16 el cliente viene en tu vault: `python3 herramientas/espacio.py …`; también puedes usarlo desde este repositorio. Elige una carpeta nueva, privada y fuera de cualquier repositorio para conservar la descarga:
 
 ```text
 python3 espacio.py bajar --alias NOMBRE --destino /ruta/privada/descarga-nueva

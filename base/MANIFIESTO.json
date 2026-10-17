@@ -1,21 +1,24 @@
 {
-  "version": "0.0.15",
+  "version": "0.0.16",
   "ficheros": {
     ".claude/encerrado.json": "eec25e9d797c7c27781fb9a05ca9bd3889db13c652db55dc8ab62f6719b09e6a",
     ".codex/config.toml": "cfc04062c7202287399afc910a42b9b909fd09ad37379b16e2f71e62f04470de",
-    "AGENTS.md": "b59d6a9cc1b77e79424f0ebf1e44ccf2c385c463339b09a69c70110f89aeb67c",
+    "AGENTS.md": "90064acaf7f03e59e8d5c339547a25593a1892bdd68a18fb3d979b79ea18e501",
     "CLAUDE.md": "8e9e3e44a9dd3aae3bb4efdd1218cf66f249a28b809e49b9797ac5d0cca23eac",
     "herramientas/candados_comunes.py": "098329176cb8262e519090f1de5530762eacdfec74deda78fea77bc9081e9f55",
     "herramientas/conectar_vault.py": "d31287ab49c57f6e663955b0234a73e780613ab307f4f0c2404f3eabfc1080d4",
+    "herramientas/espacio.py": "f90eb3b4dfdc65dd121bb8821369ef1edb6820fa2ba04fca097593a81405e8f1",
     "herramientas/kernel.py": "a30f6b03c8dec0a53527801ff5355e270568dda5b0cf21b6b8c503a5cecc3ba1",
     "herramientas/kernel_ejemplo.json": "e186c753c9e480f50a93ba6cf3dfb1e3e8658be0dfe991f2a16acb60046a8837",
     "herramientas/pruebas_comunes.py": "f312d9f949c2dea1b4feb6fd6e1009d3afcf5fd03cab99431735a4ad83939397",
     "herramientas/pruebas_kernel.py": "d7a3ed550f548b27d131ac3ef4f0ab002ff2cdf563fdfcbdc68535bd41a02890",
+    "herramientas/turno.py": "bbc88b07b3703b6872ca498d98df31106d6c54e34192e30079d550950fc0d1da",
     "herramientas/void.py": "e4cd7bd71e7843fd379038a34f404a42d518acc4c12b44e9719438e6932efc67"
   },
   "anteriores": {
     "AGENTS.md": [
-      "5c83377e5e8aa3d43e22ebc5d21789470c9bd8619aca2ec0690b878ace029666"
+      "5c83377e5e8aa3d43e22ebc5d21789470c9bd8619aca2ec0690b878ace029666",
+      "c4cb59c86201e08f34272d2c3afa8992650b284b6f80b3284998dfba19e7bcb1"
     ]
   }
 }

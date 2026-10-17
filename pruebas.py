@@ -694,6 +694,11 @@ class Repo(unittest.TestCase):
             r = subprocess.run([sys.executable, str(v / "herramientas" / "pruebas_comunes.py")],
                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=str(v))
             self.assertEqual(r.returncode, 0, r.stdout.decode("utf-8", "replace")[-500:])
+            # [17-oct] la fase 1 viaja en la base: espacio.py arranca desde herramientas/ y encuentra turno.py
+            r = subprocess.run([sys.executable, str(v / "herramientas" / "espacio.py"), "--help"],
+                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=str(v))
+            self.assertEqual(r.returncode, 0, r.stdout.decode("utf-8", "replace")[-500:])
+            self.assertIn(b"subir", r.stdout)
         finally:
             borrar(str(tmp))
 
@@ -2824,9 +2829,11 @@ class ConexionExcluir(Caso):
         r = self.restaurar(datos)
         self.assertEqual(git(v, 'rev-parse', 'HEAD'), git(r, 'rev-parse', 'HEAD'))
         self.assertEqual((v / 'CRM/clientes.txt').read_bytes(), (r / 'CRM/clientes.txt').read_bytes())
-        for ruta in ['conectar_vault.py', 'base/herramientas/conectar_vault.py']:
+        for ruta in ['conectar_vault.py', 'base/herramientas/conectar_vault.py', 'espacio.py', 'turno.py']:
             ast.parse((AQUI / ruta).read_text(), feature_version=(3, 8))
         self.assertEqual((AQUI / 'conectar_vault.py').read_bytes(), (AQUI / 'base/herramientas/conectar_vault.py').read_bytes())
+        for nombre in ('espacio.py', 'turno.py'):  # [17-oct] la fase 1 viaja en la base
+            self.assertEqual((AQUI / nombre).read_bytes(), (AQUI / 'base/herramientas' / nombre).read_bytes(), nombre)
 
 
 # ---------------------------------------------------------------- sabotaje

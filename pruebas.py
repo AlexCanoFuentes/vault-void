@@ -37,6 +37,9 @@ AQUI = Path(__file__).resolve().parent
 sys.path.insert(0, str(AQUI))
 import conectar_vault as REF_E
 E = REF_E
+import pruebas_espacio as PE
+DescargaEspacio = PE.DescargaEspacio
+REF_ESPACIO = PE.E
 import void as REF  # noqa: E402  la versión buena, para montar los datos de las pruebas
 import regenerar_manifiesto  # noqa: E402
 import formato as REF_F  # noqa: E402
@@ -2779,6 +2782,24 @@ class ConexionExcluir(Caso):
 # ---------------------------------------------------------------- sabotaje
 
 SABOTAJES = [
+    ("descarga: pierde el código nuevo devuelto al recuperar",
+     [("guardar[campo] = valor", "pass")],
+     ["DescargaEspacio.test_kit_guarda_codigo_rotado_antes_de_fallar_descarga"], "espacio.py"),
+    ("descarga: no lleva las cookies de sesión y aparato",
+     [("SinRedireccion(), urllib.request.HTTPCookieProcessor(self.cookies)", "SinRedireccion()")],
+     ["DescargaEspacio.test_http_local_cookies_origin_y_salida"], "espacio.py"),
+    ("descarga: junta aunque quedan cambios sin commit",
+     [("if pendiente:", "if False:")],
+     ["DescargaEspacio.test_copia_con_cambios_sin_commit_no_se_junta"], "espacio.py"),
+    ("descarga: el índice oculta cambios sin commit",
+     [("pendiente = pendiente or any(m and not m.startswith(b'H ') for m in marcas)", "pass")],
+     ["DescargaEspacio.test_indice_no_oculta_cambios_con_assume_unchanged"], "espacio.py"),
+    ("descarga: extrae referencias de reemplazo empaquetadas",
+     [("if b'refs/replace/' in f.read():", "if False:")],
+     ["DescargaEspacio.test_refs_empaquetadas_no_ocultan_reemplazos"], "espacio.py"),
+    ("descarga: permite subir de carpeta al extraer",
+     [("p in ('', '.', '..')", "p in ('', '.')")],
+     ["DescargaEspacio.test_archivos_hostiles_no_se_extraen"], "espacio.py"),
     ("conexión: ignora la exclusión de archivos",
      [("return any(ruta == r or ruta.startswith(r + '/') for r in reglas)", "return False")],
      ["ConexionExcluir.test_historia_objetos_y_original_intacto"], "conectar_vault.py"),
@@ -3006,6 +3027,8 @@ def poner_bajo_prueba(fichero, modulo):
         V, VOID_PY = modulo, Path(modulo.__file__)
     elif fichero == "conectar_vault.py":
         E = modulo
+    elif fichero == "espacio.py":
+        PE.E = modulo
     elif fichero == "formato.py":
         F = modulo
     elif fichero == "puerta.py":
@@ -3021,7 +3044,7 @@ def poner_bajo_prueba(fichero, modulo):
 
 
 def buenos():
-    return {"conectar_vault.py": REF_E, "void.py": REF, "formato.py": REF_F, "puerta.py": REF_P, "regenerar_catalogo.py": REF_C, "taller.py": REF_T,
+    return {"espacio.py": REF_ESPACIO, "conectar_vault.py": REF_E, "void.py": REF, "formato.py": REF_F, "puerta.py": REF_P, "regenerar_catalogo.py": REF_C, "taller.py": REF_T,
             "regenerar_manifiesto.py": regenerar_manifiesto}
 
 

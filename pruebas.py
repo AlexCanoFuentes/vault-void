@@ -39,6 +39,7 @@ import conectar_vault as REF_E
 E = REF_E
 import pruebas_espacio as PE
 DescargaEspacio = PE.DescargaEspacio
+SubidaEspacio = PE.SubidaEspacio
 REF_ESPACIO = PE.E
 import void as REF  # noqa: E402  la versión buena, para montar los datos de las pruebas
 import regenerar_manifiesto  # noqa: E402
@@ -2816,6 +2817,12 @@ SABOTAJES = [
     ("conexión: ignora la exclusión de archivos",
      [("return any(r == _comparable(x) or r.startswith(_comparable(x) + '/') for x in reglas)", "return False")],
      ["ConexionExcluir.test_historia_objetos_y_original_intacto"], "conectar_vault.py"),
+    ("espacio: sube con cambios sin commit en el ordenador",
+     [("    if _git(pc, 'status', '--porcelain', '--untracked-files=no').strip():\n        raise Fallo('Tienes cambios sin commit", "    if False:\n        raise Fallo('Tienes cambios sin commit")],
+     ["SubidaEspacio.test_rojo_no_sube_con_cambios_sin_commit_espacio_despierto_o_adelantado"], "espacio.py"),
+    ("espacio: dice «al día» sin saber nada del espacio",
+     [("        return 'sin_dato', 'No se pudo comprobar", "        return 'al_dia', 'No se pudo comprobar")],
+     ["SubidaEspacio.test_estado_al_dia_delante_y_sin_dato"], "espacio.py"),
     ("conexión: distingue mayúsculas al excluir (en Mac sube lo excluido)",
      [("return unicodedata.normalize('NFC', ruta).casefold()", "return ruta")],
      ["ConexionExcluir.test_mayusculas_y_tildes_no_cuelan_lo_excluido"], "conectar_vault.py"),

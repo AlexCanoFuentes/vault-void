@@ -12,7 +12,7 @@ const rc=createRequire(cloud+'/package.json');const {Miniflare}=rc('miniflare'),
 const contenedor=`import {DurableObject} from 'cloudflare:workers';
 export class Container extends DurableObject {
   constructor(ctx,env){super(ctx,env);this.ctx=ctx;this.env=env;this.sleepAfterMs=Date.now() + 300_000;}
-  async getState(){return {status:'healthy'};}async startAndWaitForPorts(){}renewActivityTimeout(){}async destroy(){}
+  async getState(){return {status:'healthy'};}async pruebaHead(h){await this.ctx.storage.put('vault:head',{head:h,fecha:Date.now()});}pruebaCorriendo(v){Object.defineProperty(this.ctx,'container',{value:{running:v},configurable:true});}async startAndWaitForPorts(){}renewActivityTimeout(){}async destroy(){}
   async fetch(req){const u=new URL(req.url),c=await this.ctx.storage.get('config');let lista=await this.ctx.storage.get('sesiones')||[];
     const auth=await this.ctx.storage.get('auth_fixture')||{};
     // Fase 2b: una llave de API vive en el portero y OpenCode la ve por su configuración, no por auth.json.
@@ -40,7 +40,7 @@ const scriptNube=await bundle(cloud+'/src/index.js',[{name:'contenedor-de-prueba
 const mf=new Miniflare({workers:[
   {config:{name:'red',compatibilityDate:'2026-09-30',manifest:{mainModule:'index.js',modules:{'index.js':{type:'esm',contents:script}}},env:{DB:{type:'d1',id:'red'},TOPE_WEB:{type:'text',value:'2'},PASE_RESERVADO:{type:'text',value:'pase-de-prueba-inventado-de-mas-de-32-letras'},NUBE:{type:'worker',worker:'nube',exportName:'VoidAlojamiento'}}}},
   {config:{name:'nube',compatibilityDate:'2026-09-30',manifest:{mainModule:'index.js',modules:{'index.js':{type:'esm',contents:scriptNube}}},exports:{CajaPersona:{type:'durable-object',storage:'sqlite'}},env:{CAJA:{type:'durable-object',worker:'nube',exportName:'CajaPersona'},LLAVE_MAESTRA:{type:'text',value:Buffer.alloc(32,21).toString('base64')},ADMIN:{type:'text',value:'solo-prueba-inventada'}}}}
-,{config:{name:'puente',compatibilityDate:'2026-09-30',manifest:{mainModule:'index.js',modules:{'index.js':{type:'esm',contents:`export default {async fetch(req,env){const u=new URL(req.url);const caja=a=>env.CAJA.get(env.CAJA.idFromName(a));if(u.pathname==='/prueba-dormir'){await caja(u.searchParams.get('alias')).onStop({exitCode:0,reason:'prueba'});return new Response('dormida');}if(u.pathname==='/prueba-desde-dentro'){const r=await caja(u.searchParams.get('alias')).interno('GET','/vault',null);return new Response(null,{status:r.status});}if(u.pathname==='/prueba-interno')return env.CAJA.get(env.CAJA.idFromName('existente-a')).interno('PUT','/vault',req.body,{bytes:Number(req.headers.get('x-void-bytes')),sha256:req.headers.get('x-void-sha256')});return env.NUBE.fetch(req)}}`}}},env:{NUBE:{type:'worker',worker:'nube',exportName:'VoidAlojamiento'},CAJA:{type:'durable-object',worker:'nube',exportName:'CajaPersona'}}}}
+,{config:{name:'puente',compatibilityDate:'2026-09-30',manifest:{mainModule:'index.js',modules:{'index.js':{type:'esm',contents:`export default {async fetch(req,env){const u=new URL(req.url);const caja=a=>env.CAJA.get(env.CAJA.idFromName(a));if(u.pathname==='/prueba-head'){await caja(u.searchParams.get('alias')).pruebaHead(u.searchParams.get('head'));return new Response('ok');}if(u.pathname==='/prueba-corriendo'){await caja(u.searchParams.get('alias')).pruebaCorriendo(u.searchParams.get('v')==='1');return new Response('ok');}if(u.pathname==='/prueba-pc'){const r=await caja(u.searchParams.get('alias')).interno('GET','/pc',null);return new Response(r.status===200?await r.arrayBuffer():null,{status:r.status});}if(u.pathname==='/prueba-dormir'){await caja(u.searchParams.get('alias')).onStop({exitCode:0,reason:'prueba'});return new Response('dormida');}if(u.pathname==='/prueba-desde-dentro'){const r=await caja(u.searchParams.get('alias')).interno('GET','/vault',null);return new Response(null,{status:r.status});}if(u.pathname==='/prueba-interno')return env.CAJA.get(env.CAJA.idFromName('existente-a')).interno('PUT','/vault',req.body,{bytes:Number(req.headers.get('x-void-bytes')),sha256:req.headers.get('x-void-sha256')});return env.NUBE.fetch(req)}}`}}},env:{NUBE:{type:'worker',worker:'nube',exportName:'VoidAlojamiento'},CAJA:{type:'durable-object',worker:'nube',exportName:'CajaPersona'}}}}
 ]});
 const db=await mf.getD1Database('DB','red');
 const {readdirSync}=await import('node:fs');
@@ -132,6 +132,24 @@ try{
     assert.equal((await pedir('/v1/web/candado',{accion:'confirmar'},a)).status,200);
     assert.equal((await pedir('/v1/web/yo',undefined,otra)).status,401,'la otra sesión sigue viva tras cambiar el kit');
     assert.equal((await pedir('/v1/web/yo',undefined,a)).status,200,'se cerró también la de quien lo hizo');
+  });
+  await prueba('fase 1.3: el ordenador sube sus commits solo con el espacio dormido y desde el último commit guardado',async()=>{
+    const A='a'.repeat(40),B='b'.repeat(40),puente=await mf.getWorker('puente');
+    const sube=async(base,cookie,bytes=Buffer.from('paquete de git inventado'))=>{const r=await mf.dispatchFetch(URL_BASE+'/v1/web/pc',{method:'POST',headers:{origin:URL_BASE,'x-void-base':base,...cookie?{cookie}:{}},body:bytes});return {status:r.status,text:await r.text()};};
+    const ea=await pedir('/v1/web/entrar',{alias:v.b.alias,recuperacion:codigoActual});assert.equal(ea.status,200,'v: '+ea.text);const yo=galletas(ea);
+    assert.equal((await pedir('/v1/web/pc')).status,401,'sin sesión responde');
+    const e0=await pedir('/v1/web/pc',undefined,yo);assert.equal(e0.status,200,e0.text);assert.equal(e0.d.guardado,null);assert.equal(e0.d.pendiente,null);
+    let r=await sube(A,yo);assert.equal(r.status,409,'sin commit guardado acepta: '+r.text);
+    await puente.fetch('http://x/prueba-head?alias='+v.b.alias+'&head='+A);
+    r=await sube(B,yo);assert.equal(r.status,409,'con otra base acepta');assert.match(r.text,/bájala/);
+    r=await sube('no-es-un-commit',yo);assert.equal(r.status,400);
+    await puente.fetch('http://x/prueba-corriendo?alias='+v.b.alias+'&v=1');
+    r=await sube(A,yo);assert.equal(r.status,409,'despierta acepta');assert.match(r.text,/despierto/);
+    await puente.fetch('http://x/prueba-corriendo?alias='+v.b.alias+'&v=0');
+    const bytes=Buffer.from('paquete de git inventado '+Date.now());
+    r=await sube(A,yo,bytes);assert.equal(r.status,200,r.text);
+    const e1=await pedir('/v1/web/pc',undefined,yo);assert.equal(e1.d.pendiente.base,A);assert.equal(e1.d.guardado.head,A);
+    const leido=await puente.fetch('http://x/prueba-pc?alias='+v.b.alias);assert.equal(leido.status,200);assert.deepEqual(Buffer.from(await leido.arrayBuffer()),bytes,'la caja no recibe lo subido');
   });
   console.log(n+' comprobaciones de entrada correctas. Contenedor sustituido explícitamente.');
   if(process.argv.includes('--servir')||process.argv.includes('--servir-existentes')){

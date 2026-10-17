@@ -231,6 +231,8 @@ export async function entradaWeb(req: Request, env: EntradaEnv, publicar: (req: 
       if (b.accion === 'confirmar' && r.ok) await cerrarOtrasSesiones(env, p.id, req);
       return new Response(r.body, { status: r.status, headers: cab });
     }
+    // Fase 1, parte 3 [17-oct]: el ordenador pregunta si está al día o sube sus commits (solo con el espacio dormido).
+    if (ruta === '/pc' && env.NUBE && p.listo) return pcCaja(env, p, req);
     if (ruta === '/archivo' && req.method === 'GET' && env.NUBE && p.listo) {
       const r = await recuperarArchivo(env, p);
       const h = new Headers(r.headers);
@@ -348,6 +350,15 @@ export async function alojarExistente(req:Request,env:EntradaEnv,p:{id:number;al
 }
 
 /** Exportación privada para verificar y recuperar únicamente el vault de la llave vigente. */
+async function pcCaja(env: EntradaEnv, p: { id: number; alias: string; aparato?: string }, req: Request): Promise<Response> {
+  const propia = await env.DB.prepare('SELECT recuperacion_hash,alojamiento_prueba,listo FROM web_vaults WHERE perfil_id=?').bind(p.id).first<Propietario>();
+  if (!propia?.listo) return fallo(404, 'Tu vault todavía no está alojado.');
+  const base = req.headers.get('x-void-base') || '';
+  if (req.method === 'POST' && !/^[0-9a-f]{40}([0-9a-f]{24})?$/.test(base)) return fallo(400, 'Falta de qué commit del espacio parte tu subida.');
+  const r = await env.NUBE!.fetch(new Request('https://privado/pc', { method: req.method, body: req.method === 'POST' ? req.body : undefined,
+    headers: { 'x-void-alias': p.alias, 'x-void-prueba': propia.alojamiento_prueba || propia.recuperacion_hash, 'x-void-base': base, ...(p.aparato ? { 'x-void-aparato': p.aparato } : {}) } }));
+  return new Response(r.body, { status: r.status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
+}
 export async function recuperarArchivo(env:EntradaEnv,p:{id:number;alias:string;aparato?:string}):Promise<Response>{
   if(!env.NUBE)return fallo(503,'El alojamiento no está disponible.');
   const propia=await env.DB.prepare('SELECT recuperacion_hash,alojamiento_prueba,listo FROM web_vaults WHERE perfil_id=?').bind(p.id).first<Propietario>();

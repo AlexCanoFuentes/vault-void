@@ -310,4 +310,79 @@ class DescargaEspacio(unittest.TestCase):
         self.assertEqual(vistos[-1][0], '/v1/web/salir')
 
 
+
+class SubidaEspacio(unittest.TestCase):
+    """Fase 1, parte 3 [17-oct]: estado y subida contra un Void de mentira en este ordenador."""
+    def setUp(self):
+        entorno = mock.patch.dict(os.environ, {'GIT_CONFIG_GLOBAL': os.devnull, 'GIT_CONFIG_NOSYSTEM': '1',
+                                              'GIT_AUTHOR_NAME': 'Prueba', 'GIT_COMMITTER_NAME': 'Prueba',
+                                              'GIT_AUTHOR_EMAIL': 'prueba@example.com', 'GIT_COMMITTER_EMAIL': 'prueba@example.com'})
+        entorno.start(); self.addCleanup(entorno.stop)
+        self.tmp = Path(tempfile.mkdtemp(prefix='void-subida-prueba-')); self.addCleanup(shutil.rmtree, str(self.tmp))
+        self.pc = self.tmp / 'pc'; self.pc.mkdir(); git(self.pc, 'init', '-q')
+        (self.pc / 'nota.md').write_text('inicio\n'); git(self.pc, 'add', '-A'); git(self.pc, 'commit', '-qm', 'inicio')
+        self.base = git(self.pc, 'rev-parse', 'HEAD')
+        self.espacio = {'guardado': {'head': self.base, 'fecha': 1}, 'pendiente': None, 'ultimo': None, 'despierta': False}
+        self.subidas = []
+        caso = self
+        class Servidor(http.server.BaseHTTPRequestHandler):
+            def log_message(self, *args): pass
+            def responder(self, d, codigo=200):
+                self.send_response(codigo); self.end_headers(); self.wfile.write(json.dumps(d).encode())
+            def do_POST(self):
+                cuerpo = self.rfile.read(int(self.headers['content-length']))
+                if self.path.endswith('/entrar'): return self.responder({'alias': 'espacio-prueba', 'listo': True, 'candado': 'abierto'})
+                if self.path.endswith('/salir'): return self.responder({})
+                if self.path.endswith('/pc'):
+                    caso.subidas.append((self.headers.get('x-void-base'), cuerpo, self.headers.get('Origin')))
+                    return self.responder({'pendiente': True})
+                self.responder({'error': 'no'}, 404)
+            def do_GET(self):
+                self.responder(caso.espacio)
+        self.servidor = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Servidor)
+        hilo = threading.Thread(target=self.servidor.serve_forever, daemon=True); hilo.start()
+        self.addCleanup(lambda: (self.servidor.shutdown(), self.servidor.server_close(), hilo.join()))
+        self.origen = 'http://127.0.0.1:' + str(self.servidor.server_port)
+
+    def commit(self, nombre='desde-el-pc.md'):
+        (self.pc / nombre).write_text('escrito en el ordenador\n'); git(self.pc, 'add', '-A'); git(self.pc, 'commit', '-qm', 'pc')
+
+    def test_estado_al_dia_delante_y_sin_dato(self):
+        self.assertEqual(E.estado('espacio-prueba', CODIGO, self.pc, self.origen)['estado'], 'al_dia')
+        self.commit()
+        r = E.estado('espacio-prueba', CODIGO, self.pc, self.origen)
+        self.assertEqual(r['estado'], 'pc_delante'); self.assertIn('1 commit', r['mensaje'])
+        self.espacio['guardado'] = {'head': 'f' * 40}
+        self.assertEqual(E.estado('espacio-prueba', CODIGO, self.pc, self.origen)['estado'], 'espacio_delante')
+        self.espacio['guardado'] = None
+        self.assertEqual(E.estado('espacio-prueba', CODIGO, self.pc, self.origen)['estado'], 'sin_dato', 'sin dato dice al día')
+
+    def test_subir_manda_solo_los_commits_nuevos_desde_la_base(self):
+        self.commit()
+        r = E.subir('espacio-prueba', CODIGO, self.pc, self.origen)
+        self.assertEqual(r['resultado'], 'pendiente')
+        base, paquete, origen = self.subidas[0]
+        self.assertEqual(base, self.base); self.assertEqual(origen, self.origen)
+        espacio = self.tmp / 'espacio'; git(self.tmp, 'clone', '-q', str(self.pc), str(espacio)); git(espacio, 'reset', '-q', '--hard', self.base)
+        (self.tmp / 'p.bundle').write_bytes(paquete)
+        git(espacio, 'bundle', 'verify', str(self.tmp / 'p.bundle'))
+        git(espacio, 'fetch', '-q', str(self.tmp / 'p.bundle'), 'HEAD:refs/void/pc'); git(espacio, 'merge', '-q', '--ff-only', 'refs/void/pc')
+        self.assertTrue((espacio / 'desde-el-pc.md').exists())
+        self.assertEqual(git(self.pc, 'rev-list', '--count', self.base + '..HEAD'), '1')
+
+    def test_rojo_no_sube_con_cambios_sin_commit_espacio_despierto_o_adelantado(self):
+        self.commit(); (self.pc / 'nota.md').write_text('sin guardar\n')
+        with self.assertRaises(E.Fallo): E.subir('espacio-prueba', CODIGO, self.pc, self.origen)
+        git(self.pc, 'checkout', '-q', '--', 'nota.md')
+        self.espacio['despierta'] = True
+        with self.assertRaises(E.Fallo): E.subir('espacio-prueba', CODIGO, self.pc, self.origen)
+        self.espacio['despierta'] = False; self.espacio['guardado'] = {'head': 'f' * 40}
+        with self.assertRaises(E.Fallo): E.subir('espacio-prueba', CODIGO, self.pc, self.origen)
+        self.assertEqual(self.subidas, [], 'subió algo que no debía')
+
+    def test_al_dia_no_sube_nada(self):
+        self.assertEqual(E.subir('espacio-prueba', CODIGO, self.pc, self.origen)['resultado'], 'al_dia')
+        self.assertEqual(self.subidas, [])
+
+
 if __name__ == '__main__': unittest.main()

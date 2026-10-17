@@ -32,6 +32,24 @@ Al terminar intenta cerrar la sesión y olvidar el aparato temporal. Si falla la
 
 La unión habla de los commits de esa copia, no de todos los archivos ni del estado actual del espacio. Las copias creadas con exclusiones tienen una historia nueva y no se juntan con el historial completo original del PC.
 
-## Subir y ver si está al día
+## Ver si está al día
 
-La subida por turnos y un estado fiable siguen pendientes del contrato de red y caja. Este cliente no ofrece una orden de subida. No reutilices `conectar_vault.py` para sobrescribir una caja existente: sirve para la conexión inicial y conserva alojamientos previos. La actualización necesita impedir de forma atómica que la caja despierte o guarde mientras se cambia su copia.
+```text
+python3 espacio.py estado --alias NOMBRE --vault /ruta/del/vault
+```
+
+Compara el último commit de tu ordenador con el último commit que guardó tu espacio. Dice una de estas cosas: «Al día», «Tu ordenador tiene N commits que tu espacio no tiene» (súbelos), «Tu espacio tiene commits que tu ordenador no tiene» (bájalos con `bajar --juntar`), «Los dos tienen cambios» (baja, junta y sube) o «No se pudo comprobar». Sin dato, nunca dice «al día». Avisa si tienes cambios sin commit, si hay una subida esperando y si la última chocó. Habla de commits: las conversaciones y los archivos ignorados del espacio no cuentan.
+
+## Subir tus commits (17-oct)
+
+```text
+python3 espacio.py subir --alias NOMBRE --vault /ruta/del/vault
+```
+
+Sube **solo tus commits nuevos**, como un paquete de git, y solo si:
+
+- tu ordenador no tiene cambios sin commit;
+- tu ordenador parte del último commit que guardó tu espacio (si no, baja y junta primero);
+- tu espacio está **dormido** (duérmelo en Mi espacio).
+
+El paquete espera cifrado con tu candado y **se aplica la próxima vez que despierte tu espacio**, antes de arrancar el ayudante: avanza o junta, como `turno.py`. Si choca, no toca nada, retira la subida y `estado` te dice en qué ficheros; baja, junta en tu ordenador y vuelve a subir. Las conversaciones, las llaves y los archivos ignorados del espacio no se tocan nunca. No uses `conectar_vault.py` para esto: sirve para la conexión inicial.

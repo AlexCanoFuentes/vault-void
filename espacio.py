@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Baja la última copia guardada de Void, con código o kit y sin navegador. Python 3.8+."""
+"""Baja la última copia guardada de Void, dice si tu ordenador está al día y sube tus commits, con tu código y sin
+navegador. Python 3.8+."""
 import argparse
 import getpass
 import gzip
@@ -172,6 +173,25 @@ class Cliente:
         except (OSError, urllib.error.URLError):
             raise Fallo('Se interrumpió la conexión. Conserva la descarga y tu kit para reintentar.') from None
 
+    def bytes(self, ruta, datos, cabeceras):
+        """Un POST con bytes (el paquete de tus commits). Nunca sigue redirecciones."""
+        req = urllib.request.Request(self.servidor + '/v1/web/' + ruta, data=datos,
+                                     headers=dict({'Origin': self.servidor, 'Content-Type': 'application/octet-stream',
+                                                   'User-Agent': 'VoidPC/1'}, **cabeceras))
+        try:
+            with self.opener.open(req, timeout=300) as r:
+                return json.loads(r.read(65537))
+        except urllib.error.HTTPError as e:
+            try:
+                motivo = json.loads(e.read(4096)).get('error')
+            except (ValueError, AttributeError):
+                motivo = None
+            codigo = e.code
+            e.close()
+            raise Fallo((motivo or 'Void rechazó la subida') + ' (HTTP {}). No se subió nada.'.format(codigo)) from None
+        except (OSError, urllib.error.URLError, ValueError):
+            raise Fallo('Se interrumpió la conexión. No se subió nada; vuelve a probar.') from None
+
     def json(self, ruta, cuerpo):
         try:
             with self.abrir(ruta, cuerpo) as r:
@@ -268,14 +288,137 @@ def descargar(alias, destino, secreto, recuperar_con_kit=False, pc=None, servido
     return resultado
 
 
+RE_COMMIT = re.compile(r'[0-9a-f]{40}(?:[0-9a-f]{24})?')
+
+
+def _entrar(alias, secreto, servidor):
+    if not re.fullmatch(r'[a-z0-9-]{3,24}', alias):
+        raise Fallo('El nombre del espacio no es válido.')
+    if not isinstance(secreto, str) or not RE_CODIGO.fullmatch(secreto):
+        raise Fallo('El código no tiene el formato esperado.')
+    if servidor != SERVIDOR and not re.fullmatch(r'http://(?:localhost|127\.0\.0\.1)(?::[0-9]{1,5})?', servidor):
+        raise Fallo('Solo se conecta a Void o a un servidor de prueba de este ordenador.')
+    cliente = Cliente(servidor)
+    entrada = cliente.json('entrar', {'alias': alias, 'recuperacion': secreto})
+    if entrada.get('alias') != alias or entrada.get('listo') is not True or entrada.get('candado') != 'abierto':
+        _salir(cliente)
+        raise Fallo('No se abrió el espacio solicitado.')
+    return cliente
+
+
+def _salir(cliente):
+    try:
+        cliente.json('salir', {})
+    except (Fallo, OSError):
+        print('No se pudo cerrar la sesión temporal en Void; caducará en el servidor.')
+    cliente.cookies.clear()
+
+
+def _leer_estado(cliente):
+    with cliente.abrir('pc') as r:
+        d = json.loads(r.read(65537))
+    if not isinstance(d, dict):
+        raise Fallo('La respuesta de Void no es válida.')
+    return d
+
+
+def _comparar(pc, guardado):
+    """Fase 1, parte 3 [17-oct]: tu ordenador frente al último commit guardado del espacio. Sin dato, nunca «al día»."""
+    head_pc = _git(pc, 'rev-parse', '--verify', 'HEAD^{commit}').decode().strip()
+    sucio = bool(_git(pc, 'status', '--porcelain', '--untracked-files=no').strip())
+    g = (guardado or {}).get('head') if isinstance(guardado, dict) else None
+    if not g or not RE_COMMIT.fullmatch(g):
+        return 'sin_dato', 'No se pudo comprobar: tu espacio todavía no ha guardado ningún commit.', head_pc, None, sucio
+    if g == head_pc:
+        return 'al_dia', 'Al día: tu ordenador y tu espacio tienen los mismos commits.', head_pc, g, sucio
+    conocido = subprocess.run(['git', '-C', str(pc), 'cat-file', '-e', g + '^{commit}'], stdout=subprocess.DEVNULL,
+                              stderr=subprocess.DEVNULL).returncode == 0
+    if conocido and subprocess.run(['git', '-C', str(pc), 'merge-base', '--is-ancestor', g, 'HEAD'],
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
+        n = _git(pc, 'rev-list', '--count', g + '..HEAD').decode().strip()
+        return 'pc_delante', 'Tu ordenador tiene {} commit(s) que tu espacio no tiene: súbelos con «subir».'.format(n), head_pc, g, sucio
+    if conocido and subprocess.run(['git', '-C', str(pc), 'merge-base', '--is-ancestor', 'HEAD', g],
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
+        return 'espacio_delante', 'Tu espacio tiene commits que tu ordenador no tiene: bájalos con «bajar --juntar».', head_pc, g, sucio
+    if not conocido:
+        return 'espacio_delante', 'Tu espacio tiene cambios que tu ordenador no conoce: bájalos con «bajar --juntar».', head_pc, g, sucio
+    return 'distintos', 'Los dos tienen cambios: baja, junta en tu ordenador y luego sube.', head_pc, g, sucio
+
+
+def estado(alias, secreto, pc, servidor=SERVIDOR):
+    cliente = _entrar(alias, secreto, servidor)
+    try:
+        d = _leer_estado(cliente)
+    finally:
+        _salir(cliente)
+    clave, mensaje, head_pc, head_espacio, sucio = _comparar(Path(pc), d.get('guardado'))
+    return {'estado': clave, 'mensaje': mensaje, 'sucio': sucio, 'head_pc': head_pc, 'head_espacio': head_espacio,
+            'pendiente': d.get('pendiente'), 'ultimo': d.get('ultimo'), 'despierta': d.get('despierta') is True}
+
+
+def subir(alias, secreto, pc, servidor=SERVIDOR):
+    """Sube solo tus commits nuevos, como un paquete de git, y solo con el espacio dormido. Se aplican al despertar."""
+    pc = Path(pc)
+    if _git(pc, 'status', '--porcelain', '--untracked-files=no').strip():
+        raise Fallo('Tienes cambios sin commit en tu ordenador: guárdalos en un commit y vuelve a subir. No se subió nada.')
+    cliente = _entrar(alias, secreto, servidor)
+    try:
+        d = _leer_estado(cliente)
+        clave, mensaje, head_pc, g, _ = _comparar(pc, d.get('guardado'))
+        if clave == 'al_dia':
+            return {'resultado': 'al_dia', 'mensaje': mensaje}
+        if clave != 'pc_delante':
+            raise Fallo(mensaje + ' No se subió nada.')
+        if d.get('despierta') is True:
+            raise Fallo('Tu espacio está despierto: duérmelo en Mi espacio y vuelve a subir. Así nada se pisa.')
+        with tempfile.TemporaryDirectory(prefix='void-subir-') as t:
+            paquete = Path(t) / 'pc.bundle'
+            _git(pc, 'bundle', 'create', str(paquete), g + '..HEAD', 'HEAD')
+            datos = paquete.read_bytes()
+        if len(datos) > 50 * 1024 * 1024:
+            raise Fallo('Tus commits nuevos pesan más de 50 MiB. No se subió nada.')
+        cliente.bytes('pc', datos, {'x-void-base': g})
+        return {'resultado': 'pendiente', 'mensaje': 'Subido: tus commits se aplicarán la próxima vez que despierte tu espacio. '
+                'Las conversaciones y los archivos ignorados del espacio no se tocan.'}
+    finally:
+        _salir(cliente)
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument('accion', choices=['bajar'])
+    p.add_argument('accion', choices=['bajar', 'estado', 'subir'])
     p.add_argument('--alias', required=True)
-    p.add_argument('--destino', required=True, help='Carpeta nueva para la descarga privada; su padre debe existir.')
+    p.add_argument('--destino', help='bajar: carpeta nueva para la descarga privada; su padre debe existir.')
+    p.add_argument('--vault', default='.', help='estado y subir: tu vault del ordenador.')
     p.add_argument('--juntar', metavar='VAULT_PC', help='Junta los commits de la copia con este vault mediante turno.py.')
     p.add_argument('--recuperar-con-kit', action='store_true', help='Recupera con kit: cambia el código y cierra sesiones previas.')
     a = p.parse_args(argv)
+    if a.accion in ('estado', 'subir'):
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter('error', getpass.GetPassWarning)
+                secreto = getpass.getpass('Código privado: ').strip()
+            if a.accion == 'estado':
+                r = estado(a.alias, secreto, a.vault)
+                print(r['mensaje'])
+                if r['sucio']:
+                    print('Ojo: tienes cambios sin commit en tu ordenador; no cuentan hasta que los guardes.')
+                if r['pendiente']:
+                    print('Hay una subida tuya esperando a que despierte tu espacio.')
+                if isinstance(r['ultimo'], dict) and r['ultimo'].get('resultado') == 'choque':
+                    print('La última subida chocó en: {}. Baja, junta en tu ordenador y vuelve a subir.'.format(', '.join(r['ultimo'].get('ficheros') or []) or 'algún fichero'))
+                return 0 if r['estado'] == 'al_dia' else 1
+            r = subir(a.alias, secreto, a.vault)
+            print(r['mensaje'])
+            return 0
+        except getpass.GetPassWarning:
+            print('Abre una terminal con entrada oculta para introducir tu código. No lo pegues en el chat ni en los argumentos.')
+            return 1
+        except (Fallo, EOFError, KeyboardInterrupt) as e:
+            print('No se completó: ' + (str(e) if isinstance(e, Fallo) else 'entrada cancelada.'))
+            return 1
+    if not a.destino:
+        p.error('bajar necesita --destino')
     if a.recuperar_con_kit:
         print('Recuperar con el kit cambia tu código y cierra sesiones anteriores. El código nuevo se guardará en acceso.json, dentro del destino privado. Conserva el kit si se interrumpe.')
     print('Se descargará la última copia guardada. Puede no incluir cambios activos del espacio. No sincroniza conversaciones ni archivos ignorados con el PC.')

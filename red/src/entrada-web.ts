@@ -18,6 +18,11 @@ async function conPaseReservado(req: Request, env: EntradaEnv, alias: string): P
   let d = 0; for (let i = 0; i < a.length; i++) d |= a[i] ^ b[i];
   return d === 0;
 }
+// Al quitar una llave o cambiar el kit se cierran las sesiones de los demás aparatos (17-oct): una sesión abierta con
+// la llave quitada no puede seguir 30 días. Sigue solo la de quien lo hace.
+async function cerrarOtrasSesiones(env: EntradaEnv, perfil: number, req: Request): Promise<void> {
+  await env.DB.prepare('DELETE FROM web_sesiones WHERE perfil_id=? AND token_hash<>?').bind(perfil, await huella(galleta(req, COOKIE) || '')).run();
+}
 interface Propietario { id: number; alias: string; listo: number; recuperacion_hash: string; alojamiento_prueba?: string; aparato?: string }
 const COOKIE = '__Host-void';
 // La llave de «recordar este aparato» (fase 2a, candado del dueño): abre la caja al despertar sin teclear el
@@ -104,6 +109,7 @@ export async function entradaWeb(req: Request, env: EntradaEnv, publicar: (req: 
       const datos = { ...b, origen: url.origin, vinculo: publica ? '' : await huella(galleta(req, COOKIE)!),
         reemplazar: anterior && RE_APARATO.test(anterior) ? anterior.slice(0,16) : undefined };
       const r = await candado(env, p, 'passkey-' + accion, datos);
+      if (accion === 'quitar' && r.ok) await cerrarOtrasSesiones(env, p.id, req);
       if (accion === 'entrar' && r.ok) return entrar(p, req, env, await r.json() as Record<string, unknown>);
       // Al dar de alta una passkey, este navegador olvida la llave de su aparato: desde ahora se entra con la passkey.
       if (accion === 'confirmar' && r.ok) { const h = new Headers(cab); h.append('set-cookie', `${COOKIE_AP}=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0`); const { olvidaAparato, ...d } = await r.json() as Record<string, unknown>; return new Response(JSON.stringify(d), { status: r.status, headers: h }); }
@@ -219,7 +225,10 @@ export async function entradaWeb(req: Request, env: EntradaEnv, publicar: (req: 
         return new Response(JSON.stringify({ abierto: true, kit: d.kit || null }), { status: 200, headers: h });
       }
       if (!['confirmar', 'kit-nuevo', 'despertar', 'dormir'].includes(b.accion)) return fallo(400, 'Esa acción no existe.');
-      const r = await candado(env, p, b.accion, {});
+      // Un kit nuevo pide el código (revisión de Astra, 17-oct): con una sesión robada no se saca una llave para siempre.
+      if (b.accion === 'kit-nuevo' && !RE_CODIGO.test(b.secreto || '')) return fallo(400, 'Escribe tu código para hacerte un kit nuevo.');
+      const r = await candado(env, p, b.accion, b.accion === 'kit-nuevo' ? { secreto: b.secreto } : {});
+      if (b.accion === 'confirmar' && r.ok) await cerrarOtrasSesiones(env, p.id, req);
       return new Response(r.body, { status: r.status, headers: cab });
     }
     if (ruta === '/archivo' && req.method === 'GET' && env.NUBE && p.listo) {

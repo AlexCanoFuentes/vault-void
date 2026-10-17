@@ -41,7 +41,7 @@
       boton.onclick=()=>accion($('passkey-estado'),async()=>{
         const secreto=$('passkey-secreto').value.trim();$('passkey-secreto').value='';
         if(!secreto)throw new Error('Escribe tu código o tu kit debajo para quitar esta passkey.');
-        await api('quitar',{id:p.id,secreto});await lista();return 'Passkey quitada. Tu código y tu kit siguen abriendo.';
+        await api('quitar',{id:p.id,secreto});await lista();return 'Passkey quitada. Tu código y tu kit siguen abriendo, y se ha cerrado la sesión en tus otros aparatos.';
       });
       li.append(nombre,boton);$('passkeys-lista').append(li);
     }

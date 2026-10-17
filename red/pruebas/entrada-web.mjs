@@ -81,7 +81,7 @@ try{
     const otra=await pedir('/v1/web/entrar',{alias:v.b.alias,recuperacion:v.b.recuperacion});assert.equal(otra.status,200,otra.text);assert.ok(!otra.d.kit,'el kit se enseñó dos veces');
     const filas=JSON.stringify(await db.prepare('SELECT * FROM web_vaults').all());assert.ok(!filas.includes(v.d.kit.slice(3,30)),'el kit está en D1');
   });
-  let llaves=galletas(v);
+  let llaves=galletas(v),codigoActual;
   await prueba('passkey: lista privada, alta con llave reciente y protección de origen',async()=>{
     assert.equal((await pedir('/v1/web/passkey/lista',{},llaves)).status,200);
     assert.equal((await pedir('/v1/web/passkey/crear',{secreto:v.b.recuperacion})).status,401);
@@ -107,7 +107,7 @@ try{
     assert.equal((await pedir('/v1/web/entrar',{alias:v.b.alias,recuperacion:v.b.recuperacion})).status,401,'el código viejo sigue entrando');
     await dormir(v.b.alias);
     const nuevo=await pedir('/v1/web/entrar',{alias:v.b.alias,recuperacion:k.d.codigoNuevo});assert.equal(nuevo.status,200);assert.equal(nuevo.d.candado,'abierto');
-    llaves=galletas(nuevo);
+    llaves=galletas(nuevo);codigoActual=k.d.codigoNuevo;
   });
   await prueba('candado: con la sesión abierta, un código que no es el de la cuenta no pone ni abre candados',async()=>{
     const r=await pedir('/v1/web/candado',{accion:'abrir',secreto:'vr_'+'0'.repeat(64)},llaves);assert.equal(r.status,401,r.text);assert.match(r.d.error||'',/no es tu código/);
@@ -120,6 +120,18 @@ try{
     await dormir(v.b.alias);
     assert.equal(await desdeDentro(v.b.alias),423,'tras salir y dormir, la caja sigue abierta');
     assert.equal((await pedir('/v1/web/archivo',undefined,llaves)).status,401,'la sesión y la llave del aparato siguen valiendo tras salir');
+  });
+  await prueba('ROJO (Astra, 17-oct): un kit nuevo pide el código y, al confirmarlo, se cierran las demás sesiones',async()=>{
+    await dormir(v.b.alias);
+    const a=galletas(await pedir('/v1/web/entrar',{alias:v.b.alias,recuperacion:codigoActual}));
+    const otra=galletas(await pedir('/v1/web/entrar',{alias:v.b.alias,recuperacion:codigoActual}));
+    assert.equal((await pedir('/v1/web/yo',undefined,otra)).status,200,'la segunda sesión no se abrió');
+    assert.equal((await pedir('/v1/web/candado',{accion:'kit-nuevo'},a)).status,400,'sin código saca kit');
+    assert.equal((await pedir('/v1/web/candado',{accion:'kit-nuevo',secreto:'vr_'+'0'.repeat(64)},a)).status,401,'con código ajeno saca kit');
+    const r=await pedir('/v1/web/candado',{accion:'kit-nuevo',secreto:codigoActual},a);assert.equal(r.status,200,r.text);assert.match(r.d.kit||'',/^vk_/);
+    assert.equal((await pedir('/v1/web/candado',{accion:'confirmar'},a)).status,200);
+    assert.equal((await pedir('/v1/web/yo',undefined,otra)).status,401,'la otra sesión sigue viva tras cambiar el kit');
+    assert.equal((await pedir('/v1/web/yo',undefined,a)).status,200,'se cerró también la de quien lo hizo');
   });
   console.log(n+' comprobaciones de entrada correctas. Contenedor sustituido explícitamente.');
   if(process.argv.includes('--servir')||process.argv.includes('--servir-existentes')){

@@ -83,14 +83,14 @@ Antes de bajar nada, dile a la persona, en llano, algo así:
 
 La huella (sha256) de `void.py` que publica esta página es:
 
-`9c4bc1a962003b0942b05e8e883092fa6b98ed3509cad65caabf4a930ab1c41a`
+`e4cd7bd71e7843fd379038a34f404a42d518acc4c12b44e9719438e6932efc67`
 
 Esta orden lo baja de GitHub, calcula su huella y **solo lo guarda en `herramientas/void.py` si
 cuadra** con la de arriba. No lo ejecuta. Ejecútala desde la carpeta (es igual en Mac, Linux y
 Windows; cambia `python3` por el nombre del paso 1):
 
 ```
-python3 -c "import hashlib,os,urllib.request as u;h='9c4bc1a962003b0942b05e8e883092fa6b98ed3509cad65caabf4a930ab1c41a';d=u.urlopen('https://raw.githubusercontent.com/AlexCanoFuentes/vault-void/main/void.py',timeout=30).read();r=hashlib.sha256(d).hexdigest();ok=r==h;ok and (os.makedirs('herramientas',exist_ok=True),open('herramientas/void.py','wb').write(d));print('Huella OK: '+r if ok else 'NO CUADRA: ha llegado '+r);raise SystemExit(0 if ok else 1)"
+python3 -c "import hashlib,os,urllib.request as u;h='e4cd7bd71e7843fd379038a34f404a42d518acc4c12b44e9719438e6932efc67';d=u.urlopen('https://raw.githubusercontent.com/AlexCanoFuentes/vault-void/main/void.py',timeout=30).read();r=hashlib.sha256(d).hexdigest();ok=r==h;ok and (os.makedirs('herramientas',exist_ok=True),open('herramientas/void.py','wb').write(d));print('Huella OK: '+r if ok else 'NO CUADRA: ha llegado '+r);raise SystemExit(0 if ok else 1)"
 ```
 
 - Si dice **`Huella OK`**, sigue.
@@ -104,7 +104,7 @@ python3 -c "import hashlib,os,urllib.request as u;h='9c4bc1a962003b0942b05e8e883
 ### Paso 4 · Pon la plantilla
 
 ```
-python3 herramientas/void.py empezar --huella 6a0868c6a8aae2605bc4ebab87d395930a4c8ba477850af149b56753e1f2fe53
+python3 herramientas/void.py empezar --huella 5fcf437a3272f096a0cdde6d9647694a2568a629b6b95ec838ecf5dda059c640
 ```
 
 Baja la plantilla del vault, comprueba que es la que publica esta página (la huella de detrás de

@@ -19,6 +19,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://vaultvoid.app/og.jpg">
 <link rel="icon" href="/icono.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="theme-color" content="#12110E">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -93,6 +94,7 @@ body.compacta{overflow:auto}
 <div class="abajo" id="abajo"></div>
 <div id="hoja"></div>
 
+<script src="/instalar.js"></script>
 <script src="/huella.js"></script>
 <script src="/candado.js"></script>
 <script src="/entrada.js"></script>
@@ -396,7 +398,8 @@ function formada() {
   paso = "formada"; const n = nombre();
   VoidCuaderno.llenar(respuestas, 7, CAPAS.map(k => k.c));
   decir("", "Tu cuaderno va a dejar <em>su huella</em>.", "Al lienzo irá su forma, hecha de cifras. Tus palabras se quedan aquí.");
-  abajo.innerHTML = `<div class="fila"><button class="principal" id="seguir" disabled>Guardando tu huella…</button><button id="dentro">Revisar mis respuestas</button></div><p class="pista" id="estado-huella" role="status"></p>`;
+  abajo.innerHTML = `<div class="fila"><button class="principal" id="seguir" disabled>Guardando tu huella…</button><button id="dentro">Revisar mis respuestas</button></div><p class="pista" id="estado-huella" role="status"></p><div class="pista" data-instalar hidden></div>`;
+  VoidInstalar.montar(abajo.querySelector('[data-instalar]'));
   document.getElementById("dentro").onclick = porDentro;
   const b=document.getElementById('seguir'),estado=document.getElementById('estado-huella');
   async function guardar(){b.disabled=true;b.textContent='Guardando tu huella…';await guardarEnElLienzo();if(guardada&&token&&semillaCuento){await VoidCuaderno.imprimir();decir("", n ? `Es la huella de <em>${esc(n)}</em>.` : "Esta es <em>tu huella</em>.", "Tu cuaderno deja esta huella en el lienzo. Tus palabras no se muestran allí.");b.disabled=false;b.textContent='Seguir con mi cuaderno';estado.textContent='Tu huella está guardada. Será la misma al volver.';b.onclick=proponer;}else{b.disabled=false;b.textContent='Volver a guardar mi huella';estado.textContent='No hemos podido guardar tu huella. Tus respuestas siguen aquí. '+(errorHuella||'Vuelve a intentarlo en un momento.');b.onclick=guardar;}}

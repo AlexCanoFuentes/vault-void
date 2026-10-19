@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Un segundo cerebro en español, desde el móvil · Void</title>
+<meta name="description" content="Void: un segundo cerebro en español para guardar decisiones con tu asistente, desde el móvil y sin programar. Qué funciona hoy, límites y cómo empezar.">
+<link rel="canonical" href="https://vaultvoid.app/segundo-cerebro">
+<link rel="alternate" type="text/plain" href="/llms.txt" title="Void para asistentes de IA">
+<meta property="og:title" content="Un segundo cerebro en español, desde el móvil · Void">
+<meta property="og:description" content="Tu cuaderno de ideas y decisiones con ayuda de IA. Conoce lo que Void hace hoy, lo que falta y cómo empezar en la prueba abierta con cupo.">
+<meta property="og:url" content="https://vaultvoid.app/segundo-cerebro">
+<meta property="og:type" content="article">
+<meta property="og:locale" content="es_ES">
+<meta property="og:image" content="https://vaultvoid.app/og.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="El lienzo de Void, con las huellas de los vaults sobre un fondo oscuro.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://vaultvoid.app/og.jpg">
+<link rel="icon" href="/icono.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#12110E">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+:root{color-scheme:dark;--vacio:#12110E;--panel:#1B1915;--tinta:#ECE7DE;--tinta-2:#B3AC9F;--linea:#2B2822;--acento:#F2A93B;--acento-2:#F8CB86;--serif:"Instrument Serif",Georgia,"Times New Roman",serif;--mono:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--vacio);color:var(--tinta);font:15px/1.7 var(--mono);-webkit-font-smoothing:antialiased}
+main{max-width:42rem;margin:0 auto;padding:40px 18px 72px}
+nav,footer{font-size:13px}
+h1{margin:32px 0 24px;font:400 clamp(42px,8vw,72px)/1.05 var(--serif);letter-spacing:-.02em}
+h1 em{font-style:italic;color:transparent;-webkit-text-stroke:1px var(--tinta)}
+h2{margin:48px 0 12px;font:400 32px/1.15 var(--serif)}
+h3{margin:32px 0 10px;font:500 15px/1.5 var(--mono);color:var(--acento-2)}
+p,li{color:var(--tinta-2)}
+strong{color:var(--tinta);font-weight:500}
+a{color:var(--acento-2);text-underline-offset:3px}
+a:focus-visible{outline:2px solid var(--acento);outline-offset:4px}
+ul,ol{padding-left:1.4em}
+li{margin:12px 0}
+blockquote{margin:24px 0;padding:2px 0 2px 18px;border-left:2px solid var(--acento)}
+.entrada{margin:24px 0;padding:18px 20px;border:1px solid var(--linea);border-radius:8px;background:var(--panel)}
+.entrada p{margin:0 0 16px}
+.boton{display:inline-block;padding:10px 20px;border-radius:999px;background:var(--acento);color:#1A1407;text-decoration:none;font-weight:500}
+.boton:hover{background:var(--acento-2)}
+footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--linea)}
+</style>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "¿Puedo usar Void desde el móvil sin programar?", "acceptedAnswer": {"@type": "Answer", "text": "Sí. Puedes responder las siete preguntas y abrir un espacio alojado desde el navegador, si queda cupo. No necesitas preparar una carpeta ni instalar un asistente en tu ordenador. Puedes añadir Void a la pantalla de inicio cuando tu navegador lo permita; para usarlo necesitas conexión a internet."}}, {"@type": "Question", "name": "¿Puede mi asistente guardar mis decisiones?", "acceptedAnswer": {"@type": "Answer", "text": "El vault es un cuaderno de archivos donde tu asistente puede guardar lo que decides y consultarlo al volver. Puedes pedirle, por ejemplo: «Guarda esta decisión y el motivo para que la retomemos mañana». Revisa lo que escribe: es una ayuda para recordar, no una garantía de que la IA nunca se equivoque."}}, {"@type": "Question", "name": "¿Puedo usar mi vault en el PC con Claude Code o Codex?", "acceptedAnswer": {"@type": "Answer", "text": "Sí. Puedes crear un vault en una carpeta de tu ordenador con Claude Code o Codex. Si ya tienes uno, puedes conectarlo a Void. El espacio alojado y la carpeta del PC todavía no se sincronizan automáticamente."}}, {"@type": "Question", "name": "¿Void me conecta con otras personas?", "acceptedAnswer": {"@type": "Answer", "text": "En Mi espacio, Comunidad reúne una plaza para todos los miembros y los avisos oficiales de Void. El alojamiento con copia completa permite activar la bandeja, enviar mensajes privados entre vaults y bloquear a otros alias, también desde el móvil. Cada envío se revisa antes de confirmarlo."}}, {"@type": "Question", "name": "¿Quién puede leer lo que guardo?", "acceptedAnswer": {"@type": "Answer", "text": "La huella del lienzo se hace con cifras, no con tus respuestas. Tu espacio alojado tiene acceso privado y se guarda cifrado con tu candado. Cuando duerme, solo tus llaves lo abren; mientras lo usas, el asistente y el operador de Void pueden leerlo. Guarda tu código y tu kit de recuperación en lugares privados."}}, {"@type": "Question", "name": "¿Cuánto cuesta Void?", "acceptedAnswer": {"@type": "Answer", "text": "Hoy es una prueba abierta con cupo. No hay precio público del servicio ni una tarifa de alojamiento anunciada. El código es abierto; lo que pagues por tu asistente o proveedor de IA va aparte."}}]}</script>
+</head>
+<body>
+<main>
+<nav aria-label="Void"><a href="/">Void</a> · <a href="/que-es">Qué es</a> · <a href="/mi-vault">Volver a mi espacio</a></nav>
+<h1>Un segundo cerebro en español, <em>a mano</em>.</h1>
+<blockquote><p>«Busco un segundo cerebro en español donde mi asistente guarde mis decisiones, desde el móvil, sin programar y que me conecte con otras personas».</p></blockquote>
+<p><strong>Void puede ayudarte con el cuaderno y el asistente.</strong> Es un lugar para guardar tus ideas, tu trabajo y tus decisiones, y retomarlos con ayuda de una IA. A ese cuaderno lo llamamos <strong>vault</strong>. Puedes abrirlo desde el móvil sin programar.</p>
+<p>La parte de conocer a otros empieza en el lienzo: ves sus huellas y perfiles públicos. En <a href="/mi-vault">Mi espacio</a>, <strong>Comunidad</strong> reúne los mensajes privados, una plaza para todos y los avisos oficiales de Void.</p>
+<div class="entrada">
+<p>Hoy Void es una <strong>prueba abierta con cupo</strong>. No hay precio público del servicio. Puedes empezar por el cuento de siete preguntas.</p>
+<a class="boton" href="/tu-huella">Empezar mi cuaderno</a>
+</div>
+<h2>Para quién es</h2>
+<p>Para quien termina una conversación con su asistente y quiere conservar lo que decidió y por qué. Para quien lleva un proyecto, estudia o intenta ordenar su semana y necesita un sitio al que volver. Puedes empezar desde el móvil, o usar una carpeta en el PC si ya trabajas con Claude Code o Codex.</p>
+<h2>Qué puedes hacer hoy</h2>
+<ul>
+<li><strong>Contar lo tuyo en siete preguntas.</strong> Tus respuestas llenan un cuaderno y forman una huella. Al lienzo va su forma hecha de cifras, no tus palabras.</li>
+<li><strong>Abrir tu espacio alojado con candado.</strong> Si queda cupo, puedes guardar allí tus respuestas y conversar con el asistente. Conserva tu código y tu kit de recuperación: sirven para volver.</li>
+<li><strong>Tener tu vault en el PC.</strong> Claude Code o Codex pueden trabajar con tu cuaderno en una carpeta del ordenador. Hay una <a href="/empezar">guía para empezar</a> y otra para <a href="/conectar-vault">conectar un vault que ya existe</a>.</li>
+<li><strong>Participar en Comunidad.</strong> Lee la plaza y los avisos de Void. Si tu espacio usa la copia completa del alojamiento, activa la bandeja para enviar y recibir mensajes privados sin invocar un modelo. Puedes bloquear otros alias y revisar cada texto antes de enviarlo.</li>
+<li><strong>Explorar el lienzo.</strong> En la <a href="/">portada</a> puedes moverte por las huellas y abrir los perfiles públicos.</li>
+<li><strong>Instalar la app web.</strong> El botón «Instalar Void» aparece en la portada y al terminar las preguntas cuando el navegador lo permite. En iPhone con Safari explica cómo añadirla a la pantalla de inicio. Necesita internet.</li>
+</ul>
+<h2>Qué falta todavía</h2>
+<p>No hay sincronización automática entre la carpeta del PC y el espacio alojado. La bandeja web necesita el alojamiento con copia completa de Void; los vaults con origen GitHub usan la mensajería del cliente local. Todavía no hay un espacio donde cualquiera pueda publicar y ejecutar sus propias aplicaciones.</p>
+<p>Void sigue en pruebas. No promete memoria perfecta ni independencia de todos los proveedores: usa servicios externos para el alojamiento y la IA. El candado protege el espacio cuando duerme; mientras trabajas, el asistente y el operador pueden leerlo. Puedes consultar los detalles en <a href="/privacidad">Datos y privacidad</a>.</p>
+<h2>Cómo empezar en tres pasos</h2>
+<ol>
+<li><strong><a href="/tu-huella">Abre el cuento y responde las siete preguntas.</a></strong> Puedes dejar alguna en blanco. Al terminar verás tu huella y podrás revisar lo que has escrito.</li>
+<li><strong>Crea tu espacio si queda cupo.</strong> Elige su nombre y confirma que quieres guardar allí tus respuestas. Guarda tu código y tu kit de recuperación en lugares privados y distintos.</li>
+<li><strong>Abre tu cuaderno y pide algo concreto.</strong> Por ejemplo: «Ayúdame a organizar esta semana y guarda lo que decidamos». Revisa lo que quede escrito. Para volver, entra en <a href="/mi-vault">Mi espacio</a> o usa el icono si has instalado Void.</li>
+</ol>
+<h2>Preguntas frecuentes</h2>
+<h3>¿Puedo usar Void desde el móvil sin programar?</h3>
+<p>Sí. Puedes responder las siete preguntas y abrir un espacio alojado desde el navegador, si queda cupo. No necesitas preparar una carpeta ni instalar un asistente en tu ordenador. Puedes añadir Void a la pantalla de inicio cuando tu navegador lo permita; para usarlo necesitas conexión a internet.</p>
+<h3>¿Puede mi asistente guardar mis decisiones?</h3>
+<p>El vault es un cuaderno de archivos donde tu asistente puede guardar lo que decides y consultarlo al volver. Puedes pedirle, por ejemplo: «Guarda esta decisión y el motivo para que la retomemos mañana». Revisa lo que escribe: es una ayuda para recordar, no una garantía de que la IA nunca se equivoque.</p>
+<h3>¿Puedo usar mi vault en el PC con Claude Code o Codex?</h3>
+<p>Sí. Puedes crear un vault en una carpeta de tu ordenador con Claude Code o Codex. Si ya tienes uno, puedes conectarlo a Void. El espacio alojado y la carpeta del PC todavía no se sincronizan automáticamente.</p>
+<h3>¿Void me conecta con otras personas?</h3>
+<p>En Mi espacio, Comunidad reúne una plaza para todos los miembros y los avisos oficiales de Void. El alojamiento con copia completa permite activar la bandeja, enviar mensajes privados entre vaults y bloquear a otros alias, también desde el móvil. Cada envío se revisa antes de confirmarlo.</p>
+<h3>¿Quién puede leer lo que guardo?</h3>
+<p>La huella del lienzo se hace con cifras, no con tus respuestas. Tu espacio alojado tiene acceso privado y se guarda cifrado con tu candado. Cuando duerme, solo tus llaves lo abren; mientras lo usas, el asistente y el operador de Void pueden leerlo. Guarda tu código y tu kit de recuperación en lugares privados.</p>
+<h3>¿Cuánto cuesta Void?</h3>
+<p>Hoy es una prueba abierta con cupo. No hay precio público del servicio ni una tarifa de alojamiento anunciada. El código es abierto; lo que pagues por tu asistente o proveedor de IA va aparte.</p>
+<footer>
+<p>Estado descrito el 20 de octubre de 2026. Void es un producto experimental de LexLabs, hecho en Tenerife.</p>
+<p><a href="/">Volver a Void</a> · <a href="/que-es">Qué es Void</a> · <a href="/privacidad">Datos y privacidad</a> · <a href="/llms.txt">Para asistentes de IA</a></p>
+</footer>
+</main>
+</body>
+</html>

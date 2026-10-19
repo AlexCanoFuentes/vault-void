@@ -1,3 +1,15 @@
+# Void, tu cuaderno con ayuda de IA
+
+Void guarda tus ideas y decisiones en un cuaderno que tu asistente puede consultar al volver.<br>
+Puedes usarlo desde el móvil, con un espacio alojado bajo tu candado, o en una carpeta de tu PC.<br>
+En el lienzo compartido se ve tu huella hecha de cifras; tus respuestas no se publican allí.
+
+Entra en [vaultvoid.app](https://vaultvoid.app/) o lee [Un segundo cerebro en español](https://vaultvoid.app/segundo-cerebro) para conocer lo que funciona y lo que falta.
+
+Para empezar: [responde las siete preguntas](https://vaultvoid.app/tu-huella), crea tu espacio si queda cupo y guarda tu código y tu kit de recuperación. Después, pide al asistente que te ayude con una idea o decisión concreta. Hoy es una prueba abierta con cupo, sin precio público del servicio.
+
+---
+
 # vault-void
 
 El canal por el que un arreglo hecho una vez llega a todos los vaults.

@@ -28,6 +28,7 @@
 import { leerCatalogo, ErrorDeFuente, type Catalogo } from "./catalogo.js";
 import { llaveNueva, huella, llaveDe, problemaAlias, problemaAgente, publicoDe, problemaTexto, TIPOS, RE_ESTRELLA, RE_ALIAS, problemaHuella, huellaNormal, type Huella } from "./reglas.js";
 import { paginaPerfil, paginaEstrella, paginaNoEncontrada, fechaCorta, CSP, type AvisoPublico } from "./paginas.js";
+import { mandarReintento } from "./idempotencia.js";
 import { entradaWeb, alojarExistente, recuperarArchivo } from "./entrada-web.js";
 
 export interface Entorno {
@@ -294,11 +295,12 @@ async function mandar(request: Request, env: Entorno): Promise<Response> {
   if (!dest) return error(404, `Nadie se llama @${para} en la red de Void.`);
   if (!dest.clave_publica) return error(409, `@${para} todavía no puede recibir mensajes: su vault no ha publicado su clave.`);
   if (dest.id === p.id) return error(400, "No hace falta escribirte a ti mismo.");
+  if (b.nonce !== undefined) return mandarReintento(env.DB,p.id,dest.id,para,{tipo:b.tipo as string,enc:b.enc as string,sobre:b.sobre as string,nonce:b.nonce},tope(env.TOPE_MENSAJES_HORA,20),tope(env.TOPE_NUEVOS_DIA,5));
 
   const ahora = Date.now();
   const clave = `msg:${p.id}`;
   await env.DB.prepare("DELETE FROM ritmo WHERE creado < ?").bind(ahora - 2 * HORA).run();
-  const n = (await env.DB.prepare("SELECT COUNT(*) AS n FROM ritmo WHERE clave = ? AND creado > ?").bind(clave, ahora - HORA).first<{ n: number }>())!.n;
+  const n = (await env.DB.prepare("SELECT (SELECT COUNT(*) FROM ritmo WHERE clave = ? AND creado > ?) + (SELECT COUNT(*) FROM mensajes_recibos WHERE de_perfil = ? AND creado > ?) AS n").bind(clave, ahora - HORA, p.id, ahora - HORA).first<{ n: number }>())!.n;
   const max = tope(env.TOPE_MENSAJES_HORA, 20);
   if (n >= max) {
     return error(429, `Ya has mandado ${n} mensajes en la última hora, que es el tope (${max}). Prueba dentro de un rato.`, { "retry-after": "3600" });

@@ -20,9 +20,10 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://vaultvoid.app/og.jpg">
 <link rel="icon" href="/icono.svg" type="image/svg+xml">
+<link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="theme-color" content="#12110E">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Vault Void","url":"https://vaultvoid.app/","applicationCategory":"ProductivityApplication","operatingSystem":"Web, Windows, macOS, Linux","inLanguage":"es","license":"https://www.apache.org/licenses/LICENSE-2.0","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"},"codeRepository":"https://github.com/AlexCanoFuentes/vault-void","description":"Guarda tus ideas y tareas y retómalas con ayuda de un asistente. Puedes crear un vault alojado en Void o conectar una carpeta local. La huella pública contiene solo cifras; las respuestas del espacio alojado se guardan en su almacenamiento privado."}</script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "SoftwareApplication", "name": "Vault Void", "url": "https://vaultvoid.app/", "applicationCategory": "ProductivityApplication", "operatingSystem": "Web, Windows, macOS, Linux", "inLanguage": "es", "license": "https://www.apache.org/licenses/LICENSE-2.0", "codeRepository": "https://github.com/AlexCanoFuentes/vault-void", "description": "Guarda tus ideas y tareas y retómalas con ayuda de un asistente. Puedes crear un vault alojado en Void o conectar una carpeta local. La huella pública contiene solo cifras; las respuestas del espacio alojado se guardan en su almacenamiento privado."}</script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 /*
@@ -64,11 +65,13 @@ button{font:inherit;color:inherit}
 .menu .lema{margin:0;color:var(--tinta-2);font-size:13px}
 .plegar{background:none;border:1px solid var(--linea);border-radius:8px;width:32px;height:32px;cursor:pointer;color:var(--tinta-2);flex:none}
 .plegar:hover{color:var(--tinta);border-color:var(--tinta-2)}
-.acciones{display:flex;gap:8px;flex-wrap:wrap;padding:0 18px 14px}
+.acciones{display:flex;gap:8px;flex-wrap:wrap;padding:0 18px 14px;overflow-y:auto}
 .primario{display:inline-flex;align-items:center;justify-content:center;background:var(--ambar);color:#1A1407;text-decoration:none;font-weight:500;border-radius:999px;padding:9px 18px}
 .primario:hover{background:var(--ambar-2)}
 .secundario{background:none;border:1px solid var(--linea);border-radius:999px;padding:8px 16px;cursor:pointer;color:var(--tinta)}
 .secundario:hover,.secundario[aria-expanded="true"]{border-color:var(--ambar)}
+.instalar{display:contents}
+.instalar p{flex-basis:100%;margin:8px 0 0;font-size:12px;color:var(--tinta-2)}
 .tengo{margin:0 18px 14px;padding:12px 14px;border:1px solid var(--linea);border-radius:10px;font-size:13px;color:var(--tinta-2);display:grid;gap:10px}
 .tengo b{color:var(--tinta);font-weight:500}
 .tengo form{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
@@ -166,9 +169,11 @@ details[open] summary::after{content:"−"}
   </div>
   <div class="acciones">
     <a class="primario" href="/tu-huella">Crear el mío</a>
+    <div class="instalar" data-instalar hidden></div>
     <a class="secundario" href="/mi-vault">Volver al mío</a>
     <a class="secundario" href="/conectar-vault">Conectar mi vault</a>
     <a class="secundario" href="/?historia">Ver cómo funciona</a>
+    <a class="secundario" href="/segundo-cerebro">Un segundo cerebro</a>
   </div>
   <div class="tengo" id="tengo-panel" hidden>
     <p>Abre tu asistente en la carpeta de tu vault y pégale: <b>«conéctate a Void: vaultvoid.app/entrar»</b></p>
@@ -232,6 +237,7 @@ details[open] summary::after{content:"−"}
 <p class="pista" id="pista">Toca una huella. En «Explorar» puedes verlas todas.</p>
 <noscript><p style="position:fixed;inset:auto 16px 16px;max-width:30rem">Para ver el lienzo hace falta JavaScript. Qué es Void: <a href="/que-es">vaultvoid.app/que-es</a>.</p></noscript>
 
+<script src="/instalar.js"></script>
 <script src="/huella.js"></script>
 <script src="/vacio.js"></script>
 <script src="/candado.js"></script>

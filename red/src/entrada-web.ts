@@ -1,4 +1,5 @@
 /** VV-010 · Credenciales aleatorias, sesiones privadas y alojamiento por binding. */
+import { comunidad } from './comunidad.js';
 import { huella, llaveNueva, problemaAlias, problemaHuella } from './reglas.js';
 import {catalogoModelos,proveedoresWeb,pedirCaja,PROVEEDORES_PORTERO} from './modelos-web.js';
 
@@ -203,6 +204,14 @@ export async function entradaWeb(req: Request, env: EntradaEnv, publicar: (req: 
     }
     const p = await sesion(req, env);
     if (!p) return fallo(401, 'Entra con el nombre y el código de tu espacio.');
+    if (ruta.startsWith('/comunidad/')) return comunidad(req,env,p,ruta,req.method==='POST'?await leer(req):{});
+    if (/^\/mensajeria\/(leer|historial|preparar|enviar|envios)$/.test(ruta)) {
+      if (!env.NUBE || !p.listo) return fallo(409,'Termina de preparar tu espacio antes de abrir la bandeja.');
+      const b=req.method==='POST'?await leer(req):undefined;
+      const consulta=req.method==='GET'?new URL(req.url).search:'';
+      const r=await env.NUBE.fetch(new Request('https://privado'+ruta+consulta,{method:req.method,headers:{'content-type':'application/json','x-void-alias':p.alias,'x-void-prueba':p.alojamiento_prueba||p.recuperacion_hash,...(p.aparato?{'x-void-aparato':p.aparato}:{})},body:b?JSON.stringify(b):undefined}));
+      return new Response(r.body,{status:r.status,headers:cab});
+    }
     if (ruta === '/yo' && req.method === 'GET') {
       const h = await env.DB.prepare('SELECT datos,semilla FROM huellas WHERE perfil_id=?').bind(p.id).first<{datos:string;semilla:string|null}>();
       return json(200, { alias: p.alias, listo: !!p.listo, huella: h ? JSON.parse(h.datos) : null, semilla: h?.semilla || p.alias });

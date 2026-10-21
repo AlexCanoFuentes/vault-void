@@ -10,7 +10,7 @@
   difusión, que es lo que da los bordes vivos (reacción-difusión con parámetros que varían en el espacio).
 
   De dónde sale cada cosa, y solo de cifras: el alias siembra dónde nace; los días, lo grande que es su territorio;
-  decisiones contra proyectos, la forma; el último mes (pulso), cuánto brilla; cada pregunta sin contestar, un hueco;
+  decisiones contra proyectos, la forma; el último mes (pulso), cuánto brilla (desde el 21-oct, sin huecos por preguntas sin contestar);
   el color, el «tono» que elige la persona o, si no, uno sacado del alias.
 
   La gravedad es un modo de vista, apagado por defecto (Alex, 9-oct). Cada vault es una lente de masa puntual y el
@@ -99,7 +99,8 @@
           var j = Y * N + X; if (dueno[j] === ti) { U[j] = 0.5; V[j] = 0.25 + 0.1 * r(); }
         }
       }
-      for (var h = 0; h < t.h.calladas; h++) { // cada pregunta sin contestar, un hueco donde no crece nada
+      // [21-oct, «4 si»] Ya no hay hueco por pregunta sin contestar: saltarse una pregunta no deja cicatriz (lo cazó Codex).
+      for (var h = 0; h < 0; h++) {
         var ha = r() * 6.2832, hd = t.tam * 0.5 * Math.sqrt(r()), hx = t.x + hd * Math.cos(ha), hy = t.y + hd * Math.sin(ha), hr = Math.max(2, t.tam * 0.16);
         for (var y2 = Math.floor(hy - hr); y2 <= hy + hr; y2++) for (var x2 = Math.floor(hx - hr); x2 <= hx + hr; x2++) {
           if (x2 < 0 || y2 < 0 || x2 >= N || y2 >= N) continue;

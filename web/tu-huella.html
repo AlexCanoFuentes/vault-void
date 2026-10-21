@@ -371,7 +371,7 @@ async function soltar(texto) {
         comprobar();
       });
     }
-  } else { hueco(capa); }
+  } /* [21-oct, «4 si»] saltarse una pregunta ya no deja hueco en la huella */
   marcoTinta = null;
   VoidCuaderno.llenar(respuestas, capa + 1, CAPAS.map(k => k.c));
   i++;

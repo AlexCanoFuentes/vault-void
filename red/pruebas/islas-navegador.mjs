@@ -70,6 +70,13 @@ try{
  await crear('notas@1','Mis notas');await salirIsla();
  assert.deepEqual(new Set(guardados.filter(b=>b.revision===null).map(b=>b.isla.plantilla)),new Set(['semana@1','proyecto@1','notas@1']));
  console.log('✓ Tres plantillas válidas contra validar() de Python; tareas, notas, contador, formas, estilos y color guardados con revisión.');
+ // [21-oct] Por defecto, huellas: un campo del motor del lienzo y una etiqueta por isla que la abre. Las islas en 3D se piden.
+ assert.equal(await page.locator('#islas-mapa canvas.islas-huellas').count(),1,'la vista por defecto son las huellas');
+ assert.equal(await page.locator('#islas-etiquetas .islas-huella-etiqueta').count(),7,'una etiqueta por isla, fijas incluidas');
+ assert.equal(externas.filter(u=>u.includes('three')).length,0);assert.equal(await page.evaluate(()=>!!window.THREE),false,'three.js no se carga si no se pide');
+ await page.locator('#islas-vista-boton').click();await page.locator('#islas-etiquetas .islas-nodo').first().waitFor();
+ assert.equal(await page.evaluate(()=>!!window.THREE),true,'al pedir las islas, three.js llega desde Void');
+ console.log('✓ Huellas por defecto, sin three.js; «Ver como islas» lo carga desde Void.');
  // Arrastrar y mover con teclado guarda la posición, sin abrir la isla.
  const id=registros[0].isla.id,nodo=page.locator(`#islas-etiquetas [data-id="${id}"]`);await nodo.focus();const pos=structuredClone(registros[0].isla.posicion);await nodo.press('ArrowRight');await guardada();assert.notEqual(registros[0].isla.posicion.x,pos.x);
  const box=await nodo.boundingBox();await page.mouse.move(box.x+60,box.y+45);await page.mouse.down();await page.mouse.move(box.x+38,box.y+75,{steps:5});await page.mouse.up();await guardada();assert.equal(await page.locator('#islas-panel').isVisible(),false);

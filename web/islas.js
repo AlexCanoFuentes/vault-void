@@ -11,6 +11,11 @@ const fijas=[
 ];
 const formas=['redonda','alargada','montaña','atolón','archipiélago'],estilos=['viva','serena','sobria'];
 let registros=[],danadas=[],generacion=0,lectura=0,activo=false,disponible=false,cargando=false,pendientes=0;
+// Vista del mapa: huellas por defecto; islas en 3D si la persona lo elige. Se recuerda en el aparato (solo la vista, nunca contenido).
+let vista=(()=>{try{return localStorage.getItem('void-vista-mapa')==='islas'?'islas':'huellas';}catch{return 'huellas';}})(),cargando3d=null;
+function cargar3d(){if(window.VoidPaisajeIslas)return Promise.resolve();if(cargando3d)return cargando3d;
+ const script=src=>new Promise((ok,mal)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=()=>mal(Error('No se pudo cargar la vista de islas. Sigues en la de huellas.'));document.head.append(s);});
+ cargando3d=script('/vendor/three/three.min.js').then(()=>script('/islas-paisaje.js')).catch(e=>{cargando3d=null;throw e;});return cargando3d;}
 let paisaje=null,lista=false,pagina=0,actual=null,cola=Promise.resolve(),origen=null;
 const api=(ruta,datos)=>window.VoidEspacio.api('islas/'+ruta,datos);
 function aviso(texto){$('islas-estado').textContent=texto;}
@@ -36,7 +41,10 @@ function pintarVistas(){
  if(lista){destruirPaisaje();return;}
  if(!disponible)return;
  try{
-  if(!paisaje)paisaje=window.VoidPaisajeIslas($('islas-mapa'),$('islas-etiquetas'),{abrir,mover,fallo:falloPaisaje});
+  $('islas-vista-boton').textContent=vista==='islas'?'Ver como huellas':'Ver como islas';
+  $('islas-gestos').textContent=vista==='islas'?'Toca una isla para abrirla. Arrastra tus islas para moverlas, o usa las flechas del teclado. Dentro puedes girarlas con el dedo.':'Toca una huella para abrirla. Su forma sale de lo que tiene dentro: crece con lo que guardas y brilla con lo que tocaste hace poco.';
+  if(vista==='islas'&&!window.VoidPaisajeIslas){cargar3d().then(pintarVistas,e=>{vista='huellas';aviso(e.message);pintarVistas();});return;}
+  if(!paisaje)paisaje=vista==='islas'?window.VoidPaisajeIslas($('islas-mapa'),$('islas-etiquetas'),{abrir,mover,fallo:falloPaisaje}):window.VoidHuellasIslas($('islas-mapa'),$('islas-etiquetas'),{abrir,fallo:falloPaisaje});
   const datos=todas();if(actual)pagina=Math.floor(datos.findIndex(d=>d.id===actual)/8);
   pagina=Math.max(0,Math.min(pagina,Math.ceil(datos.length/8)-1));
   paisaje.pintar(datos.slice(pagina*8,pagina*8+8),actual);
@@ -185,6 +193,7 @@ function plantilla(nombre,tipo){
  d.bloques.push({id:'nota',tipo:'nota',titulo:'Notas',texto:''});return d;
 }
 $('islas-lista-boton').onclick=()=>{if(actual)volver(false);lista=!lista;pintarVistas();};
+$('islas-vista-boton').onclick=()=>{vista=vista==='islas'?'huellas':'islas';try{localStorage.setItem('void-vista-mapa',vista);}catch{}destruirPaisaje();lista=false;pintarVistas();};
 $('islas-recargar').onclick=()=>recargar();
 $('islas-nueva').onclick=()=>{$('islas-crear-form').reset();$('islas-crear-estado').textContent='';$('islas-crear').showModal();};
 $('islas-cancelar-crear').onclick=()=>$('islas-crear').close();

@@ -142,6 +142,7 @@ details[open] summary::after{content:"−"}
   .mandos{right:12px;top:calc(12px + env(safe-area-inset-top,0px))}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.mas-acciones{display:contents}.mas-acciones summary{cursor:pointer;color:var(--tinta-2);font-size:13px;padding:10px 4px;list-style:none;text-decoration:underline;text-underline-offset:3px}.mas-acciones summary::-webkit-details-marker{display:none}.mas-acciones[open] summary{display:none}
 </style>
 </head>
 <body>
@@ -171,9 +172,13 @@ details[open] summary::after{content:"−"}
     <a class="primario" href="/tu-huella">Crear el mío</a>
     <div class="instalar" data-instalar hidden></div>
     <a class="secundario" href="/mi-vault">Volver al mío</a>
-    <a class="secundario" href="/conectar-vault">Conectar mi vault</a>
-    <a class="secundario" href="/?historia">Ver cómo funciona</a>
-    <a class="secundario" href="/segundo-cerebro">Un segundo cerebro</a>
+    <!-- [21-oct, Alex «todo si»] A la vista solo crear y volver: quien llega nuevo no sabe qué es «conectar mi vault». -->
+    <details class="mas-acciones">
+      <summary>Más</summary>
+      <a class="secundario" href="/?historia">Ver cómo funciona</a>
+      <a class="secundario" href="/segundo-cerebro">Qué es un segundo cerebro</a>
+      <a class="secundario" href="/conectar-vault">Ya tengo un vault en mi ordenador</a>
+    </details>
   </div>
   <div class="tengo" id="tengo-panel" hidden>
     <p>Abre tu asistente en la carpeta de tu vault y pégale: <b>«conéctate a Void: vaultvoid.app/entrar»</b></p>

@@ -200,7 +200,7 @@ body.vh-activa .pista{
 </div>
 <div class="vh-transport">
   <button type="button" data-pausa>Pausar</button>
-  <button type="button" data-salir>Ver lienzo</button>
+  <button type="button" data-salir>Saltar</button>
 </div>
 <a class="primario vh-cta" href="/tu-huella">Crear el mío</a>`;
 

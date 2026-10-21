@@ -540,8 +540,8 @@ function pantallaLlaves(
         ${titulo || 'Tu espacio tiene candado. <em>Las llaves son tuyas.</em>'}
       </h2>
       <p class="vc-nota" style="margin:0 auto;text-align:center">
-        Nosotros no tenemos ninguna. Si un día dejamos de existir,
-        tu vault sigue siendo tuyo. ${tarjetas.length > 1 ? 'Te las enseñamos' : 'Te la enseñamos'} <b>solo esta vez</b>.
+        Si alguna vez nos dejas una copia para ayudarte a recuperarlas, te lo diremos por escrito.
+        Si un día dejamos de existir, tu vault sigue siendo tuyo. ${tarjetas.length > 1 ? 'Te las enseñamos' : 'Te la enseñamos'} <b>solo esta vez</b>.
       </p>
       <div class="vc-llaves${tarjetas.length > 1 ? '' : ' una'}">
         ${tarjetas.map(([nombre, descripcion, valor], i) => `

@@ -327,16 +327,22 @@ function contar() {
   paso = "contar"; const k = CAPAS[i];
   VoidCuaderno.llenar(respuestas, i, CAPAS.map(k => k.c));
   decir(`${k.n} · ${i + 1} de 7`, k.dice, k.sub);
-  abajo.innerHTML = `<div class="campo"><label class="sr" for="t">${esc(k.pregunta)}</label>
+  abajo.innerHTML = `<div class="campo"><label class="sr" for="t">${esc(k.sub)}</label>
       <textarea id="t" rows="1" placeholder="Escribe o dicta…"></textarea>
       <button class="principal" id="soltar" disabled aria-label="Guardar respuesta y continuar">Continuar</button></div>
-    <div class="fila"><button class="texto" id="callar">Dejar esta página en blanco</button></div>`;
+    <div class="fila"><button class="texto" id="callar">Dejar esta página en blanco</button><button class="texto" id="saltar-todo">Saltar las preguntas y crear mi espacio</button></div>`;
   const t = document.getElementById("t"), b = document.getElementById("soltar");
   t.maxLength=3000;t.value=respuestas[i]||'';
   t.oninput = () => { b.disabled = !t.value.trim(); t.style.height = "52px"; t.style.height = Math.min(140, t.scrollHeight) + "px";respuestas[i]=t.value;guardarBorrador(i); };t.oninput();
   t.onkeydown = e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing && t.value.trim()) { e.preventDefault(); b.click(); } };
   b.onclick = () => soltar(t.value.trim());
   document.getElementById("callar").onclick = () => soltar(null);
+  // [21-oct, Alex «todo si»] Quien no quiere escribir antes de ver nada, entra ya: lo contestado se queda, el resto en
+  // blanco, y el ayudante lo pregunta después, dentro del espacio.
+  document.getElementById("saltar-todo").onclick = () => {
+    for (let j = i; j < 7; j++) if (!(respuestas[j] || '').trim()) respuestas[j] = null;
+    i = 7; guardarBorrador(7); formada();
+  };
   setTimeout(() => t.focus({preventScroll: true}), 300);
 }
 async function soltar(texto) {

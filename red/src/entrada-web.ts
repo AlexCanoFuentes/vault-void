@@ -205,6 +205,33 @@ export async function entradaWeb(req: Request, env: EntradaEnv, publicar: (req: 
     const p = await sesion(req, env);
     if (!p) return fallo(401, 'Entra con el nombre y el código de tu espacio.');
     if (ruta.startsWith('/comunidad/')) return comunidad(req,env,p,ruta,req.method==='POST'?await leer(req):{});
+    if (ruta.startsWith('/islas/')) {
+      const permitida = req.method === 'GET' && ruta === '/islas/listar'
+        || req.method === 'POST' && ['/islas/guardar', '/islas/borrar'].includes(ruta);
+      if (!permitida || url.search) return fallo(404, 'Esa acción no existe.');
+      if (!env.NUBE || !p.listo) return fallo(409, 'Termina de preparar tu espacio antes de abrir las islas.');
+      let body: Uint8Array | undefined;
+      if (req.method === 'POST') {
+        if (!req.headers.get('content-type')?.startsWith('application/json')) return fallo(415, 'Se necesita JSON.');
+        const reader = req.body?.getReader();
+        if (!reader) return fallo(400, 'Faltan los datos de la isla.');
+        const partes: Uint8Array[] = []; let n = 0;
+        for (;;) {
+          const { value, done } = await reader.read(); if (done) break;
+          n += value.length;
+          if (n > 64 * 1024 + 4096) { await reader.cancel(); return fallo(413, 'La isla supera el tamaño permitido.'); }
+          partes.push(value);
+        }
+        body = new Uint8Array(n); let pos = 0;
+        for (const parte of partes) { body.set(parte, pos); pos += parte.length; }
+      }
+      // La persona y la prueba salen de la sesión. El navegador solo aporta el JSON de la isla.
+      const r = await env.NUBE.fetch(new Request('https://privado' + ruta, { method: req.method,
+        headers: { 'content-type': 'application/json', 'x-void-alias': p.alias, 'x-void-prueba': pruebaDe(p),
+          ...(p.aparato ? { 'x-void-aparato': p.aparato } : {}) }, body }));
+      return new Response(r.body, { status: r.status, headers: cab });
+    }
+
     if (/^\/mensajeria\/(leer|historial|preparar|enviar|envios)$/.test(ruta)) {
       if (!env.NUBE || !p.listo) return fallo(409,'Termina de preparar tu espacio antes de abrir la bandeja.');
       const b=req.method==='POST'?await leer(req):undefined;

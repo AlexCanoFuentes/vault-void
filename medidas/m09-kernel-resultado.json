@@ -1,0 +1,8 @@
+{
+  "total": 95,
+  "maximo": 100,
+  "estado": "EXECUTE",
+  "dimension_mas_debil": "validation",
+  "riesgo_bajo": false,
+  "puede_construir": true
+}

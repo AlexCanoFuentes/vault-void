@@ -1,0 +1,35 @@
+{
+  "objeto": "M-09: archipiélago privado guardado en el vault, fase 1 sin publicar",
+  "alcance": "Puente fijo, ruta con sesión, mapa y lista con tres plantillas. Sin estrellas reales, modelos, sincronización nueva ni despliegue.",
+  "fuentes": "Ticket 2026-10-21_void-islas-v2-produccion.md; prototipo e investigación 18-oct; mensajeria.py, index.js, mensajeria-web.js y mi-vault.* leídos completos.",
+  "cambios": [
+    "construccion",
+    "datos"
+  ],
+  "dimensiones": {
+    "clarity": {
+      "nota": 20,
+      "porque": "El ticket define objetivo y cuatro piezas concretas."
+    },
+    "scope": {
+      "nota": 20,
+      "porque": "La fase 1 y sus exclusiones están enumeradas por Alex."
+    },
+    "context": {
+      "nota": 15,
+      "porque": "Se han leído las referencias, la página viva y el patrón de sesión y usuario agente."
+    },
+    "risk": {
+      "nota": 13,
+      "porque": "Esquema cerrado, rutas fijas, límites y pruebas adversarias; revisión de Claude pendiente."
+    },
+    "validation": {
+      "nota": 12,
+      "porque": "Unitarias y compilación posibles; integración bloqueada por sockets, Docker deniega el socket y el Pixel requiere a Alex."
+    },
+    "priority": {
+      "nota": 15,
+      "porque": "Avanza Void 1.0 y primer uso de Martín del 1-nov según el ticket."
+    }
+  }
+}

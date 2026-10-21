@@ -10,6 +10,9 @@ const fijas=[
  {id:'fija_cuidar',nombre:'Lo tuyo, a mano',destino:'cuidar',color:'#c9784e',forma:'alargada'}
 ];
 const formas=['redonda','alargada','montaña','atolón','archipiélago'],estilos=['viva','serena','sobria'];
+// [21-oct, fase 1b] Las islas que salen del vault llegan con origen 'vault': sus tareas y su nota se leen del fichero;
+// lo que la persona cambia (nombre que ve, color, forma, estilo, sitio, esconderla) va a los ajustes, con su propia revisión.
+let ajustesRev=null,ocultas=[];const delVault=id=>registros.some(r=>r.isla.id===id&&r.origen==='vault');
 let registros=[],danadas=[],generacion=0,lectura=0,activo=false,disponible=false,cargando=false,pendientes=0;
 // Vista del mapa: huellas por defecto; islas en 3D si la persona lo elige. Se recuerda en el aparato (solo la vista, nunca contenido).
 // [21-oct, «3 b por ahora»] sin vista 3D hasta decidir three.js en el repo público: siempre huellas.
@@ -26,7 +29,7 @@ function limpiar(){generacion++;lectura++;activo=false;disponible=false;cargando
 function noDisponible(texto){limpiar();$('islas').hidden=false;aviso(texto+' Tus secciones siguen debajo.');}
 function falloPaisaje(texto){destruirPaisaje();lista=true;aviso(texto);pintarVistas();}
 function controles(){
- $('islas-nueva').disabled=!disponible||pendientes>0||cargando||registros.length+danadas.length>=40;
+ $('islas-nueva').disabled=!disponible||pendientes>0||cargando||registros.filter(r=>r.origen!=='vault').length>=40;
  $('islas-recargar').disabled=pendientes>0||cargando;
  $('islas-crear-form').querySelector('fieldset').disabled=pendientes>0;
  $('islas-borrar-si').disabled=pendientes>0;
@@ -57,11 +60,14 @@ function pintar(){
  $('islas-lista').replaceChildren();
  for(const d of todas()){
   const li=document.createElement('li'),b=d.destino?document.createElement('a'):document.createElement('button'),punto=document.createElement('span'),nombre=document.createElement('span'),tipo=document.createElement('small');
-  punto.className='islas-punto';punto.style.setProperty('--isla-color',d.color);punto.setAttribute('aria-hidden','true');nombre.textContent=d.nombre;tipo.textContent=d.destino?'Sección':'Privada';
+  punto.className='islas-punto';punto.style.setProperty('--isla-color',d.color);punto.setAttribute('aria-hidden','true');nombre.textContent=d.nombre;tipo.textContent=d.destino?'Sección':delVault(d.id)?'De tu vault':'Privada';
   if(d.destino)b.href='#'+d.destino;else b.type='button';
   b.dataset.id=d.id;b.append(punto,nombre,tipo);b.onclick=e=>{e.preventDefault();abrir(d.id);};li.append(b);$('islas-lista').append(li);
  }
  $('islas-vistas').hidden=!disponible;
+ let lineaOcultas=$('islas-ocultas');if(!lineaOcultas){lineaOcultas=document.createElement('div');lineaOcultas.id='islas-ocultas';lineaOcultas.className='secundario';$('islas-danadas').after(lineaOcultas);}
+ lineaOcultas.replaceChildren();lineaOcultas.hidden=!ocultas.length;
+ if(ocultas.length){lineaOcultas.append(document.createTextNode(ocultas.length===1?'Una isla de tu vault está escondida: ':ocultas.length+' islas de tu vault están escondidas: '));for(const o of ocultas)lineaOcultas.append(boton('Mostrar «'+o.nombre+'»',()=>cambiar(v=>ajustar(o.id,{oculta:false},v))));}
  $('islas-danadas').hidden=danadas.length===0;$('islas-danadas').textContent=danadas.map(d=>'Hay una isla que no se puede leer: '+d.archivo+'.').join(' ');
  pintarVistas();controles();
 }
@@ -71,9 +77,9 @@ async function recargar(mensaje){
  try{
   const d=await api('listar');if(g!==generacion||l!==lectura)return;
   if(!Array.isArray(d.islas)||!Array.isArray(d.danadas))throw Error('La respuesta de las islas no se pudo leer.');
-  registros=d.islas;danadas=d.danadas;disponible=true;
+  registros=d.islas;danadas=d.danadas;ajustesRev=typeof d.ajustes==='string'?d.ajustes:null;ocultas=Array.isArray(d.ocultas)?d.ocultas:[];disponible=true;
   if(actual&&!registros.some(r=>r.isla.id===actual))volver(false);
-  if(actual)editor();pintar();aviso(mensaje||(registros.length+danadas.length>=40?'Ya tienes 40 islas. Puedes abrirlas y cambiarlas.':'Tus islas son privadas y se guardan en tu vault.'));
+  if(actual)editor();pintar();aviso(mensaje||(registros.filter(r=>r.origen!=='vault').length>=40?'Ya tienes 40 islas. Puedes abrirlas y cambiarlas.':'Tus islas son privadas y se guardan en tu vault.'));
   $('islas-recargar').hidden=false;
  }catch(e){if(g!==generacion||l!==lectura)return;tratarError(e,false);}
  finally{if(g===generacion&&l===lectura){cargando=false;controles();}}
@@ -113,7 +119,17 @@ async function guardar(isla,revision,vigente){
  const indice=registros.findIndex(r=>r.isla.id===isla.id),registro={isla,revision:d.revision};if(indice<0)registros.push(registro);else registros[indice]=registro;
  pintar();aviso('Isla guardada.');return true;
 }
+async function ajustar(id,ajuste,vigente){
+ const d=await api('ajustar',{id,ajuste,revision:ajustesRev});if(!vigente())return false;
+ if(d.ajustado!==true||typeof d.ajustes!=='string')throw Error('No pudimos confirmar el cambio. Recarga las islas antes de repetirlo.');
+ ajustesRev=d.ajustes;const r=registros.find(r=>r.isla.id===id);
+ if(r){if(ajuste.oculta){registros=registros.filter(x=>x!==r);ocultas.push({id,nombre:r.isla.nombre,archivo:r.archivo});}else Object.assign(r.isla,ajuste);}
+ else if(ajuste.oculta===false){ocultas=ocultas.filter(o=>o.id!==id);pintar();await recargarDespues();return true;}
+ pintar();aviso(ajuste.oculta?'Isla escondida. La puedes volver a mostrar debajo del mapa.':'Cambio guardado.');return true;
+}
+function recargarDespues(){setTimeout(()=>recargar('Isla de nuevo en el mapa.'),0);}
 function mover(id,posicion){
+ if(delVault(id)){cambiar(vigente=>ajustar(id,{posicion},vigente));return;}
  cambiar(async vigente=>{const r=registros.find(r=>r.isla.id===id);if(!r)return false;const d=clonar(r.isla);d.posicion=posicion;await guardar(d,r.revision,vigente);if(vigente())$('islas-etiquetas').querySelector(`[data-id="${id}"]`)?.focus({preventScroll:true});});
 }
 function boton(texto,accion,deshabilitado=false){const b=document.createElement('button');b.type='button';b.textContent=texto;b.disabled=deshabilitado;b.onclick=accion;return b;}
@@ -138,8 +154,26 @@ function leerEditor(form,isla){
   if(b.tipo==='tareas')b.items.forEach((t,j)=>{t.texto=v(`tarea-${i}-${j}`).trim();t.hecho=form.elements.namedItem(`hecho-${i}-${j}`).checked;});
  });return d;
 }
+function editorVault(r){
+ const isla=r.isla,panel=$('islas-panel');panel.hidden=false;panel.replaceChildren();
+ const vuelta=boton('Volver al archipiélago',()=>volver());vuelta.id='islas-volver';panel.append(vuelta);
+ const h=document.createElement('h3');h.id='islas-panel-titulo';h.textContent=isla.nombre;panel.append(h);
+ const pista=document.createElement('p');pista.className='secundario';pista.textContent='Sale de tu vault: '+r.archivo+'. Sus tareas y su nota se cambian allí, y aquí se ponen al día solas. Desde aquí cambias cómo se ve.';panel.append(pista);
+ for(const b of isla.bloques){
+  const seccion=document.createElement('div');seccion.className='islas-bloque';const titulo=document.createElement('h4');titulo.textContent=b.titulo;seccion.append(titulo);
+  if(b.tipo==='nota'){const nota=document.createElement('p');nota.style.whiteSpace='pre-line';nota.textContent=b.texto||'Este proyecto todavía no tiene nota.';seccion.append(nota);}
+  if(b.tipo==='tareas'){const ul=document.createElement('ul');ul.className='islas-lista';for(const x of b.items){const li=document.createElement('li'),check=document.createElement('input');check.type='checkbox';check.checked=x.hecho;check.disabled=true;check.setAttribute('aria-label',(x.hecho?'Hecha: ':'Pendiente: ')+x.texto);li.append(check,document.createTextNode(' '+x.texto));ul.append(li);}seccion.append(ul);}
+  panel.append(seccion);
+ }
+ const form=document.createElement('form'),fs=document.createElement('fieldset'),aspecto=document.createElement('div');aspecto.className='islas-personalizar';fs.append(aspecto);form.append(fs);panel.append(form);
+ campo(aspecto,'Nombre que ves','nombre',isla.nombre,'text',80).required=true;campo(aspecto,'Color','color',isla.color,'color');opciones(aspecto,'Forma','forma',isla.forma,formas);opciones(aspecto,'Estilo','estilo',isla.estilo,estilos);
+ const v=n=>form.elements.namedItem(n).value;
+ form.onsubmit=e=>e.preventDefault();
+ form.onchange=()=>{if(!form.reportValidity()||pendientes)return;const ajuste={nombre:v('nombre').trim(),color:v('color'),forma:v('forma'),estilo:v('estilo')};cambiar(async vigente=>{const ok=await ajustar(isla.id,ajuste,vigente);if(ok&&actual===isla.id)editor();return ok;});};
+ panel.append(boton('Esconder del mapa',()=>cambiar(async vigente=>{const ok=await ajustar(isla.id,{oculta:true},vigente);if(ok)volver();return ok;})));controles();
+}
 function editor(){
- const r=registros.find(r=>r.isla.id===actual);if(!r)return;const isla=r.isla,panel=$('islas-panel');panel.hidden=false;panel.replaceChildren();
+ const r=registros.find(r=>r.isla.id===actual);if(!r)return;if(r.origen==='vault'){editorVault(r);return;}const isla=r.isla,panel=$('islas-panel');panel.hidden=false;panel.replaceChildren();
  const vuelta=boton('Volver al archipiélago',()=>volver());vuelta.id='islas-volver';panel.append(vuelta);
  const h=document.createElement('h3');h.id='islas-panel-titulo';h.textContent=isla.nombre;panel.append(h);
  const pista=document.createElement('p');pista.className='secundario';pista.textContent='Privada. Los cambios se guardan al salir de cada campo. También puedes pulsar Guardar cambios.';panel.append(pista);

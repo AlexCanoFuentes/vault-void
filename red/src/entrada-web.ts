@@ -207,7 +207,7 @@ export async function entradaWeb(req: Request, env: EntradaEnv, publicar: (req: 
     if (ruta.startsWith('/comunidad/')) return comunidad(req,env,p,ruta,req.method==='POST'?await leer(req):{});
     if (ruta.startsWith('/islas/')) {
       const permitida = req.method === 'GET' && ruta === '/islas/listar'
-        || req.method === 'POST' && ['/islas/guardar', '/islas/borrar'].includes(ruta);
+        || req.method === 'POST' && ['/islas/guardar', '/islas/borrar', '/islas/ajustar'].includes(ruta);
       if (!permitida || url.search) return fallo(404, 'Esa acción no existe.');
       if (!env.NUBE || !p.listo) return fallo(409, 'Termina de preparar tu espacio antes de abrir las islas.');
       let body: Uint8Array | undefined;

@@ -12,6 +12,7 @@ const {chromium}=createRequire(nube+'/pruebas/package.json')('playwright');
 const server=http.createServer(async(req,res)=>{try{const u=new URL(req.url,'http://local'),p=path.resolve(root,'web','.'+(u.pathname==='/'?'/mi-vault.html':u.pathname));if(!p.startsWith(root+'/web/'))throw Error();const raw=await readFile(p);res.writeHead(200,{'content-type':p.endsWith('.js')?'text/javascript':p.endsWith('.css')?'text/css':p.endsWith('.svg')?'image/svg+xml':'text/html'});res.end(raw);}catch{res.writeHead(404);res.end();}});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const url='http://127.0.0.1:'+server.address().port,browser=await chromium.launch({headless:true});
+let vaultIslas=[],ajustesDoc={},ajustesN=0,ajustadas=[];
 let registros=[],guardados=[],borrados=[],danadas=[],listados=0,modo=null,falloGuardar=null,conflicto=false,retraso=0,alias='prueba-islas',despierta=true,abierto=true;
 const errores=[],externas=[];
 const revision=isla=>createHash('sha256').update(JSON.stringify(isla)).digest('hex');
@@ -29,7 +30,8 @@ try{
   else if(p==='proveedores')d={proveedores:[]};
   else if(p==='comunidad/resumen')d={mensajes:0,plaza:0,oficial:0};
   else if(p==='islas/listar'){
-   assert.equal(req.method(),'GET');listados++;const snapshot=structuredClone({islas:registros,danadas});
+   assert.equal(req.method(),'GET');listados++;const vistas=vaultIslas.filter(v=>!ajustesDoc[v.isla.id]?.oculta).map(v=>({...v,isla:{...v.isla,...Object.fromEntries(Object.entries(ajustesDoc[v.isla.id]||{}).filter(([k])=>k!=='oculta'))}}));
+   const snapshot=structuredClone({islas:[...registros,...vistas],danadas,ocultas:vaultIslas.filter(v=>ajustesDoc[v.isla.id]?.oculta).map(v=>({id:v.isla.id,nombre:v.isla.nombre,archivo:v.archivo})),ajustes:ajustesN?'a'.repeat(63)+ajustesN%10:null});
    if(retraso)await new Promise(r=>setTimeout(r,retraso));
    if(modo){await route.fulfill({status:modo.status,json:modo.d});return;}d=snapshot;
   }else if(p==='islas/guardar'){
@@ -40,6 +42,9 @@ try{
    assert.equal(b.revision,i<0?null:registros[i].revision,'revisión obsoleta');
    guardados.push(structuredClone(b));const r={isla:b.isla,revision:revision(b.isla)};if(i<0)registros.push(r);else registros[i]=r;
    d={guardado:true,revision:r.revision};
+  }else if(p==='islas/ajustar'){
+   assert.equal(req.method(),'POST');assert.deepEqual(Object.keys(b).sort(),['ajuste','id','revision']);assert.equal(b.revision,ajustesN?'a'.repeat(63)+ajustesN%10:null,'revisión de ajustes obsoleta');
+   assert.ok(vaultIslas.some(v=>v.isla.id===b.id));ajustadas.push(structuredClone(b));ajustesDoc[b.id]={...(ajustesDoc[b.id]||{}),...b.ajuste};ajustesN++;d={ajustado:true,ajustes:'a'.repeat(63)+ajustesN%10};
   }else if(p==='islas/borrar'){
    const i=registros.findIndex(r=>r.isla.id===b.id);assert.ok(i>=0);assert.equal(b.revision,registros[i].revision);borrados.push(b);registros.splice(i,1);d={borrado:true};
   }else if(p==='salir')d={saliste:true};
@@ -140,5 +145,20 @@ try{
  assert.ok(!externas.some(u=>/three|cdnjs|unpkg|jsdelivr/i.test(u)));assert.deepEqual(errores,[]);
  await writeFile('/tmp/m09-islas-guardados.json',JSON.stringify(guardados,null,2));
  console.log('✓ Reintento conserva el borrador; salida descarta lecturas tardías; sin contenido en localStorage ni three.js externo.');
+ // [21-oct, fase 1b] Islas que salen del vault: se ven, no se editan sus tareas, se renombran y se esconden por ajustes.
+ vaultIslas=[{isla:{formato:1,id:'v-0123456789ab',nombre:'Huerto inventado',icono:'',color:'#5BE06A',forma:'redonda',estilo:'viva',publica:false,plantilla:'proyecto@1',posicion:{x:.5,y:.45},bloques:[{id:'nota',tipo:'nota',titulo:'De tu vault',texto:'Objetivo: Tomates en verano'},{id:'tareas',tipo:'tareas',titulo:'Tareas',items:[{texto:'Comprar macetas',hecho:false}]}]},revision:null,origen:'vault',archivo:'proyectos/huerto.md'}];
+ await page.locator('#islas-recargar').click();await page.waitForFunction(()=>document.querySelector('#islas-estado').textContent.includes('privadas'));
+ if(await page.locator('#islas-lista').isHidden())await page.locator('#islas-lista-boton').click();
+ assert.match(await page.locator('#islas-lista [data-id="v-0123456789ab"]').innerText(),/De tu vault/);
+ await page.locator('#islas-lista [data-id="v-0123456789ab"]').click();await page.locator('#islas-panel').waitFor({state:'visible'});
+ assert.match(await page.locator('#islas-panel').innerText(),/Sale de tu vault: proyectos\/huerto\.md/);assert.equal(await page.locator('#islas-panel input[type=checkbox]').first().isDisabled(),true,'las tareas del vault no se tocan aquí');
+ assert.equal(await page.getByRole('button',{name:'Borrar isla',exact:true}).count(),0,'una isla del vault no se borra: se esconde');
+ await page.locator('#islas-panel [name=nombre]').fill('Mi huerto');await page.locator('#islas-panel [name=nombre]').press('Tab');await page.waitForFunction(()=>document.querySelector('#islas-estado').textContent.includes('Cambio guardado'));
+ assert.equal(ajustadas.at(-1).ajuste.nombre,'Mi huerto');assert.equal(guardados.filter(g=>g.isla?.id==='v-0123456789ab').length,0,'nunca se guarda como isla propia');
+ await page.getByRole('button',{name:'Esconder del mapa',exact:true}).click();await page.locator('#islas-ocultas').waitFor({state:'visible'});
+ assert.match(await page.locator('#islas-ocultas').innerText(),/Mi huerto/);
+ await page.getByRole('button',{name:'Mostrar «Mi huerto»',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#islas-ocultas').hidden);
+ assert.equal(ajustadas.at(-1).ajuste.oculta,false);
+ console.log('✓ Islas del vault: tareas de solo lectura con su fichero, renombrar y esconder por ajustes, nunca se guardan como propias.');
  console.log(`${guardados.length} guardados validados. API simulada; navegador y WebGL reales. Captura: /tmp/m09-islas-1440.png`);
 }finally{await browser.close();await new Promise(r=>server.close(r));}

@@ -13,3 +13,4 @@
 .islas-huella-etiqueta[aria-pressed=true],.islas-huella-etiqueta:hover{border-color:var(--acento)}
 .islas-huella-etiqueta{pointer-events:auto}
 .islas-mapa.vista-huellas{height:auto;aspect-ratio:1/1;max-height:620px;max-width:620px;margin:0 auto}
+.islas-huella-etiqueta:not([data-fija]){cursor:grab;touch-action:none}.islas-huella-etiqueta.arrastrando{cursor:grabbing;border-color:var(--acento);z-index:2}

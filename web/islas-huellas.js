@@ -6,7 +6,7 @@
    Misma forma de uso que islas-paisaje.js (pintar, seleccionar, destruir), para que islas.js cambie de vista sin más. */
 (()=>{
 'use strict';
-window.VoidHuellasIslas = function(contenedor, etiquetas, {abrir, fallo}) {
+window.VoidHuellasIslas = function(contenedor, etiquetas, {abrir, mover, fallo}) {
   if (!window.VoidHuella) throw Error('No se pudo cargar la vista de huellas. Puedes usar la lista.');
   const N = 150, lienzo = document.createElement('canvas');
   lienzo.width = lienzo.height = N; lienzo.className = 'islas-huellas'; lienzo.setAttribute('aria-hidden', 'true');
@@ -36,15 +36,65 @@ window.VoidHuellasIslas = function(contenedor, etiquetas, {abrir, fallo}) {
     return {dias: Math.min(365, 40 + 25 * (hechas + pendientes + otros)), pulso: Math.max(5, 60 - 2 * edad),
             decisiones: hechas + 1, proyectos: pendientes + otros + 1, calladas: 0, tono: tono(d.color)};
   }
+  // Sitio fijo de las islas de siempre: no se arrastran (no son del vault) y así no tapan las propias.
+  const FIJAS = {fija_hablar: {x: .18, y: .2}, fija_comunidad: {x: .82, y: .2}, fija_modelos: {x: .18, y: .82}, fija_cuidar: {x: .82, y: .82}};
+  const sitioDe = d => d.destino ? FIJAS[d.id] || {x: .5, y: .5} : d.posicion;
+  // [21-oct] Arrastrar las huellas propias, suponiendo que alguien lo hará mal a propósito: se queda dentro del
+  // recuadro, no se suelta encima de otra (se aparta), un toque corto no es arrastre, soltar fuera o cancelar
+  // devuelve la huella a su sitio, y las flechas guardan una sola vez cuando dejas de pulsar.
+  let datosActuales = [], tecla = null;
+  const libre = (id, x, y) => {
+    for (let vuelta = 0; vuelta < 12; vuelta++) {
+      const choque = datosActuales.find(o => o.id !== id && Math.hypot((sitioDe(o).x - x), (sitioDe(o).y - y)) < .12);
+      if (!choque) break;
+      const s = sitioDe(choque), a = Math.atan2(y - s.y, x - s.x) || vuelta;
+      x = s.x + Math.cos(a) * .13; y = s.y + Math.sin(a) * .13;
+    }
+    return {x: Math.round(Math.min(.92, Math.max(.08, x)) * 1000) / 1000, y: Math.round(Math.min(.92, Math.max(.08, y)) * 1000) / 1000};
+  };
+  function colocar(b, x, y) { b.style.left = Math.min(84, Math.max(16, x * 100)) + '%'; b.style.top = Math.min(94, Math.max(6, y * 100)) + '%'; }
+  function arrastrable(b, d) {
+    let inicio = null, arrastrando = false;
+    b.addEventListener('pointerdown', e => { if (e.button !== 0 || etiquetas.inert) return; inicio = {x: e.clientX, y: e.clientY, id: e.pointerId}; arrastrando = false; });
+    b.addEventListener('pointermove', e => {
+      if (!inicio || e.pointerId !== inicio.id) return;
+      if (!arrastrando && Math.hypot(e.clientX - inicio.x, e.clientY - inicio.y) < 10) return; // un toque no es arrastre
+      if (!arrastrando) { arrastrando = true; b.setPointerCapture(e.pointerId); b.classList.add('arrastrando'); }
+      const r = contenedor.getBoundingClientRect();
+      colocar(b, (e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
+    });
+    const soltar = (e, vale) => {
+      if (!inicio) return;
+      const era = arrastrando; inicio = null; arrastrando = false; b.classList.remove('arrastrando');
+      if (!era) return;
+      const r = contenedor.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+      const dentro = vale && x > -.05 && x < 1.05 && y > -.05 && y < 1.05;
+      if (!dentro) { colocar(b, sitioDe(d).x, sitioDe(d).y); return; } // soltar fuera o cancelar: vuelve a su sitio
+      const nuevo = libre(d.id, x, y); colocar(b, nuevo.x, nuevo.y); mover(d.id, nuevo);
+      b.dataset.recienMovida = '1'; setTimeout(() => delete b.dataset.recienMovida, 300);
+    };
+    b.addEventListener('pointerup', e => soltar(e, true));
+    b.addEventListener('pointercancel', e => soltar(e, false));
+    b.addEventListener('keydown', e => {
+      const paso = {ArrowLeft: [-.03, 0], ArrowRight: [.03, 0], ArrowUp: [0, -.03], ArrowDown: [0, .03]}[e.key];
+      if (!paso || etiquetas.inert) return;
+      e.preventDefault();
+      const s = b._sitio || sitioDe(d), nuevo = libre(d.id, s.x + paso[0], s.y + paso[1]);
+      b._sitio = nuevo; colocar(b, nuevo.x, nuevo.y);
+      clearTimeout(tecla); tecla = setTimeout(() => { delete b._sitio; mover(d.id, nuevo); }, 450); // una sola vez al soltar
+    });
+  }
   function etiquetar(datos) {
-    etiquetas.replaceChildren();
+    datosActuales = datos; etiquetas.replaceChildren();
     for (const t of campo.territorios) {
       const d = datos.find(x => x.id === t.alias); if (!d) continue;
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'islas-huella-etiqueta'; b.dataset.id = d.id; b.textContent = d.nombre;
-      b.style.left = Math.min(84, Math.max(16, t.x / N * 100)) + '%'; b.style.top = Math.min(94, Math.max(6, t.y / N * 100)) + '%';
+      colocar(b, t.x / N, t.y / N);
       b.setAttribute('aria-pressed', String(d.id === seleccion));
-      b.onclick = () => abrir(d.id);
+      if (d.destino) b.dataset.fija = '1';
+      else { b.setAttribute('aria-description', 'Arrastra o usa las flechas para moverla.'); if (mover) arrastrable(b, d); }
+      b.onclick = () => { if (!b.dataset.recienMovida) abrir(d.id); };
       etiquetas.append(b);
     }
   }
@@ -56,7 +106,7 @@ window.VoidHuellasIslas = function(contenedor, etiquetas, {abrir, fallo}) {
   function pintar(datos, actual) {
     seleccion = actual; cancelAnimationFrame(raf);
     try {
-      campo = VoidHuella.crear(datos.map(d => ({alias: d.id, semilla: d.id, huella: cifras(d)})), N, 0);
+      campo = VoidHuella.crear(datos.map(d => ({alias: d.id, semilla: d.id, pos: sitioDe(d), huella: cifras(d)})), N, 0);
     } catch { fallo('No se pudo dibujar la vista de huellas. Puedes seguir en la lista.'); return; }
     pasos = 0; etiquetar(datos);
     if (reducido.matches) { campo.paso(1600); campo.pintar(ctx, false); } else bucle();
@@ -64,7 +114,7 @@ window.VoidHuellasIslas = function(contenedor, etiquetas, {abrir, fallo}) {
   return {
     pintar,
     seleccionar(id) { seleccion = id; for (const b of etiquetas.children) b.setAttribute('aria-pressed', String(b.dataset.id === id)); },
-    destruir() { destruido = true; cancelAnimationFrame(raf); lienzo.remove(); contenedor.classList.remove('vista-huellas'); etiquetas.replaceChildren(); }
+    destruir() { destruido = true; cancelAnimationFrame(raf); clearTimeout(tecla); lienzo.remove(); contenedor.classList.remove('vista-huellas'); etiquetas.replaceChildren(); }
   };
 };
 })();

@@ -51,7 +51,7 @@ try{
  const guardada=async()=>{await page.waitForFunction(()=>document.querySelector('#islas-estado').textContent==='Isla guardada.');await page.waitForFunction(()=>document.querySelector('#islas').getAttribute('aria-busy')==='false');};
  const crear=async(tipo,nombre)=>{await page.locator('#islas-nueva').click();await page.locator('#islas-crear [name=nombre]').fill(nombre);await page.locator('#islas-crear [name=plantilla]').selectOption(tipo);await page.locator('#islas-crear-form button.principal').click();await page.locator('#islas-panel').waitFor({state:'visible'});await guardada();};
  const salirIsla=()=>page.locator('#islas-volver').click();
- await page.goto(url);await cargada();assert.equal(await page.locator('#islas-mapa canvas').count(),1,'se dibuja en WebGL');
+ await page.goto(url);await cargada();assert.equal(await page.locator('#islas-mapa canvas').count(),1,'se dibuja el mapa');
  for(const [id,zona] of [['fija_hablar','hablar'],['fija_comunidad','comunidad'],['fija_modelos','modelos'],['fija_cuidar','cuidar']]){
   await page.locator(`#islas-etiquetas [data-id=${id}]`).click();assert.equal(await page.locator('#'+zona).isVisible(),true);assert.equal(await page.locator('.zona').count(),5);
  }
@@ -74,12 +74,23 @@ try{
  assert.equal(await page.locator('#islas-mapa canvas.islas-huellas').count(),1,'la vista por defecto son las huellas');
  assert.equal(await page.locator('#islas-etiquetas .islas-huella-etiqueta').count(),7,'una etiqueta por isla, fijas incluidas');
  assert.equal(externas.filter(u=>u.includes('three')).length,0);assert.equal(await page.evaluate(()=>!!window.THREE),false,'three.js no se carga si no se pide');
- await page.locator('#islas-vista-boton').click();await page.locator('#islas-etiquetas .islas-nodo').first().waitFor();
- assert.equal(await page.evaluate(()=>!!window.THREE),true,'al pedir las islas, three.js llega desde Void');
- console.log('✓ Huellas por defecto, sin three.js; «Ver como islas» lo carga desde Void.');
- // Arrastrar y mover con teclado guarda la posición, sin abrir la isla.
- const id=registros[0].isla.id,nodo=page.locator(`#islas-etiquetas [data-id="${id}"]`);await nodo.focus();const pos=structuredClone(registros[0].isla.posicion);await nodo.press('ArrowRight');await guardada();assert.notEqual(registros[0].isla.posicion.x,pos.x);
- const box=await nodo.boundingBox();await page.mouse.move(box.x+60,box.y+45);await page.mouse.down();await page.mouse.move(box.x+38,box.y+75,{steps:5});await page.mouse.up();await guardada();assert.equal(await page.locator('#islas-panel').isVisible(),false);
+ assert.equal(await page.locator('#islas-vista-boton').isVisible(),false,'sin vista 3D por ahora');
+ console.log('✓ Huellas por defecto, sin three.js y sin botón de vista 3D.');
+ // [21-oct] Arrastrar huellas, suponiendo que alguien lo hace mal a propósito.
+ const id=registros[0].isla.id,nodo=page.locator(`#islas-etiquetas [data-id="${id}"]`),pos=structuredClone(registros[0].isla.posicion);
+ let previos=guardados.length;await nodo.focus();for(let k=0;k<5;k++)await nodo.press('ArrowRight');await guardada();await page.waitForTimeout(600);
+ assert.equal(guardados.length,previos+1,'cinco flechas seguidas guardan una sola vez');assert.notEqual(registros[0].isla.posicion.x,pos.x);
+ const caja=await page.locator('#islas-mapa').boundingBox(),mover=async(dx,dy)=>{const b=await nodo.boundingBox();await page.mouse.move(b.x+b.width/2,b.y+b.height/2);await page.mouse.down();await page.mouse.move(b.x+b.width/2+dx,b.y+b.height/2+dy,{steps:8});await page.mouse.up();};
+ previos=guardados.length;await mover(-60,40);await guardada();assert.equal(guardados.length,previos+1);assert.equal(await page.locator('#islas-panel').isVisible(),false,'arrastrar no abre la isla');
+ previos=guardados.length;const b0=await nodo.boundingBox();await page.mouse.move(b0.x+b0.width/2,b0.y+b0.height/2);await page.mouse.down();await page.mouse.move(caja.x+caja.width+400,caja.y-300,{steps:8});await page.mouse.up();await page.waitForTimeout(500);
+ assert.equal(guardados.length,previos,'soltar fuera del recuadro no guarda');
+ const fija=await page.locator('#islas-etiquetas [data-id="fija_hablar"]').boundingBox(),b1=await nodo.boundingBox();
+ await mover(fija.x+fija.width/2-(b1.x+b1.width/2),fija.y+fija.height/2-(b1.y+b1.height/2));await guardada();
+ const p2=registros[0].isla.posicion;assert.ok(Math.hypot(p2.x-.18,p2.y-.2)>=.11,'no se queda encima de otra huella');assert.ok(p2.x>=.08&&p2.x<=.92&&p2.y>=.08&&p2.y<=.92);
+ previos=guardados.length;const f0=await page.locator('#islas-etiquetas [data-id="fija_hablar"]').boundingBox();await page.mouse.move(f0.x+f0.width/2,f0.y+f0.height/2);await page.mouse.down();await page.mouse.move(f0.x+120,f0.y+120,{steps:8});await page.mouse.up();await page.waitForTimeout(500);
+ assert.equal(guardados.length,previos,'una isla fija no se mueve ni guarda');if(await page.locator('#islas-panel').isVisible())await salirIsla();
+ previos=guardados.length;await nodo.click();await page.locator('#islas-panel').waitFor({state:'visible'});assert.equal(guardados.length,previos,'un toque abre la isla y no la mueve');await salirIsla();
+ console.log('✓ Arrastrar huellas: un toque no mueve, soltar fuera no guarda, encima de otra se aparta, las flechas guardan una vez, las fijas no se mueven.');
  await page.locator('#islas-lista-boton').click();assert.equal(await page.locator('#islas-lista li').count(),7);
  const semana=page.locator(`#islas-lista [data-id="${id}"]`);await semana.focus();await page.keyboard.press('Enter');await page.locator('#islas-panel').waitFor({state:'visible'});
  await page.getByRole('button',{name:'Borrar isla',exact:true}).click();await page.keyboard.press('Escape');assert.equal(borrados.length,0);
@@ -103,13 +114,13 @@ try{
   }
  }
  await page.getByRole('button',{name:'Página siguiente',exact:true}).click();assert.equal(await page.locator('#islas-etiquetas button').count(),8);
- await page.emulateMedia({reducedMotion:'reduce'});await page.waitForFunction(()=>document.querySelector('.islas-fps')?.textContent==='Movimiento reducido');
+ await page.emulateMedia({reducedMotion:'reduce'});await page.locator('#islas-lista-boton').click();await page.locator('#islas-lista-boton').click();await page.waitForTimeout(300);
  const agua=await page.locator('#islas-mapa').screenshot();await page.waitForTimeout(120);assert.deepEqual(await page.locator('#islas-mapa').screenshot(),agua);
  await page.screenshot({path:'/tmp/m09-islas-1440.png',fullPage:true});
  // Perder WebGL o no poder cargar three.js mantiene la lista operativa.
- await page.evaluate(()=>document.querySelector('#islas-mapa canvas').dispatchEvent(new Event('webglcontextlost',{cancelable:true})));
+ await page.evaluate(()=>{window.VoidHuella=undefined;});await page.locator('#islas-lista-boton').click();await page.locator('#islas-lista-boton').click();
  assert.equal(await page.locator('#islas-lista').isVisible(),true);assert.match(await page.locator('#islas-estado').textContent(),/lista/);
- console.log('✓ 320 a 1440 px, 40 islas, paginación, movimiento reducido y pérdida de WebGL.');
+ console.log('✓ 320 a 1440 px, 40 islas, paginación, movimiento reducido y sin motor de huellas.');
  for(const error of [{status:503,d:{error:'Puente no disponible.'}},{status:409,d:{dormida:true}},{status:423,d:{error:'Candado cerrado.'}}]){
   modo=error;await page.reload();await page.waitForFunction(()=>!document.querySelector('#islas-recargar').hidden||document.querySelector('#islas-estado').textContent.includes('candado está cerrado')||document.querySelector('#islas-estado').textContent.includes('espacio está dormido'));
   assert.equal(await page.locator('#hablar').isVisible(),true);assert.equal(await page.locator('.zonas').isVisible(),true);assert.equal(await page.locator('#islas-vistas').isVisible(),false);

@@ -54,6 +54,8 @@
     }
     var T = orden.map(function (e, i) {
       var h = e.huella, sem = semilla(sem0(e)), r = azar(sem), xy = sitio(i, r() * 0.6);
+      // [21-oct] Las islas de un espacio pueden traer su sitio (pos, de 0 a 1): su dueño las arrastra. El lienzo no lo pasa.
+      if (e.pos && isFinite(e.pos.x) && isFinite(e.pos.y)) xy = [Math.min(0.95, Math.max(0.05, e.pos.x)) * N, Math.min(0.95, Math.max(0.05, e.pos.y)) * N];
       var tam = paso * 1.3 * (0.35 + 0.65 * Math.sqrt(Math.min(h.dias, 365) / 365)); // los días: de un tercio a todo su sitio
       var lab = h.decisiones / (h.decisiones + h.proyectos + 1);
       var tono = typeof h.tono === "number" ? h.tono : sem % 360, giro = (sem >>> 3) % 2 ? 55 : -55;

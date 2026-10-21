@@ -51,7 +51,7 @@ function pintarVistas(){
   if(!paisaje)paisaje=vista==='islas'?window.VoidPaisajeIslas($('islas-mapa'),$('islas-etiquetas'),{abrir,mover,fallo:falloPaisaje}):window.VoidHuellasIslas($('islas-mapa'),$('islas-etiquetas'),{abrir,mover,fallo:falloPaisaje});
   const datos=todas();if(actual)pagina=Math.floor(datos.findIndex(d=>d.id===actual)/8);
   pagina=Math.max(0,Math.min(pagina,Math.ceil(datos.length/8)-1));
-  paisaje.pintar(datos.slice(pagina*8,pagina*8+8),actual);
+  paisaje.pintar(datos.slice(pagina*8,pagina*8+8),actual,datos);
   const paginas=$('islas-paginas');paginas.replaceChildren();
   if(datos.length>8){paginas.append(boton('Página anterior',()=>{pagina--;pintarVistas();},pagina===0));const texto=document.createElement('span');texto.textContent=`${pagina+1} de ${Math.ceil(datos.length/8)}`;paginas.append(texto,boton('Página siguiente',()=>{pagina++;pintarVistas();},pagina>=Math.ceil(datos.length/8)-1));}
  }catch{falloPaisaje('No se pudo dibujar el paisaje. Puedes seguir en la lista.');}

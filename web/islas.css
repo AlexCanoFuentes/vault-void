@@ -9,8 +9,26 @@
 
 /* Vista de huellas [21-oct]: el campo de 150 celdas se estira suave, como el lienzo; las etiquetas, encima de su territorio. */
 .islas-huellas{position:absolute;inset:0;width:100%;height:100%;image-rendering:auto;border-radius:inherit}
-.islas-huella-etiqueta{position:absolute;transform:translate(-50%,-50%);max-width:40%;padding:6px 10px;border:1px solid transparent;border-radius:14px;background:rgba(18,17,14,.55);color:var(--tinta);font-size:13px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.islas-huella-etiqueta{position:absolute;transform:translate(-50%,-50%);max-width:32%;padding:3px 8px;border:1px solid transparent;border-radius:10px;background:rgba(18,17,14,.7);color:var(--tinta);font-size:12px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
 .islas-huella-etiqueta[aria-pressed=true],.islas-huella-etiqueta:hover{border-color:var(--acento)}
 .islas-huella-etiqueta{pointer-events:auto}
 .islas-mapa.vista-huellas{height:auto;aspect-ratio:1/1;max-height:620px;max-width:620px;margin:0 auto}
 .islas-huella-etiqueta:not([data-fija]){cursor:grab;touch-action:none}.islas-huella-etiqueta.arrastrando{cursor:grabbing;border-color:var(--acento);z-index:2}
+.islas .islas-huella-etiqueta{max-width:34%;min-height:30px;line-height:22px}
+/* [21-oct] Sin recuadro: la huella flota en la página. De lejos, la huella grande; de cerca, las islas. */
+.islas-mapa.vista-huellas{border:0;background:transparent;border-radius:0;max-width:720px;max-height:720px;overflow:visible}
+.vista-huellas .islas-huellas{transition:opacity .7s ease,transform .7s ease;transform-origin:50% 50%}
+.vista-huellas .islas-cerca{opacity:0;transform:scale(.55);pointer-events:none}
+.vista-huellas .islas-lejos{opacity:1;transform:scale(1);cursor:zoom-in}
+.vista-huellas.de-cerca .islas-cerca{opacity:1;transform:scale(1)}
+.vista-huellas.de-cerca .islas-lejos{opacity:0;transform:scale(1.9);pointer-events:none}
+.vista-huellas #islas-etiquetas{transition:opacity .4s ease .35s;opacity:0}
+.vista-huellas.de-cerca #islas-etiquetas{opacity:1}
+.islas-pista-zoom{position:absolute;left:0;right:0;bottom:2%;margin:0;text-align:center;font-size:12px;color:var(--secundaria);pointer-events:none;transition:opacity .3s}
+.vista-huellas.de-cerca .islas-pista-zoom{opacity:0}
+.islas .islas-alejar,.islas .islas-acercar{position:absolute;top:0;left:0;min-height:36px;padding:6px 12px;font-size:12px;z-index:3}
+.islas .islas-alejar{display:none}.vista-huellas.de-cerca .islas-alejar{display:inline-block}.vista-huellas.de-cerca .islas-acercar{display:none}
+@media(prefers-reduced-motion:reduce){.vista-huellas .islas-huellas,.vista-huellas #islas-etiquetas{transition:none}}
+/* De lejos, las etiquetas no se ven, no se tocan ni reciben el foco (visibility, no inert: inert lo maneja el guardado). */
+.vista-huellas:not(.de-cerca) #islas-etiquetas{visibility:hidden}
+.islas-mapa.vista-huellas{overflow:hidden}

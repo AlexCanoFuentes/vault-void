@@ -6,13 +6,38 @@
    Misma forma de uso que islas-paisaje.js (pintar, seleccionar, destruir), para que islas.js cambie de vista sin más. */
 (()=>{
 'use strict';
+let cercaRecordado = false; // la distancia elegida se mantiene mientras la página siga abierta
 window.VoidHuellasIslas = function(contenedor, etiquetas, {abrir, mover, fallo}) {
   if (!window.VoidHuella) throw Error('No se pudo cargar la vista de huellas. Puedes usar la lista.');
   const N = 150, lienzo = document.createElement('canvas');
-  lienzo.width = lienzo.height = N; lienzo.className = 'islas-huellas'; lienzo.setAttribute('aria-hidden', 'true');
-  contenedor.prepend(lienzo); contenedor.classList.add('vista-huellas');
-  const ctx = lienzo.getContext('2d');
-  if (!ctx) { lienzo.remove(); throw Error('No se pudo dibujar la vista de huellas. Puedes usar la lista.'); }
+  lienzo.width = lienzo.height = N; lienzo.className = 'islas-huellas islas-cerca'; lienzo.setAttribute('aria-hidden', 'true');
+  // [21-oct, «liberalas, vamos a hacer que sea una capa desde mas cerca a la huella grande (...) estilo planetas galaxias»]
+  // De lejos se ve tu huella grande: todas tus islas fundidas en una. Al acercarte, se separan en islas, como una galaxia
+  // que de cerca se resuelve en planetas. Sin recuadro.
+  const lejos = document.createElement('canvas'); lejos.width = lejos.height = N; lejos.className = 'islas-huellas islas-lejos'; lejos.setAttribute('aria-hidden', 'true');
+  const pista = document.createElement('p'); pista.className = 'islas-pista-zoom'; pista.textContent = 'Toca tu huella para acercarte a tus islas';
+  const alejar = document.createElement('button'); alejar.type = 'button'; alejar.className = 'islas-alejar'; alejar.textContent = 'Ver tu huella entera';
+  const acercar = document.createElement('button'); acercar.type = 'button'; acercar.className = 'islas-acercar'; acercar.textContent = 'Acercarte a tus islas';
+  contenedor.prepend(lienzo, lejos); contenedor.append(pista, acercar, alejar); contenedor.classList.add('vista-huellas');
+  const ctx = lienzo.getContext('2d'), ctxLejos = lejos.getContext('2d');
+  if (!ctx || !ctxLejos) { lienzo.remove(); lejos.remove(); pista.remove(); acercar.remove(); alejar.remove(); throw Error('No se pudo dibujar la vista de huellas. Puedes usar la lista.'); }
+  let cerca = cercaRecordado, campoLejos = null;
+  contenedor.classList.toggle('de-cerca', cerca);
+  function zoom(si) {
+    cerca = cercaRecordado = si; contenedor.classList.toggle('de-cerca', si);
+    (si ? alejar : acercar).focus({preventScroll: true});
+  }
+  acercar.onclick = () => zoom(true); alejar.onclick = () => zoom(false);
+  lejos.addEventListener('click', () => { if (!cerca) zoom(true); });
+  // Pellizcar o la rueda con Ctrl (el pellizco del ratón táctil) acercan y alejan.
+  const dedos = new Map(); let distancia0 = 0;
+  const distancia = () => { const [a, b] = [...dedos.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+  contenedor.addEventListener('pointerdown', e => { dedos.set(e.pointerId, {x: e.clientX, y: e.clientY}); if (dedos.size === 2) distancia0 = distancia(); });
+  contenedor.addEventListener('pointermove', e => { if (!dedos.has(e.pointerId)) return; dedos.set(e.pointerId, {x: e.clientX, y: e.clientY});
+    if (dedos.size === 2 && distancia0) { const d = distancia() - distancia0; if (d > 50 && !cerca) { zoom(true); distancia0 = 0; } else if (d < -50 && cerca) { zoom(false); distancia0 = 0; } } });
+  const soltarDedo = e => { dedos.delete(e.pointerId); if (dedos.size < 2) distancia0 = 0; };
+  contenedor.addEventListener('pointerup', soltarDedo); contenedor.addEventListener('pointercancel', soltarDedo);
+  contenedor.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); if (e.deltaY < 0 && !cerca) zoom(true); else if (e.deltaY > 0 && cerca) zoom(false); }, {passive: false});
   const reducido = matchMedia('(prefers-reduced-motion: reduce)');
   let campo = null, raf = 0, pasos = 0, destruido = false, seleccion = null;
 
@@ -24,7 +49,7 @@ window.VoidHuellasIslas = function(contenedor, etiquetas, {abrir, mover, fallo})
     return Math.round((h * 60 + 360) % 360);
   }
   function cifras(d) { // de dentro de la isla, sin leer textos: solo cuántos y cuándo
-    if (d.destino) return {dias: 120, pulso: 30, decisiones: 3, proyectos: 3, calladas: 0, tono: tono(d.color)};
+    if (d.destino) return {dias: 150, pulso: 40, decisiones: 3, proyectos: 3, calladas: 0, tono: tono(d.color)};
     let hechas = 0, pendientes = 0, otros = 0;
     for (const b of d.bloques || []) {
       if (b.tipo === 'tareas') for (const t of b.items) t.hecho ? hechas++ : pendientes++;
@@ -32,8 +57,11 @@ window.VoidHuellasIslas = function(contenedor, etiquetas, {abrir, mover, fallo})
       else if (b.tipo === 'nota') otros += b.texto.trim() ? 1 : 0;
       else otros++;
     }
-    const edad = d.actualizado ? (Date.now() - Date.parse(d.actualizado)) / 864e5 : 30;
-    return {dias: Math.min(365, 40 + 25 * (hechas + pendientes + otros)), pulso: Math.max(5, 60 - 2 * edad),
+    // [21-oct, «las huellas se ven fatal»] Más grandes y más vivas: una isla del vault (id v-) no trae fecha, y su orden ya
+    // es de más reciente a menos, así que brilla según su puesto; antes salían apagadas y rotas en trocitos.
+    const puesto = Math.max(0, datosActuales.findIndex(x => x.id === d.id));
+    const edad = d.actualizado ? (Date.now() - Date.parse(d.actualizado)) / 864e5 : (String(d.id).startsWith('v-') ? puesto * 3 : 30);
+    return {dias: Math.min(365, 160 + 30 * (hechas + pendientes + otros)), pulso: Math.max(18, 60 - 2 * edad),
             decisiones: hechas + 1, proyectos: pendientes + otros + 1, calladas: 0, tono: tono(d.color)};
   }
   // Sitio fijo de las islas de siempre: no se arrastran (no son del vault) y así no tapan las propias.
@@ -90,7 +118,7 @@ window.VoidHuellasIslas = function(contenedor, etiquetas, {abrir, mover, fallo})
       const d = datos.find(x => x.id === t.alias); if (!d) continue;
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'islas-huella-etiqueta'; b.dataset.id = d.id; b.textContent = d.nombre;
-      colocar(b, t.x / N, t.y / N);
+      colocar(b, t.x / N, Math.min(.97, (t.y + t.tam * .62) / N)); // debajo de su huella, no encima
       b.setAttribute('aria-pressed', String(d.id === seleccion));
       if (d.destino) b.dataset.fija = '1';
       else { b.setAttribute('aria-description', 'Arrastra o usa las flechas para moverla.'); if (mover) arrastrable(b, d); }
@@ -100,21 +128,26 @@ window.VoidHuellasIslas = function(contenedor, etiquetas, {abrir, mover, fallo})
   }
   function bucle() {
     if (destruido) return;
-    campo.paso(8); pasos += 8; campo.pintar(ctx, false);
-    if (pasos < 2400 && !document.hidden) raf = requestAnimationFrame(bucle);
+    campo.paso(8); campoLejos.paso(8); pasos += 8; campo.pintar(ctx, false); campoLejos.pintar(ctxLejos, false);
+    if (pasos < 3200 && !document.hidden) raf = requestAnimationFrame(bucle);
   }
-  function pintar(datos, actual) {
+  function pintar(datos, actual, todas) {
     seleccion = actual; cancelAnimationFrame(raf);
     try {
+      datosActuales = datos;
       campo = VoidHuella.crear(datos.map(d => ({alias: d.id, semilla: d.id, pos: sitioDe(d), huella: cifras(d)})), N, 0);
+      // La huella grande: todas las islas (no solo esta página) apretadas en el centro, para que sus territorios se fundan.
+      const conjunto = todas || datos;
+      campoLejos = VoidHuella.crear(conjunto.map((d, k) => { const s = sitioDe(d) || {x: .5, y: .5}; return {alias: d.id, semilla: d.id, pos: {x: .5 + (s.x - .5) * .34, y: .5 + (s.y - .5) * .34}, huella: cifras(d)}; }), N, 0);
     } catch { fallo('No se pudo dibujar la vista de huellas. Puedes seguir en la lista.'); return; }
-    pasos = 0; etiquetar(datos);
-    if (reducido.matches) { campo.paso(1600); campo.pintar(ctx, false); } else bucle();
+    pasos = 0; datosActuales = datos; etiquetar(datos);
+    if (reducido.matches) { campo.paso(2400); campoLejos.paso(2400); campo.pintar(ctx, false); campoLejos.pintar(ctxLejos, false); } else bucle();
+    if (actual && !cerca) zoom(true);
   }
   return {
     pintar,
     seleccionar(id) { seleccion = id; for (const b of etiquetas.children) b.setAttribute('aria-pressed', String(b.dataset.id === id)); },
-    destruir() { destruido = true; cancelAnimationFrame(raf); clearTimeout(tecla); lienzo.remove(); contenedor.classList.remove('vista-huellas'); etiquetas.replaceChildren(); }
+    destruir() { destruido = true; cancelAnimationFrame(raf); clearTimeout(tecla); lienzo.remove(); lejos.remove(); pista.remove(); acercar.remove(); alejar.remove(); contenedor.classList.remove('de-cerca'); contenedor.classList.remove('vista-huellas'); etiquetas.replaceChildren(); }
   };
 };
 })();

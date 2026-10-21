@@ -56,7 +56,10 @@ try{
  const guardada=async()=>{await page.waitForFunction(()=>document.querySelector('#islas-estado').textContent==='Isla guardada.');await page.waitForFunction(()=>document.querySelector('#islas').getAttribute('aria-busy')==='false');};
  const crear=async(tipo,nombre)=>{await page.locator('#islas-nueva').click();await page.locator('#islas-crear [name=nombre]').fill(nombre);await page.locator('#islas-crear [name=plantilla]').selectOption(tipo);await page.locator('#islas-crear-form button.principal').click();await page.locator('#islas-panel').waitFor({state:'visible'});await guardada();};
  const salirIsla=()=>page.locator('#islas-volver').click();
- await page.goto(url);await cargada();assert.equal(await page.locator('#islas-mapa canvas').count(),1,'se dibuja el mapa');
+ await page.goto(url);await cargada();assert.equal(await page.locator('#islas-mapa canvas').count(),2,'se dibujan la huella de lejos y las islas de cerca');
+ assert.equal(await page.locator('#islas-etiquetas').evaluate(e=>getComputedStyle(e).visibility),'hidden','de lejos, las islas no se tocan');
+ await page.locator('.islas-acercar').click();assert.equal(await page.locator('#islas-etiquetas').evaluate(e=>getComputedStyle(e).visibility),'visible');
+ await page.locator('.islas-alejar').click();await page.locator('.islas-lejos').click();assert.equal(await page.locator('#islas-mapa').evaluate(e=>e.classList.contains('de-cerca')),true,'tocar la huella acerca');
  for(const [id,zona] of [['fija_hablar','hablar'],['fija_comunidad','comunidad'],['fija_modelos','modelos'],['fija_cuidar','cuidar']]){
   await page.locator(`#islas-etiquetas [data-id=${id}]`).click();assert.equal(await page.locator('#'+zona).isVisible(),true);assert.equal(await page.locator('.zona').count(),5);
  }
@@ -76,7 +79,7 @@ try{
  assert.deepEqual(new Set(guardados.filter(b=>b.revision===null).map(b=>b.isla.plantilla)),new Set(['semana@1','proyecto@1','notas@1']));
  console.log('✓ Tres plantillas válidas contra validar() de Python; tareas, notas, contador, formas, estilos y color guardados con revisión.');
  // [21-oct] Por defecto, huellas: un campo del motor del lienzo y una etiqueta por isla que la abre. Las islas en 3D se piden.
- assert.equal(await page.locator('#islas-mapa canvas.islas-huellas').count(),1,'la vista por defecto son las huellas');
+ assert.equal(await page.locator('#islas-mapa canvas.islas-huellas').count(),2,'la vista por defecto son las huellas');
  assert.equal(await page.locator('#islas-etiquetas .islas-huella-etiqueta').count(),7,'una etiqueta por isla, fijas incluidas');
  assert.equal(externas.filter(u=>u.includes('three')).length,0);assert.equal(await page.evaluate(()=>!!window.THREE),false,'three.js no se carga si no se pide');
  assert.equal(await page.locator('#islas-vista-boton').isVisible(),false,'sin vista 3D por ahora');

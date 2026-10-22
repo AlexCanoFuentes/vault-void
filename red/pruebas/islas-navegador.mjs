@@ -15,11 +15,12 @@ const url='http://127.0.0.1:'+server.address().port,browser=await chromium.launc
 let vaultIslas=[],ajustesDoc={},ajustesN=0,ajustadas=[];
 let registros=[],guardados=[],borrados=[],danadas=[],listados=0,modo=null,falloGuardar=null,conflicto=false,retraso=0,alias='prueba-islas',despierta=true,abierto=true;
 const errores=[],externas=[];
+let page;
 const revision=isla=>createHash('sha256').update(JSON.stringify(isla)).digest('hex');
 const validar=isla=>execFileSync('python3',['-c',`import importlib.util,json,sys
 s=importlib.util.spec_from_file_location('islas',sys.argv[1]);m=importlib.util.module_from_spec(s);s.loader.exec_module(m);m.validar(json.load(sys.stdin))`,path.join(nube,'imagen/islas.py')],{input:JSON.stringify(isla)});
 try{
- const page=await browser.newPage({viewport:{width:1440,height:1000}});page.on('pageerror',e=>errores.push(e.message));page.on('request',r=>{if(!r.url().startsWith(url))externas.push(r.url());});
+ page=await browser.newPage({viewport:{width:1440,height:1000}});page.on('pageerror',e=>errores.push(e.message));page.on('request',r=>{if(!r.url().startsWith(url))externas.push(r.url());});
  await page.route('https://**',r=>r.abort());
  await page.route('**/v1/web/**',async route=>{
   const req=route.request(),u=new URL(req.url()),p=u.pathname.replace('/v1/web/',''),b=req.postDataJSON();let d;
@@ -56,14 +57,32 @@ try{
  const guardada=async()=>{await page.waitForFunction(()=>document.querySelector('#islas-estado').textContent==='Isla guardada.');await page.waitForFunction(()=>document.querySelector('#islas').getAttribute('aria-busy')==='false');};
  const crear=async(tipo,nombre)=>{await page.locator('#islas-nueva').click();await page.locator('#islas-crear [name=nombre]').fill(nombre);await page.locator('#islas-crear [name=plantilla]').selectOption(tipo);await page.locator('#islas-crear-form button.principal').click();await page.locator('#islas-panel').waitFor({state:'visible'});await guardada();};
  const salirIsla=()=>page.locator('#islas-volver').click();
- await page.goto(url);await cargada();assert.equal(await page.locator('#islas-mapa canvas').count(),2,'se dibujan la huella de lejos y las islas de cerca');
- assert.equal(await page.locator('#islas-etiquetas').evaluate(e=>getComputedStyle(e).visibility),'hidden','de lejos, las islas no se tocan');
- await page.locator('.islas-acercar').click();assert.equal(await page.locator('#islas-etiquetas').evaluate(e=>getComputedStyle(e).visibility),'visible');
- await page.locator('.islas-alejar').click();await page.locator('.islas-lejos').click();assert.equal(await page.locator('#islas-mapa').evaluate(e=>e.classList.contains('de-cerca')),true,'tocar la huella acerca');
- for(const [id,zona] of [['fija_hablar','hablar'],['fija_comunidad','comunidad'],['fija_modelos','modelos'],['fija_cuidar','cuidar']]){
-  await page.locator(`#islas-etiquetas [data-id=${id}]`).click();assert.equal(await page.locator('#'+zona).isVisible(),true);assert.equal(await page.locator('.zona').count(),5);
+ const viajeTerminado=()=>page.waitForFunction(()=>!document.querySelector('#islas-mapa').classList.contains('islas-viajando'));
+ const abrirMapa=async selector=>{await page.locator(selector).click();await page.getByRole('group',{name:/^Opciones de /}).getByRole('button',{name:'Abrir',exact:true}).click();};
+ await page.goto(url);await cargada();assert.equal(await page.locator('#islas-mapa canvas').count(),5,'una huella grande y un campo independiente por isla');
+ assert.equal(await page.locator('#islas-mapa').getAttribute('data-nivel'),'1');
+ assert.equal(await page.getByRole('navigation',{name:'Menú de mi huella'}).isVisible(),true);
+ assert.equal(await page.locator('.islas-juego-instalar').isHidden(),true,'no ofrece instalar sin oferta del navegador');
+ for(const [nombre,zona] of [['Comunidad','comunidad'],['Mis cuentas','modelos']]){
+  await page.getByRole('navigation',{name:'Menú de mi huella'}).getByRole('button',{name:nombre,exact:true}).click();assert.equal(await page.locator('#'+zona).isVisible(),true);
  }
- console.log('✓ Mapa real y las cuatro islas fijas abren las secciones existentes.');
+ await page.evaluate(()=>{const e=new Event('beforeinstallprompt');e.prompt=async()=>{window.instalacionProbada=true;};e.userChoice=Promise.resolve({outcome:'dismissed'});dispatchEvent(e);});
+ await page.getByRole('navigation',{name:'Menú de mi huella'}).getByRole('button',{name:'Instalar',exact:true}).click();
+ assert.equal(await page.evaluate(()=>window.instalacionProbada),true);await page.locator('.islas-juego-instalar').waitFor({state:'hidden'});
+ assert.equal(await page.locator('#islas-etiquetas').evaluate(e=>getComputedStyle(e).visibility),'hidden','de lejos, las islas no se tocan');
+ await page.locator('.islas-acercar').focus();await page.keyboard.press('Enter');
+ assert.equal(await page.locator('#islas-mapa').getAttribute('data-nivel'),'2');
+ assert.equal(await page.locator('.islas-alejar').evaluate(e=>e===document.activeElement),true,'el foco viaja a la vuelta');
+ assert.equal(await page.locator('#islas-mapa').evaluate(e=>e.classList.contains('islas-viajando')),true);
+ assert.ok(await page.locator('.islas-huella-grande').evaluate(e=>Math.max(...getComputedStyle(e).transitionDuration.split(',').map(parseFloat))<1),'el viaje visual dura menos de un segundo');
+ await viajeTerminado();assert.equal(await page.locator('#islas-etiquetas').evaluate(e=>getComputedStyle(e).visibility),'visible');
+ await page.locator('.islas-alejar').click();await page.locator('.islas-lejos').click();await viajeTerminado();assert.equal(await page.locator('#islas-mapa').evaluate(e=>e.classList.contains('de-cerca')),true,'tocar la huella acerca');
+ await page.locator('#islas-mapa').dispatchEvent('wheel',{ctrlKey:true,deltaY:120});assert.equal(await page.locator('#islas-mapa').getAttribute('data-nivel'),'1');
+ await page.locator('#islas-mapa').dispatchEvent('wheel',{ctrlKey:true,deltaY:-120});await viajeTerminado();assert.equal(await page.locator('#islas-mapa').getAttribute('data-nivel'),'2','conserva el zoom con Ctrl y rueda');
+ for(const [id,zona] of [['fija_hablar','hablar'],['fija_comunidad','comunidad'],['fija_modelos','modelos'],['fija_cuidar','cuidar']]){
+  await abrirMapa(`#islas-etiquetas [data-id=${id}]`);assert.equal(await page.locator('#'+zona).isVisible(),true);assert.equal(await page.locator('.zona').count(),5);await page.locator('.islas-juego-cerrar').click();
+ }
+ console.log('✓ Los dos niveles, viaje menor de un segundo, vuelta con foco, oferta de instalación y menús hacia las secciones existentes.');
  await crear('semana@1','Mi semana');
  await page.locator('[name=nueva-0]').fill('Pasear un rato');await page.getByRole('button',{name:'Añadir tarea',exact:true}).click();await guardada();
  await page.locator('[name=hecho-0-0]').check();await guardada();assert.equal(registros[0].isla.bloques[0].items[0].hecho,true);
@@ -79,7 +98,9 @@ try{
  assert.deepEqual(new Set(guardados.filter(b=>b.revision===null).map(b=>b.isla.plantilla)),new Set(['semana@1','proyecto@1','notas@1']));
  console.log('✓ Tres plantillas válidas contra validar() de Python; tareas, notas, contador, formas, estilos y color guardados con revisión.');
  // [21-oct] Por defecto, huellas: un campo del motor del lienzo y una etiqueta por isla que la abre. Las islas en 3D se piden.
- assert.equal(await page.locator('#islas-mapa canvas.islas-huellas').count(),2,'la vista por defecto son las huellas');
+ assert.equal(await page.locator('#islas-mapa canvas.islas-huellas').count(),1,'una huella fusionada');
+ assert.equal(await page.locator('#islas-mapa canvas.islas-huella-pequena').count(),7,'un campo de 64 celdas por isla');
+ assert.equal(await page.locator('.islas-huella-pequena').evaluateAll(cs=>cs.every(c=>c.width===64&&c.height===64)),true);
  assert.equal(await page.locator('#islas-etiquetas .islas-huella-etiqueta').count(),7,'una etiqueta por isla, fijas incluidas');
  assert.equal(externas.filter(u=>u.includes('three')).length,0);assert.equal(await page.evaluate(()=>!!window.THREE),false,'three.js no se carga si no se pide');
  assert.equal(await page.locator('#islas-vista-boton').isVisible(),false,'sin vista 3D por ahora');
@@ -97,7 +118,18 @@ try{
  const p2=registros[0].isla.posicion;assert.ok(Math.hypot(p2.x-.18,p2.y-.2)>=.11,'no se queda encima de otra huella');assert.ok(p2.x>=.08&&p2.x<=.92&&p2.y>=.08&&p2.y<=.92);
  previos=guardados.length;const f0=await page.locator('#islas-etiquetas [data-id="fija_hablar"]').boundingBox();await page.mouse.move(f0.x+f0.width/2,f0.y+f0.height/2);await page.mouse.down();await page.mouse.move(f0.x+120,f0.y+120,{steps:8});await page.mouse.up();await page.waitForTimeout(500);
  assert.equal(guardados.length,previos,'una isla fija no se mueve ni guarda');if(await page.locator('#islas-panel').isVisible())await salirIsla();
- previos=guardados.length;await nodo.click();await page.locator('#islas-panel').waitFor({state:'visible'});assert.equal(guardados.length,previos,'un toque abre la isla y no la mueve');await salirIsla();
+ previos=guardados.length;await nodo.focus();await page.keyboard.press('Enter');await page.locator('.islas-menu-isla').waitFor({state:'visible'});
+ assert.equal(await page.getByRole('button',{name:'Esconder',exact:true}).count(),0,'las propias no se esconden');
+ assert.equal(await page.locator('.islas-menu-isla button').first().evaluate(e=>e===document.activeElement),true);
+ await page.getByRole('button',{name:'Mover',exact:true}).click();assert.equal(await nodo.evaluate(e=>e===document.activeElement),true,'Mover enfoca la isla');
+ await page.keyboard.press('Escape');await abrirMapa(`#islas-etiquetas [data-id="${id}"]`);await page.locator('#islas-panel').waitFor({state:'visible'});assert.equal(guardados.length,previos,'un toque abre las opciones sin mover; Abrir lleva al panel');await salirIsla();
+ // Cancelar un gesto no guarda ni abre, y el fondo tiene parallax sin recalcular la química.
+ previos=guardados.length;
+ await nodo.dispatchEvent('pointerdown',{button:0,pointerId:99,clientX:100,clientY:100});
+ await nodo.dispatchEvent('pointercancel',{pointerId:99,clientX:160,clientY:140});assert.equal(guardados.length,previos);
+ await page.keyboard.press('Escape');await page.locator('#islas-mapa').scrollIntoViewIfNeeded();
+ const fondo=await page.locator('#islas-mapa').boundingBox();await page.mouse.move(fondo.x+fondo.width*.5,fondo.y+fondo.height*.93);await page.mouse.down();await page.mouse.move(fondo.x+fondo.width*.6,fondo.y+fondo.height*.95,{steps:5});await page.mouse.up();await page.waitForTimeout(30);
+ assert.notEqual(await nodo.evaluate(e=>e.style.getPropertyValue('--par-x')),'0px','arrastrar el fondo cambia la profundidad');
  console.log('✓ Arrastrar huellas: un toque no mueve, soltar fuera no guarda, encima de otra se aparta, las flechas guardan una vez, las fijas no se mueven.');
  await page.locator('#islas-lista-boton').click();assert.equal(await page.locator('#islas-lista li').count(),7);
  const semana=page.locator(`#islas-lista [data-id="${id}"]`);await semana.focus();await page.keyboard.press('Enter');await page.locator('#islas-panel').waitFor({state:'visible'});
@@ -119,13 +151,21 @@ try{
   for(const vista of ['lista','mapa']){
    const esLista=await page.locator('#islas-lista-boton').getAttribute('aria-pressed')==='true';if(esLista!==(vista==='lista'))await page.locator('#islas-lista-boton').click();
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`desbordamiento ${width} ${vista}`);
+   if(vista==='mapa'){
+    await page.locator('.islas-alejar').click();assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`desbordamiento ${width} nivel 1`);
+    await page.locator('.islas-acercar').click();await viajeTerminado();
+   }
   }
  }
  await page.getByRole('button',{name:'Página siguiente',exact:true}).click();assert.equal(await page.locator('#islas-etiquetas button').count(),8);
  await page.emulateMedia({reducedMotion:'reduce'});await page.locator('#islas-lista-boton').click();await page.locator('#islas-lista-boton').click();await page.waitForTimeout(300);
+ await page.locator('.islas-alejar').click();await page.locator('.islas-acercar').click();assert.equal(await page.locator('#islas-mapa').evaluate(e=>e.classList.contains('islas-viajando')),false,'reducir movimiento cambia directamente');
+ await page.waitForFunction(()=>[...document.querySelectorAll('#islas-mapa canvas')].every(c=>c.dataset.quimica==='lista'));
  const agua=await page.locator('#islas-mapa').screenshot();await page.waitForTimeout(120);assert.deepEqual(await page.locator('#islas-mapa').screenshot(),agua);
  await page.screenshot({path:'/tmp/m09-islas-1440.png',fullPage:true});
- // Perder WebGL o no poder cargar three.js mantiene la lista operativa.
+ // Si falla el juego se recupera la vista anterior, y si falla también el motor queda la lista.
+ await page.evaluate(()=>{window.VoidJuegoIslas=()=>{throw Error('Fallo inventado del juego');};});await page.locator('#islas-lista-boton').click();await page.locator('#islas-lista-boton').click();
+ assert.equal(await page.locator('#islas-mapa.vista-huellas').count(),1);assert.equal(await page.locator('#islas-mapa canvas').count(),2,'vuelve a la vista anterior');
  await page.evaluate(()=>{window.VoidHuella=undefined;});await page.locator('#islas-lista-boton').click();await page.locator('#islas-lista-boton').click();
  assert.equal(await page.locator('#islas-lista').isVisible(),true);assert.match(await page.locator('#islas-estado').textContent(),/lista/);
  console.log('✓ 320 a 1440 px, 40 islas, paginación, movimiento reducido y sin motor de huellas.');
@@ -150,6 +190,14 @@ try{
  console.log('✓ Reintento conserva el borrador; salida descarta lecturas tardías; sin contenido en localStorage ni three.js externo.');
  // [21-oct, fase 1b] Islas que salen del vault: se ven, no se editan sus tareas, se renombran y se esconden por ajustes.
  vaultIslas=[{isla:{formato:1,id:'v-0123456789ab',nombre:'Huerto inventado',icono:'',color:'#5BE06A',forma:'redonda',estilo:'viva',publica:false,plantilla:'proyecto@1',posicion:{x:.5,y:.45},bloques:[{id:'nota',tipo:'nota',titulo:'De tu vault',texto:'Objetivo: Tomates en verano'},{id:'tareas',tipo:'tareas',titulo:'Tareas',items:[{texto:'Comprar macetas',hecho:false}]}]},revision:null,origen:'vault',archivo:'proyectos/huerto.md'}];
+ await page.reload();await cargada();await page.locator('.islas-acercar').click();await viajeTerminado();
+ const huerto=page.locator('#islas-etiquetas [data-id="v-0123456789ab"]');await huerto.click();
+ assert.equal(await page.getByRole('button',{name:'Esconder',exact:true}).isVisible(),true);
+ await page.getByRole('button',{name:'Mover',exact:true}).click();await huerto.press('ArrowRight');
+ await page.waitForFunction(()=>document.querySelector('#islas-estado').textContent==='Cambio guardado.');
+ assert.ok(ajustadas.at(-1).ajuste.posicion,'Mover una isla del vault usa ajustar');
+ await huerto.click();await page.getByRole('button',{name:'Esconder',exact:true}).click();await page.locator('#islas-ocultas').waitFor({state:'visible'});
+ await page.getByRole('button',{name:'Mostrar «Huerto inventado»',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#islas-ocultas').hidden);
  await page.locator('#islas-recargar').click();await page.waitForFunction(()=>document.querySelector('#islas-estado').textContent.includes('privadas'));
  if(await page.locator('#islas-lista').isHidden())await page.locator('#islas-lista-boton').click();
  assert.match(await page.locator('#islas-lista [data-id="v-0123456789ab"]').innerText(),/De tu vault/);
@@ -162,6 +210,8 @@ try{
  assert.match(await page.locator('#islas-ocultas').innerText(),/Mi huerto/);
  await page.getByRole('button',{name:'Mostrar «Mi huerto»',exact:true}).click();await page.waitForFunction(()=>document.querySelector('#islas-ocultas').hidden);
  assert.equal(ajustadas.at(-1).ajuste.oculta,false);
+ assert.deepEqual(errores,[],'sin errores de navegador también tras los menús del vault');
  console.log('✓ Islas del vault: tareas de solo lectura con su fichero, renombrar y esconder por ajustes, nunca se guardan como propias.');
  console.log(`${guardados.length} guardados validados. API simulada; navegador y WebGL reales. Captura: /tmp/m09-islas-1440.png`);
+}catch(e){await page?.screenshot({path:'/tmp/m09-islas-fallo.png',fullPage:true}).catch(()=>{});throw e;
 }finally{await browser.close();await new Promise(r=>server.close(r));}

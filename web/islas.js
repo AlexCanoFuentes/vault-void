@@ -20,7 +20,7 @@ const VISTA_3D=false;let vista=(()=>{if(!VISTA_3D)return 'huellas';try{return lo
 function cargar3d(){if(window.VoidPaisajeIslas)return Promise.resolve();if(cargando3d)return cargando3d;
  const script=src=>new Promise((ok,mal)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=()=>mal(Error('No se pudo cargar la vista de islas. Sigues en la de huellas.'));document.head.append(s);});
  cargando3d=script('/vendor/three/three.min.js').then(()=>script('/islas-paisaje.js')).catch(e=>{cargando3d=null;throw e;});return cargando3d;}
-let paisaje=null,lista=false,pagina=0,actual=null,cola=Promise.resolve(),origen=null;
+let paisaje=null,lista=false,pagina=0,actual=null,cola=Promise.resolve(),origen=null,juegoFallido=false;
 const api=(ruta,datos)=>window.VoidEspacio.api('islas/'+ruta,datos);
 function aviso(texto){$('islas-estado').textContent=texto;}
 function destruirPaisaje(){paisaje?.destruir();paisaje=null;}
@@ -28,6 +28,11 @@ function cerrarDialogos(){for(const id of ['islas-crear','islas-confirmar'])if($
 function limpiar(){generacion++;lectura++;activo=false;disponible=false;cargando=false;pendientes=0;registros=[];danadas=[];actual=null;pagina=0;cola=Promise.resolve();cerrarDialogos();destruirPaisaje();$('islas-panel').replaceChildren();$('islas-panel').hidden=true;$('islas-lista').replaceChildren();$('islas-danadas').textContent='';$('islas-danadas').hidden=true;$('islas-vistas').hidden=true;$('islas-recargar').hidden=true;$('islas-nueva').disabled=true;}
 function noDisponible(texto){limpiar();$('islas').hidden=false;aviso(texto+' Tus secciones siguen debajo.');}
 function falloPaisaje(texto){destruirPaisaje();lista=true;aviso(texto);pintarVistas();}
+function falloJuego(){
+ juegoFallido=true;destruirPaisaje();
+ aviso('El juego no pudo dibujarse. Sigues en la vista de huellas.');pintarVistas();
+}
+function esconder(id){if(!delVault(id))return;cambiar(v=>ajustar(id,{oculta:true},v));}
 function controles(){
  $('islas-nueva').disabled=!disponible||pendientes>0||cargando||registros.filter(r=>r.origen!=='vault').length>=40;
  $('islas-recargar').disabled=pendientes>0||cargando;
@@ -46,15 +51,20 @@ function pintarVistas(){
  if(!disponible)return;
  try{
   $('islas-vista-boton').textContent=vista==='islas'?'Ver como huellas':'Ver como islas';
-  $('islas-gestos').textContent=vista==='islas'?'Toca una isla para abrirla. Arrastra tus islas para moverlas, o usa las flechas del teclado. Dentro puedes girarlas con el dedo.':'Toca una huella para abrirla. Arrastra las tuyas para moverlas, o usa las flechas. Su forma sale de lo que tiene dentro: crece con lo que guardas y brilla con lo que tocaste hace poco.';
+  $('islas-gestos').textContent=vista==='islas'?'Toca una isla para abrirla. Arrastra tus islas para moverlas, o usa las flechas del teclado. Dentro puedes girarlas con el dedo.':!juegoFallido&&window.VoidJuegoIslas?'Entra en tu huella. Toca una isla para ver sus opciones. Arrastra el fondo para mirar entre ellas; arrastra una isla o usa las flechas para moverla.':'Toca una huella para abrirla. Arrastra las tuyas para moverlas, o usa las flechas. Su forma sale de lo que tiene dentro: crece con lo que guardas y brilla con lo que tocaste hace poco.';
   if(vista==='islas'&&!window.VoidPaisajeIslas){cargar3d().then(pintarVistas,e=>{vista='huellas';aviso(e.message);pintarVistas();});return;}
-  if(!paisaje)paisaje=vista==='islas'?window.VoidPaisajeIslas($('islas-mapa'),$('islas-etiquetas'),{abrir,mover,fallo:falloPaisaje}):window.VoidHuellasIslas($('islas-mapa'),$('islas-etiquetas'),{abrir,mover,fallo:falloPaisaje});
+  if(!paisaje){
+   const opciones={abrir,mover,esconder,delVault,fallo:falloJuego};
+   if(vista==='islas')paisaje=window.VoidPaisajeIslas($('islas-mapa'),$('islas-etiquetas'),{...opciones,fallo:falloPaisaje});
+   else if(!juegoFallido&&window.VoidJuegoIslas){try{paisaje=window.VoidJuegoIslas($('islas-mapa'),$('islas-etiquetas'),opciones);}catch{juegoFallido=true;}}
+   if(!paisaje)paisaje=window.VoidHuellasIslas($('islas-mapa'),$('islas-etiquetas'),{...opciones,fallo:falloPaisaje});
+  }
   const datos=todas();if(actual)pagina=Math.floor(datos.findIndex(d=>d.id===actual)/8);
   pagina=Math.max(0,Math.min(pagina,Math.ceil(datos.length/8)-1));
   paisaje.pintar(datos.slice(pagina*8,pagina*8+8),actual,datos);
   const paginas=$('islas-paginas');paginas.replaceChildren();
   if(datos.length>8){paginas.append(boton('Página anterior',()=>{pagina--;pintarVistas();},pagina===0));const texto=document.createElement('span');texto.textContent=`${pagina+1} de ${Math.ceil(datos.length/8)}`;paginas.append(texto,boton('Página siguiente',()=>{pagina++;pintarVistas();},pagina>=Math.ceil(datos.length/8)-1));}
- }catch{falloPaisaje('No se pudo dibujar el paisaje. Puedes seguir en la lista.');}
+ }catch{if(!juegoFallido&&vista==='huellas'&&window.VoidJuegoIslas)falloJuego();else falloPaisaje('No se pudo dibujar el paisaje. Puedes seguir en la lista.');}
 }
 function pintar(){
  $('islas-lista').replaceChildren();

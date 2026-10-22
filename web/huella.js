@@ -73,7 +73,11 @@
     return { T: T, libres: L };
   }
 
-  function crear(lista, N, libres) {
+  function crear(lista, N, libres, opciones) {
+    // Los campos pequeños del juego necesitan surcos más juntos. Es una escala espacial
+    // de la misma reacción: no cambia las cifras ni los parámetros de cada territorio.
+    // El lienzo y la vista anterior conservan su escala 1.
+    var detalle = Math.max(1, Math.min(2, Number(opciones && opciones.detalle) || 1)), difusion = 1 / (detalle * detalle);
     var TL = territorios(lista, N, libres), T = TL.T, M = N * N;
     var U = new Float32Array(M).fill(1), V = new Float32Array(M), U2 = new Float32Array(M), V2 = new Float32Array(M);
     var F = new Float32Array(M).fill(VACIO_F), K = new Float32Array(M).fill(VACIO_K);
@@ -91,9 +95,9 @@
       }
     }
     T.forEach(function (t, ti) {
-      var r = t.r, nSem = Math.round(Math.min(48, 3 + Math.sqrt(t.h.decisiones + t.h.proyectos)) * Math.max(1, t.tam / 40));
+      var r = t.r, nSem = Math.round(Math.min(48, 3 + Math.sqrt(t.h.decisiones + t.h.proyectos)) * Math.max(1, t.tam / 40) * detalle * detalle);
       for (var s = 0; s < nSem; s++) {
-        var a = r() * 6.2832, dd = t.tam * 0.55 * Math.sqrt(r()), cx = Math.round(t.x + dd * Math.cos(a)), cy = Math.round(t.y + dd * Math.sin(a)), rr = 1 + Math.floor(2 * r());
+        var a = r() * 6.2832, dd = t.tam * 0.55 * Math.sqrt(r()), cx = Math.round(t.x + dd * Math.cos(a)), cy = Math.round(t.y + dd * Math.sin(a)), rr = Math.max(1, Math.floor((1 + Math.floor(2 * r())) / detalle));
         for (var yy = -rr; yy <= rr; yy++) for (var xx = -rr; xx <= rr; xx++) {
           var X = cx + xx, Y = cy + yy; if (X < 0 || Y < 0 || X >= N || Y >= N) continue;
           var j = Y * N + X; if (dueno[j] === ti) { U[j] = 0.5; V[j] = 0.25 + 0.1 * r(); }
@@ -118,8 +122,8 @@
             var lu = -U[i] + .2 * (U[ym + x] + U[yp + x] + U[i - 1] + U[i + 1]) + .05 * (U[ym + x - 1] + U[ym + x + 1] + U[yp + x - 1] + U[yp + x + 1]);
             var lv = -V[i] + .2 * (V[ym + x] + V[yp + x] + V[i - 1] + V[i + 1]) + .05 * (V[ym + x - 1] + V[ym + x + 1] + V[yp + x - 1] + V[yp + x + 1]);
             var uvv = U[i] * V[i] * V[i];
-            U2[i] = U[i] + (lu - uvv + F[i] * (1 - U[i]));
-            V2[i] = muro[i] ? 0 : V[i] + (.5 * lv + uvv - (F[i] + K[i]) * V[i]);
+            U2[i] = U[i] + (difusion * lu - uvv + F[i] * (1 - U[i]));
+            V2[i] = muro[i] ? 0 : V[i] + (.5 * difusion * lv + uvv - (F[i] + K[i]) * V[i]);
           }
         }
         var tu = U; U = U2; U2 = tu; var tv = V; V = V2; V2 = tv;

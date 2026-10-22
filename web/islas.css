@@ -32,3 +32,52 @@
 /* De lejos, las etiquetas no se ven, no se tocan ni reciben el foco (visibility, no inert: inert lo maneja el guardado). */
 .vista-huellas:not(.de-cerca) #islas-etiquetas{visibility:hidden}
 .islas-mapa.vista-huellas{overflow:hidden}
+
+/* KERNEL 82 · juego de dos niveles. Solo las capas se mueven; la química se congela. */
+.islas-mapa.vista-juego{height:720px;height:clamp(640px,92svh,820px);max-width:960px;margin:auto;border:0;border-radius:24px;background:#12110e;overflow:hidden;perspective:700px;touch-action:pan-y}
+.islas-juego-decorado{position:absolute;inset:0;overflow:hidden;pointer-events:none;perspective:420px;perspective-origin:50% 18%;mask-image:linear-gradient(transparent,#000 18%,#000 88%,transparent)}
+.islas-reticula{position:absolute;width:220%;height:160%;left:-60%;top:18%;transform-origin:50% 0;transform:rotateX(62deg);background-image:linear-gradient(#a59b8020 1px,transparent 1px),linear-gradient(90deg,#a59b8020 1px,transparent 1px);background-size:54px 54px}
+.islas-orbita{position:absolute;left:10%;top:36%;width:80%;height:30%;border:1px solid #b5ab8d6b;border-radius:50%;transform:rotate(-22deg)}
+.islas-orbita:after{content:'';position:absolute;left:7%;top:16%;width:8px;height:8px;border-radius:50%;background:#d9cba4}
+.islas-orbita-dos{transform:rotate(26deg);border-color:#f2a93b6e;top:39%;height:26%}.islas-orbita-dos:after{left:auto;right:4%;top:70%;background:var(--acento)}
+.islas .islas-huella-grande{position:absolute;left:50%;top:43%;width:min(86%,490px);height:auto;aspect-ratio:1;transform:translate(-50%,-50%);padding:0;border:0;background:transparent;cursor:zoom-in;transition:transform .72s cubic-bezier(.3,.02,.2,1),filter .72s,opacity .55s;z-index:1}
+.vista-juego .islas-huella-grande canvas{position:static;width:100%;height:100%;pointer-events:none;filter:brightness(1.4)}
+.islas .islas-huella-grande:disabled{opacity:0;cursor:default}
+.vista-juego.de-cerca .islas-huella-grande{transform:translate(-50%,-50%) scale(4.5);filter:blur(16px);pointer-events:none}
+.islas-menu-entrada{position:absolute;inset:0;pointer-events:none;z-index:3}
+.islas-menu-entrada>button,.islas-juego-instalar{position:absolute;pointer-events:auto}
+.islas .islas-menu-entrada button,.islas .islas-menu-isla button,.islas .vista-juego .islas-alejar{font-size:clamp(14px,2vw,20px);min-height:48px;border:1px solid #b5ab8d88;background:#151410ed;border-radius:40px;color:var(--tinta);padding:12px 18px;line-height:1.4}
+.islas .islas-menu-entrada button:focus-visible,.islas .islas-menu-isla button:focus-visible,.islas .vista-juego button:focus-visible{outline:3px solid var(--acento);outline-offset:5px}
+.islas .islas-menu-entrada .islas-acercar{left:50%;top:8%;width:min(78%,320px);transform:translateX(-50%);font-size:clamp(18px,3vw,24px);padding:17px 24px}
+.islas .islas-menu-entrada .islas-juego-principal,.islas .islas-menu-isla .islas-juego-principal{background:var(--acento);border:2px solid #18130b;outline:2px solid var(--acento);outline-offset:3px;color:#18130b}
+.islas-juego-comunidad{left:5%;bottom:23%}.islas-juego-cuentas{right:5%;bottom:16%}
+.islas-juego-instalar{left:50%;bottom:4%;transform:translateX(-50%);width:min(85%,340px);text-align:center}
+.islas-juego-instalar p{position:relative;font-size:12px;line-height:1.5;background:var(--fondo);padding:8px;margin:6px 0}
+.islas .vista-juego .islas-alejar{display:inline-block;position:absolute;top:12px;left:12px;z-index:6;font-size:14px}
+.vista-juego #islas-etiquetas{visibility:hidden;opacity:0;transform:scale(.65);transition:opacity .48s ease .18s,transform .7s;z-index:2}
+.vista-juego.de-cerca #islas-etiquetas{visibility:visible;opacity:1;transform:scale(1)}
+.islas .vista-juego .islas-juego-isla{width:clamp(82px,20vw,158px);max-width:34%;height:auto;aspect-ratio:1;padding:0;border:0;border-radius:50%;background:transparent;overflow:visible;white-space:normal;touch-action:none;transform:translate(calc(-50% + var(--par-x,0px)),calc(-50% + var(--par-y,0px))) scale(var(--escala,1));transition:transform .3s ease,filter .3s,opacity .3s;isolation:isolate}
+.islas .vista-juego .islas-juego-isla[data-fija]{touch-action:pan-y;cursor:pointer}
+.vista-juego .islas-juego-isla:before{content:'';position:absolute;inset:20% -12%;border:1px solid #aa9d7166;border-radius:50%;transform:rotate(-24deg);pointer-events:none}
+.vista-juego .islas-juego-isla canvas{inset:0;width:100%;height:100%;pointer-events:none;filter:blur(var(--desenfoque,0px)) brightness(1.5);transition:filter .3s}
+.vista-juego .islas-juego-nombre{position:absolute;left:50%;top:100%;width:150%;transform:translateX(-50%);font:italic clamp(19px,3vw,27px)/1.15 var(--serif);color:#ece7de;text-align:center;text-shadow:0 2px 3px #12110e;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere;white-space:normal}
+.vista-juego.islas-con-seleccion .islas-juego-isla:not(.islas-delante){opacity:.36;filter:blur(1px)}
+.islas .vista-juego .islas-juego-isla.islas-delante{left:50%!important;top:43%!important;width:min(58%,270px);max-width:60%;transform:translate(-50%,-50%);z-index:4;cursor:pointer}
+.vista-juego .islas-delante canvas{filter:brightness(1.5)}.vista-juego .islas-delante:before{border-color:#f2a93baa}.vista-juego .islas-delante .islas-juego-nombre{top:-24%;width:115%;font-size:clamp(28px,4vw,40px)}
+.islas .vista-juego .islas-juego-isla.arrastrando{transition:none;z-index:7;outline:2px solid var(--acento);outline-offset:5px}
+.islas-menu-isla{position:absolute;inset:0;pointer-events:none;z-index:5}
+.islas-menu-isla button{position:absolute;pointer-events:auto}
+.islas-menu-isla button:nth-child(1){right:8%;top:61%;min-width:100px}
+.islas-menu-isla button:nth-child(2){left:7%;top:71%}
+.islas-menu-isla button:nth-child(3){right:7%;top:81%}
+.islas .islas-menu-isla .islas-juego-cerrar{left:50%;bottom:2%;transform:translateX(-50%);font-size:12px;min-height:44px;padding:8px 14px}
+.islas-juego-estado{position:absolute;left:10px;right:10px;bottom:0;margin:0;font-size:12px;color:var(--secundaria);text-align:center;pointer-events:none;opacity:0}
+.vista-juego.islas-moviendo .islas-juego-estado{opacity:1;background:#12110ee6;padding:10px}
+.islas-grupo-dentro .islas-paginas{display:flex}#islas-mapa-grupo:not(.islas-grupo-dentro):has(.vista-juego) .islas-paginas{display:none}
+.islas-viajando .islas-reticula{animation:islas-viaje-reticula .76s ease-out}
+@keyframes islas-viaje-reticula{from{transform:rotateX(62deg) translateY(0)}to{transform:rotateX(62deg) translateY(70px)}}
+.islas-en-detalle .vista-juego .islas-menu-isla,.islas-en-detalle .vista-juego .islas-alejar{display:none}
+.islas-en-detalle .vista-juego #islas-etiquetas{display:block;pointer-events:none}.islas-en-detalle .vista-juego .islas-juego-isla{pointer-events:none}.islas-en-detalle .vista-juego .islas-juego-isla:disabled{opacity:.4}.islas-en-detalle .vista-juego .islas-juego-isla.islas-delante{opacity:1}
+@media(min-width:700px){.islas-en-detalle #islas-mapa.vista-juego{height:460px}.islas-menu-isla button:nth-child(1){right:18%}.islas-menu-isla button:nth-child(2){left:18%}.islas-menu-isla button:nth-child(3){right:18%}}
+@media(max-width:380px){.islas .islas-menu-entrada button,.islas .islas-menu-isla button{padding:10px 14px}.islas .vista-juego .islas-alejar{left:8px;font-size:13px}.islas-juego-comunidad{left:3%}.islas-juego-cuentas{right:3%}}
+@media(prefers-reduced-motion:reduce){.vista-juego #islas-etiquetas,.vista-juego .islas-huella-grande,.vista-juego .islas-juego-isla{transition:none!important;animation:none!important}}

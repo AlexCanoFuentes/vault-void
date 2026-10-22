@@ -20,15 +20,15 @@
 <section id="islas" class="islas" aria-labelledby="islas-titulo" hidden>
   <div class="fila"><h2 id="islas-titulo">Tu archipiélago</h2><button type="button" id="islas-lista-boton" aria-pressed="false">Ver lista</button><button type="button" id="islas-vista-boton" hidden>Ver como islas</button><button type="button" id="islas-nueva" disabled>Nueva isla</button></div>
   <p id="islas-estado" role="status">Mirando tus islas…</p><p id="islas-danadas" role="status" hidden></p>
-  <button type="button" id="islas-recargar" hidden>Volver a cargar las islas</button>
   <div id="islas-vistas" hidden>
-    <p id="islas-gestos" class="secundario">Toca una isla para abrirla. Arrastra tus islas para moverlas, o usa las flechas del teclado. Dentro puedes girarlas con el dedo.</p>
     <div class="islas-distribucion" id="islas-distribucion">
       <div id="islas-mapa-grupo"><div id="islas-mapa" class="islas-mapa"><div id="islas-etiquetas" role="group" aria-label="Tus islas" aria-describedby="islas-gestos"></div></div><div class="fila islas-paginas" id="islas-paginas"></div></div>
       <ul id="islas-lista" class="islas-lista" aria-label="Tus islas" hidden></ul>
       <section id="islas-panel" class="islas-panel" aria-labelledby="islas-panel-titulo" hidden></section>
     </div>
+    <p id="islas-gestos" class="secundario">Entra en tu huella para explorar tus islas.</p>
   </div>
+  <button type="button" id="islas-recargar" hidden>Volver a cargar las islas</button>
   <dialog id="islas-crear" aria-labelledby="islas-crear-titulo"><h2 id="islas-crear-titulo">Una isla para ti</h2><form id="islas-crear-form"><fieldset><label>Nombre de tu isla<input name="nombre" maxlength="80" required autocomplete="off"></label><label>Empieza con una plantilla<select name="plantilla"><option value="semana@1">Esta semana</option><option value="proyecto@1">Proyecto</option><option value="notas@1">Notas</option></select></label><p class="secundario">Tu isla es privada y se guarda en tu vault.</p><div class="fila"><button class="principal">Crear mi isla</button><button type="button" id="islas-cancelar-crear">Cancelar</button></div></fieldset></form><p id="islas-crear-estado" role="status"></p></dialog>
   <dialog id="islas-confirmar" aria-labelledby="islas-borrar-titulo"><h2 id="islas-borrar-titulo">Borrar esta isla</h2><p id="islas-borrar-texto"></p><div class="fila"><button type="button" id="islas-borrar-si">Borrar esta isla</button><button type="button" id="islas-borrar-no" autofocus>Conservarla</button></div><p id="islas-borrar-estado" role="status"></p></dialog>
 </section>
@@ -84,5 +84,5 @@
 </section>
 </main>
 <script src="/huella.js"></script><script src="/texto-seguro.js"></script><script src="/candado.js"></script><script src="/mi-vault.js"></script><script src="/passkey.js"></script><script src="/modelos.js"></script><script src="/instalar.js"></script><script src="/comunidad.js"></script>
-<script src="/islas-huellas.js" defer></script><script src="/islas.js" defer></script>
+<script src="/islas-huellas.js" defer></script><script src="/islas-juego.js" defer></script><script src="/islas.js" defer></script>
 </body></html>

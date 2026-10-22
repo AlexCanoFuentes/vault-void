@@ -3,7 +3,7 @@
    Esta vista es opcional: islas.js recupera VoidHuellasIslas si falla. */
 (()=>{
 'use strict';
-let cercaRecordado=false;
+let cercaRecordado=false,primeraVista=true; // la primera vez en la página, el juego se pone delante (21-oct)
 window.VoidJuegoIslas=function(contenedor,etiquetas,{abrir,mover,esconder,delVault,fallo}){
   if(!window.VoidHuella)throw Error('No se pudo cargar el juego de huellas.');
   const reducido=matchMedia('(prefers-reduced-motion: reduce)'),eventos=new AbortController();let eventosNodos=new AbortController();
@@ -30,6 +30,9 @@ window.VoidJuegoIslas=function(contenedor,etiquetas,{abrir,mover,esconder,delVau
   menu.append(abrirIsla,moverIsla,ocultar,cerrar);
   const estado=crear('p','islas-juego-estado');estado.setAttribute('role','status');
   contenedor.prepend(decorado,lejos);contenedor.append(entrada,volver,menu,estado);contenedor.classList.add('vista-juego');
+  // [21-oct, revisión de Claude en el tamaño del Pixel] Al abrir la app, lo primero tiene que ser tu huella con su menú, no la
+  // cabecera: en el móvil la vista baja sola al juego una vez por página. Si se llegó con #sección, no se toca.
+  if(primeraVista&&!location.hash&&matchMedia('(max-width: 699px)').matches){primeraVista=false;requestAnimationFrame(()=>contenedor.scrollIntoView({block:'start',behavior:'instant'}));}
   window.VoidInstalar?.montar(instalacion);
   const instalar=instalacion.querySelector('button');if(instalar)instalar.textContent='Instalar';
   let cerca=cercaRecordado,destruido=false,elegida=null,enMovimiento=null,datos=[],firmaGrande='',viaje=0,raf=0,rafParallax=0,tecla=null;

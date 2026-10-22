@@ -244,6 +244,7 @@ details[open] summary::after{content:"−"}
 
 <script src="/instalar.js"></script>
 <script src="/huella.js"></script>
+<script src="/plano.js"></script>
 <script src="/vacio.js"></script>
 <script src="/candado.js"></script>
 <script src="/historia.js"></script>
@@ -251,22 +252,26 @@ details[open] summary::after{content:"−"}
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
+  var perspectiva = new URLSearchParams(location.search).has("plano") && !!window.VoidPlano;
   var quieto = matchMedia("(prefers-reduced-motion: reduce)").matches;
   var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); };
   var sinTildes = function (s) { return String(s || "").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, ""); };
 
   /* ── el lienzo */
+  var rafPortada=0;
+  function dialogoPlano(){return !!document.querySelector('dialog[open],#ficha:not([hidden])');}
+  function despertarPortada(){if(perspectiva&&!rafPortada&&!document.hidden&&(!dialogoPlano()||(historia&&historia.activa)))rafPortada=requestAnimationFrame(bucle);}
   var N = 360;
   var cv = $("lienzo"), ctx = cv.getContext("2d"), off = document.createElement("canvas"), octx;
   off.width = off.height = N; octx = off.getContext("2d");
-  var campo = null, hechos = 0, pendiente = true, W = 0, H = 0, dpr = 1, vista = { x: N / 2, y: N / 2, s: 1 }, ajuste = 1, sel = null, sucio = true;
+  var campo = null, hechos = 0, pendiente = true, W = 0, H = 0, dpr = 1, vista = { x: N / 2, y: N / 2, s: 1 }, ajuste = 1, sel = null, sucio=true;despertarPortada();
 
   function tam() {
     W = innerWidth; H = innerHeight; dpr = Math.min(devicePixelRatio || 1, 2);
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
     if (primerPlano && fuentePortada) enfocarPortada(fuentePortada,true);
     else encuadrar(true);
-    sucio = true;
+    sucio=true;despertarPortada();
   }
   function caja() {
     if (!campo || !campo.territorios.length) return { x0:-180,y0:-180,x1:180,y1:180 };
@@ -282,27 +287,38 @@ details[open] summary::after{content:"−"}
   function encuadrar(sinAnimar) {
     var c = caja(), movil = W < 700, menu = $("menu"), alto = movil ? Math.max(H * .45, H - menu.offsetHeight - 24) : H, izq = movil ? 0 : Math.min(392, W * .35);
     var s = Math.min((W - izq) * .86 / (c.x1 - c.x0), alto * .86 / (c.y1 - c.y0));
+    if(perspectiva)s=Math.min(s,2);
     ajuste = s;
     // el centro visual, a la derecha del menú en escritorio y encima de él en el móvil
     var cxPant = izq + (W - izq) / 2, cyPant = movil ? alto / 2 + 8 : H / 2;
     var meta = { s: s, x: (c.x0 + c.x1) / 2 - (cxPant - W / 2) / s, y: (c.y0 + c.y1) / 2 - (cyPant - H / 2) / s };
-    if (sinAnimar || quieto) { vista = meta; sucio = true; } else vuela(meta);
+    if(perspectiva){meta={s:s,x:(c.x0+c.x1)/2,y:(c.y0+c.y1)/2};
+      centrarCartel(meta,{x:meta.x,y:meta.y},cxPant,cyPant);
+      // Reduce hasta que los carteles completos caben también en profundidad.
+      for(var n=0;n<30;n++){var rs=campo?campo.territorios.map(t=>VoidPlano.crear(meta,W,H).cartel(t)):[];
+        if(rs.every(r=>r&&r.x>=izq+12&&r.x+r.w<=W-12&&r.y>=12&&r.y+r.h<=alto-12))break;
+        meta.s*=.87;meta.x=(c.x0+c.x1)/2;meta.y=(c.y0+c.y1)/2;centrarCartel(meta,{x:meta.x,y:meta.y},cxPant,cyPant);
+      }ajuste=meta.s;
+    }
+    if (sinAnimar || quieto) { vista = meta; sucio=true;despertarPortada(); } else vuela(meta);
   }
+  function centrarCartel(v,t,cx,cy){for(var i=0;i<12;i++){var p=VoidPlano.crear(v,W,H),r=p.cartel(t);if(!r)break;p.anclar(t,cx,cy+r.h/2);}return v;}
   var vuelo = null;
   function vuela(meta) {
-    if (quieto) { vuelo = null; vista = { x: meta.x, y: meta.y, s: meta.s }; sucio = true; return; }
-    vuelo = { de: { x: vista.x, y: vista.y, s: vista.s }, a: meta, t0: performance.now() };
+    if (quieto) { vuelo = null; vista = { x: meta.x, y: meta.y, s: meta.s }; sucio=true;despertarPortada(); return; }
+    vuelo = { de: { x: vista.x, y: vista.y, s: vista.s }, a: meta, t0: performance.now() };despertarPortada();
   }
   function zoom(f, px, py) {
-    primerPlano=false; vuelo=null;
+    primerPlano=false; vuelo=null;if(perspectiva)cierraFicha();
     // Solo límites numéricos: no hay marco, casillas ni tope de desplazamiento del mundo.
     var s2 = Math.max(.000001, Math.min(10000, vista.s * f));
     if (px == null) { px = W / 2; py = H / 2; }
+    if(perspectiva){VoidPlano.crear(vista,W,H).zoom(f,px,py);sucio=true;despertarPortada();return;}
     var wx = vista.x + (px - W / 2) / vista.s, wy = vista.y + (py - H / 2) / vista.s;
-    vista.s = s2; vista.x = wx - (px - W / 2) / s2; vista.y = wy - (py - H / 2) / s2; sucio = true;
+    vista.s = s2; vista.x = wx - (px - W / 2) / s2; vista.y = wy - (py - H / 2) / s2; sucio=true;despertarPortada();
   }
-  function aMundo(px, py) { return { x: vista.x + (px - W / 2) / vista.s, y: vista.y + (py - H / 2) / vista.s }; }
-  function aPantalla(x, y) { return { x: W / 2 + (x - vista.x) * vista.s, y: H / 2 + (y - vista.y) * vista.s }; }
+  function aMundo(px, py) { if(perspectiva)return VoidPlano.crear(vista,W,H).inversa(px,py);return { x: vista.x + (px - W / 2) / vista.s, y: vista.y + (py - H / 2) / vista.s }; }
+  function aPantalla(x, y) { if(perspectiva)return VoidPlano.crear(vista,W,H).proyectar(x,y)||{x:-1e6,y:-1e6};return { x: W / 2 + (x - vista.x) * vista.s, y: H / 2 + (y - vista.y) * vista.s }; }
 
 
   var historia = null, fuentePortada = null, territorioPortada = null;
@@ -317,6 +333,9 @@ details[open] summary::after{content:"−"}
         .sort(function(a,b) { return b.tam-a.tam || a.posicion-b.posicion; })[0];
     }
     var t = territorioPortada, v = {x:t.x,y:t.y,s:1};
+    if(perspectiva){var fuente=campo.fuente(t);if(fuente.pasos<900){var pasos=Math.min(8,900-fuente.pasos);fuente.campo.paso(pasos);fuente.pasos+=pasos;fuente.campo.pintar(fuente.ctx,false);var img=fuente.ctx.getImageData(0,0,220,220);for(var j=0;j<img.data.length;j+=4)if(img.data[j]===18&&img.data[j+1]===17&&img.data[j+2]===14)img.data[j+3]=0;fuente.ctx.putImageData(img,0,0);fuente.mascara=VoidPlano.mascara(fuente.canvas);return null;}
+      fuentePortada={canvas:fuente.canvas,t:t,x0:0,y0:0};return fuentePortada;}
+
     // Con una ventana de 1 px solo avanza esta textura: 32 pasos por fotograma.
     if (campo.avanzar(v,1,1,true,false)) return null;
     var c = document.createElement("canvas");
@@ -359,11 +378,13 @@ details[open] summary::after{content:"−"}
     var wx=f.t.x-110+f.x0+f.canvas.width/2;
     var wy=f.t.y-110+f.y0+f.canvas.height/2;
     var meta={s:s,x:wx-(cx-W/2)/s,y:wy-(cy-H/2)/s};
-    if (sinAnimar || quieto) { vuelo=null;vista=meta;sucio=true; }
+    if(perspectiva)meta=centrarCartel({s:s,x:f.t.x,y:f.t.y},f.t,cx,cy);
+    if (sinAnimar || quieto) { vuelo=null;vista=meta;sucio=true;despertarPortada(); }
     else vuela(meta);
   }
 
   function destinoHistoria(f) {
+    if(perspectiva){var r=VoidPlano.crear(vista,W,H).cartel(f.t);return {x:r.x,y:r.y,w:r.w,h:r.h};}
     var p=aPantalla(f.t.x-110+f.x0,f.t.y-110+f.y0);
     return {x:p.x,y:p.y,w:f.canvas.width*vista.s,h:f.canvas.height*vista.s};
   }
@@ -373,79 +394,83 @@ details[open] summary::after{content:"−"}
   }
 
   function dibuja(now) {
+    if(perspectiva){cv.dataset.plano='true';cv.dataset.camara=JSON.stringify(vista);cv.dataset.quimica=pendiente?'preparando':'lista';}
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = "#12110E"; ctx.fillRect(0, 0, W, H);
     ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+    if(perspectiva&&campo)campo.omitir(historia&&historia.activa&&fuentePortada?fuentePortada.t:null);
     var visibles=campo?campo.pintar(ctx,vista,W,H,now||0,
       quieto || primerPlano || !!(historia && historia.activa)):0;
     // Mientras dura la historia, la huella protagonista no se ve: aparece cuando el cuaderno la entrega (14-oct).
-    if (historia && historia.activa && fuentePortada) {
+    if (!perspectiva && historia && historia.activa && fuentePortada) {
       var t=fuentePortada.t, p=aPantalla(t.x-110,t.y-110);
       ctx.fillStyle="#12110E";ctx.fillRect(p.x,p.y,220*vista.s,220*vista.s);
     }
     $("regresar").hidden=!campo || !campo.territorios.length || visibles>0;
-    if (sel && sel.x != null) { var p = aPantalla(sel.x, sel.y); ctx.strokeStyle = "rgba(242,169,59,.8)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(p.x, p.y, sel.tam * vista.s * 1.04, 0, 6.2832); ctx.stroke(); }
+    if (!perspectiva && sel && sel.x != null) { var p = aPantalla(sel.x, sel.y); ctx.strokeStyle = "rgba(242,169,59,.8)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(p.x, p.y, sel.tam * vista.s * 1.04, 0, 6.2832); ctx.stroke(); }
   }
 
   function bucle(now) {
+    if(perspectiva){rafPortada=0;if(document.hidden)return;if(dialogoPlano()&&!(historia&&historia.activa))return;}
     if (historia) historia.paso(now);
     if (vuelo) {
       var k = Math.min(1, (now - vuelo.t0) / 650), e = 1 - Math.pow(1 - k, 3);
       vista.x = vuelo.de.x + (vuelo.a.x - vuelo.de.x) * e; vista.y = vuelo.de.y + (vuelo.a.y - vuelo.de.y) * e; vista.s = vuelo.de.s + (vuelo.a.s - vuelo.de.s) * e;
-      sucio = true; if (k >= 1) vuelo = null;
+      sucio=true;despertarPortada(); if (k >= 1) vuelo = null;
     }
-    if(campo && !(historia && historia.activa) && !document.hidden && (sucio || !quieto || pendiente)){
+    if(campo && !(historia && historia.activa) && !document.hidden && (sucio || (!perspectiva&&!quieto) || pendiente)){
       pendiente=campo.avanzar(vista,W,H,quieto,$("grav").checked);sucio=true;
     }
     if (sucio) { dibuja(now); sucio = false; }
-    requestAnimationFrame(bucle);
+    if(!perspectiva)requestAnimationFrame(bucle);else if(vuelo||(campo&&pendiente&&!(historia&&historia.activa))||(historia&&historia.activa&&!quieto))despertarPortada();
   }
 
   /* ── tocar, arrastrar, pellizcar */
   var punteros = {}, arrastre = null, pellizco = null, movido = 0;
   cv.addEventListener("pointerdown", function (e) {
-    cv.setPointerCapture(e.pointerId); punteros[e.pointerId] = { x: e.clientX, y: e.clientY }; movido = 0; fueraPista();
+    if(perspectiva)cierraFicha();cv.setPointerCapture(e.pointerId); punteros[e.pointerId] = { x: e.clientX, y: e.clientY }; movido = 0; fueraPista();
     var ids = Object.keys(punteros);
-    if (ids.length === 1) arrastre = { x: e.clientX, y: e.clientY, vx: vista.x, vy: vista.y };
-    if (ids.length === 2) { var a = punteros[ids[0]], b = punteros[ids[1]]; pellizco = { d: Math.hypot(a.x - b.x, a.y - b.y), s: vista.s }; arrastre = null; }
+    if (ids.length === 1) arrastre = { x: e.clientX, y: e.clientY, vx: vista.x, vy: vista.y, ancla:aMundo(e.clientX,e.clientY) };
+    if (ids.length === 2) { var a = punteros[ids[0]], b = punteros[ids[1]]; pellizco = { d: Math.hypot(a.x - b.x, a.y - b.y), s: vista.s, ancla:aMundo((a.x+b.x)/2,(a.y+b.y)/2) }; arrastre = null; }
   });
   cv.addEventListener("pointermove", function (e) {
     if (punteros[e.pointerId]) { punteros[e.pointerId].x = e.clientX; punteros[e.pointerId].y = e.clientY; }
     var ids = Object.keys(punteros);
     if (pellizco && ids.length === 2) {
       var a = punteros[ids[0]], b = punteros[ids[1]], d = Math.hypot(a.x - b.x, a.y - b.y);
-      zoom(pellizco.s * (d / pellizco.d) / vista.s, (a.x + b.x) / 2, (a.y + b.y) / 2); movido = 99; return;
+      zoom(pellizco.s * (d / pellizco.d) / vista.s, (a.x + b.x) / 2, (a.y + b.y) / 2); if(perspectiva)VoidPlano.crear(vista,W,H).anclar(pellizco.ancla,(a.x+b.x)/2,(a.y+b.y)/2);movido = 99; return;
     }
     if (arrastre) {
       var dx = e.clientX - arrastre.x, dy = e.clientY - arrastre.y; movido = Math.max(movido, Math.abs(dx) + Math.abs(dy));
-      if (movido > 4) { cv.classList.add("arrastrando"); vista.x = arrastre.vx - dx / vista.s; vista.y = arrastre.vy - dy / vista.s; vuelo = null; sucio = true; }
+      if (movido > 4) { cv.classList.add("arrastrando"); if(perspectiva)VoidPlano.crear(vista,W,H).anclar(arrastre.ancla,e.clientX,e.clientY);else{vista.x = arrastre.vx - dx / vista.s; vista.y = arrastre.vy - dy / vista.s;} vuelo = null; sucio=true;despertarPortada(); }
       return;
     }
-    if (campo && e.pointerType === "mouse") { var m = aMundo(e.clientX, e.clientY); cv.classList.toggle("sobre", !!(campo.quien(m.x, m.y) || libreEn(m))); }
+    if (campo && e.pointerType === "mouse") { var m = aMundo(e.clientX, e.clientY); cv.classList.toggle("sobre", !!(perspectiva?campo.tocar(e.clientX,e.clientY,vista,W,H):campo.quien(m.x, m.y) || libreEn(m))); }
   });
   function suelta(e) {
     delete punteros[e.pointerId]; cv.classList.remove("arrastrando");
-    if (arrastre && movido <= 4) toca(e.clientX, e.clientY);
+    if ((!perspectiva||e.type!=="pointercancel") && arrastre && movido <= 4) toca(e.clientX, e.clientY);
     arrastre = null; if (Object.keys(punteros).length < 2) pellizco = null;
   }
+  if(perspectiva)cv.addEventListener('lostpointercapture',e=>{if(punteros[e.pointerId]){delete punteros[e.pointerId];arrastre=null;pellizco=null;cv.classList.remove('arrastrando');}});
   cv.addEventListener("pointerup", suelta); cv.addEventListener("pointercancel", suelta);
   cv.addEventListener("wheel", function (e) { e.preventDefault(); fueraPista(); zoom(Math.exp(-e.deltaY * .0015), e.clientX, e.clientY); }, { passive: false });
   $("acercar").addEventListener("click", function () { zoom(1.4); });
   $("alejar").addEventListener("click", function () { zoom(1 / 1.4); });
   $("encuadrar").addEventListener("click", verTodas);
-  $("grav").addEventListener("change", function () { sucio = true; });
+  $("grav").addEventListener("change", function () { sucio=true;despertarPortada(); });
   $("regresar").addEventListener("click",verTodas);
   addEventListener("keydown", function (e) {
     if (historia && historia.activa) return;
     if (e.target.closest && e.target.closest("input,textarea,button,a,summary,select,[contenteditable]")) return;
     if (e.key === "+" || e.key === "=") zoom(1.3); else if (e.key === "-") zoom(1 / 1.3); else if (e.key === "0") verTodas();
     else if (e.key === "Escape") cierraFicha();
-    else if (/^Arrow/.test(e.key)) { primerPlano=false;vuelo=null; var d = 60 / vista.s; if (e.key === "ArrowLeft") vista.x -= d; if (e.key === "ArrowRight") vista.x += d; if (e.key === "ArrowUp") vista.y -= d; if (e.key === "ArrowDown") vista.y += d; sucio = true; }
+    else if (/^Arrow/.test(e.key)) { primerPlano=false;vuelo=null; var d = 60 / vista.s; if (e.key === "ArrowLeft") vista.x -= d; if (e.key === "ArrowRight") vista.x += d; if (e.key === "ArrowUp") vista.y -= d; if (e.key === "ArrowDown") vista.y += d; sucio=true;despertarPortada(); }
   });
   function fueraPista() { primerPlano=false; $("pista").classList.add("fuera"); }
 
   function libreEn(m) {
-    if (!campo) return null;
+    if (!campo||!m) return null;
     for (var i = 0; i < campo.libres.length; i++) { var l = campo.libres[i]; if (Math.hypot(m.x - l.x, m.y - l.y) < l.tam * .7) return l; }
     return null;
   }
@@ -454,7 +479,7 @@ details[open] summary::after{content:"−"}
   }
   function toca(px, py) {
     if (!campo) return;
-    var m = aMundo(px, py), t = campo.quien(m.x, m.y);
+    var m = aMundo(px, py), t = perspectiva?campo.tocar(px,py,vista,W,H):campo.quien(m.x, m.y);
     if (t) return abreHuella(t, px, py);
     var l = libreEn(m);
     if (l) return abreLibre(l, px, py);
@@ -468,7 +493,7 @@ details[open] summary::after{content:"−"}
     f.style.left = x + "px"; f.style.top = y + "px";
   }
   function abreHuella(t, px, py) {
-    sel = t; sucio = true;
+    sel = t; sucio=true;despertarPortada();
     var c = t.col;
     var punto = '<span class="punto" style="background:rgb(' + c[0] + "," + c[1] + "," + c[2] + ')"></span>';
     var a = $("f-enlace");
@@ -487,20 +512,20 @@ details[open] summary::after{content:"−"}
     colocaFicha(px, py);
   }
   function abreLibre(l, px, py) {
-    sel = { x: l.x, y: l.y, tam: l.tam * .7 }; sucio = true;
+    sel = { x: l.x, y: l.y, tam: l.tam * .7 }; sucio=true;despertarPortada();
     $("f-alias").textContent = "Un sitio libre";
     $("f-cifras").innerHTML = "";
     $("f-texto").textContent = "Aquí puede crecer la huella de tu vault. Saldrá de tus cifras y no habrá otra igual.";
     var a = $("f-enlace"); a.hidden = false; a.href = "/tu-huella"; a.textContent = "Empezar mi vault →";
     colocaFicha(px, py);
   }
-  function cierraFicha() { $("ficha").hidden = true; sel = null; sucio = true; }
+  function cierraFicha() { $("ficha").hidden = true; sel = null; sucio=true;despertarPortada(); }
   $("f-cerrar").addEventListener("click", cierraFicha);
 
   function arranca(lista) {
     $("cuantas").textContent = lista.length === 1 ? "1 huella" : lista.length + " huellas";
     $("n-huellas").textContent = String(lista.length);
-    campo = VoidVacio.crear(lista); hechos = 0;
+    campo = VoidVacio.crear(lista,{plano:perspectiva}); hechos = 0;
     var lh = $("lista-huellas");
     lh.innerHTML = campo.territorios.length ? campo.territorios.map(function (t, i) {
       var c = t.col;
@@ -513,7 +538,7 @@ details[open] summary::after{content:"−"}
         primerPlano=false;
         var t = campo.territorios[+b.dataset.i], s = Math.max(vista.s, ajuste * 2.2);
         var movil = W < 700, cy = movil ? H * .28 : H / 2, cx = movil ? W / 2 : Math.min(392, W * .35) + (W - Math.min(392, W * .35)) / 2;
-        vuela({ s: s, x: t.x - (cx - W / 2) / s, y: t.y - (cy - H / 2) / s });
+        vuela(perspectiva?centrarCartel({s:Math.min(s,2),x:t.x,y:t.y},t,cx,cy):{ s: s, x: t.x - (cx - W / 2) / s, y: t.y - (cy - H / 2) / s });
         setTimeout(function () { abreHuella(t, cx, cy); }, quieto ? 0 : 680);
       });
     });
@@ -596,9 +621,15 @@ details[open] summary::after{content:"−"}
   tam(); addEventListener("resize", tam, { passive: true });
   if (window.VoidHistoria) historia=VoidHistoria.iniciar({
     preparar:prepararHistoria,enfocar:enfocarPortada,destino:destinoHistoria,
-    repintar:function(){sucio=true;}
+    repintar:function(){sucio=true;despertarPortada();}
   });
-  requestAnimationFrame(bucle);
+  if(perspectiva){
+    document.addEventListener('visibilitychange',()=>{if(document.hidden){cancelAnimationFrame(rafPortada);rafPortada=0;}else{pendiente=true;sucio=true;despertarPortada();}});
+    new MutationObserver(()=>{cancelAnimationFrame(rafPortada);rafPortada=0;if(!dialogoPlano()||(historia&&historia.activa)){sucio=true;despertarPortada();}}).observe(document.body,{subtree:true,attributes:true,attributeFilter:['open']});
+    new MutationObserver(()=>{if($('ficha').hidden){sucio=true;despertarPortada();}else{cancelAnimationFrame(rafPortada);rafPortada=0;}}).observe($('ficha'),{attributes:true,attributeFilter:['hidden']});
+    const movimiento=matchMedia('(prefers-reduced-motion: reduce)');movimiento.addEventListener('change',()=>{quieto=movimiento.matches;if(quieto&&vuelo){vista={...vuelo.a};vuelo=null;}sucio=true;despertarPortada();});
+    despertarPortada();
+  }else requestAnimationFrame(bucle);
   async function traerHuellas(){var lista=[],cursor=null;do{var r=await fetch("https://red.vaultvoid.app/v1/huellas"+(cursor?'?cursor='+encodeURIComponent(cursor):''),{headers:{accept:'application/json'}});if(!r.ok)throw new Error(r.status);var d=await r.json();lista=lista.concat(d.huellas||[]);cursor=d.siguiente||null;}while(cursor);arranca(lista);}
   traerHuellas()
     .catch(function () { arranca([]); $("lista-huellas").innerHTML = '<li><span class="ss">No he podido traer las huellas. Vuelve a cargar en un momento.</span></li>'; });

@@ -22,7 +22,7 @@ function cargar3d(){if(window.VoidPaisajeIslas)return Promise.resolve();if(carga
  cargando3d=script('/vendor/three/three.min.js').then(()=>script('/islas-paisaje.js')).catch(e=>{cargando3d=null;throw e;});return cargando3d;}
 let paisaje=null,lista=false,pagina=0,actual=null,cola=Promise.resolve(),origen=null,juegoFallido=false;
 const api=(ruta,datos)=>window.VoidEspacio.api('islas/'+ruta,datos);
-function aviso(texto){$('islas-estado').textContent=texto;}
+function aviso(texto){$('islas-estado').textContent=texto;$('islas-estado').classList.toggle('solo-lector',/^(Cargando|Guardando|Isla guardada|Cambio guardado|Tus islas son privadas)/.test(texto));}
 function destruirPaisaje(){paisaje?.destruir();paisaje=null;}
 function cerrarDialogos(){for(const id of ['islas-crear','islas-confirmar'])if($(id).open)$(id).close();}
 function limpiar(){generacion++;lectura++;activo=false;disponible=false;cargando=false;pendientes=0;registros=[];danadas=[];actual=null;pagina=0;cola=Promise.resolve();cerrarDialogos();destruirPaisaje();$('islas-panel').replaceChildren();$('islas-panel').hidden=true;$('islas-lista').replaceChildren();$('islas-danadas').textContent='';$('islas-danadas').hidden=true;$('islas-vistas').hidden=true;$('islas-recargar').hidden=true;$('islas-nueva').disabled=true;}
@@ -59,11 +59,16 @@ function pintarVistas(){
    else if(!juegoFallido&&window.VoidJuegoIslas){try{paisaje=window.VoidJuegoIslas($('islas-mapa'),$('islas-etiquetas'),opciones);}catch{juegoFallido=true;}}
    if(!paisaje)paisaje=window.VoidHuellasIslas($('islas-mapa'),$('islas-etiquetas'),{...opciones,fallo:falloPaisaje});
   }
-  const datos=todas();if(actual)pagina=Math.floor(datos.findIndex(d=>d.id===actual)/8);
-  pagina=Math.max(0,Math.min(pagina,Math.ceil(datos.length/8)-1));
-  paisaje.pintar(datos.slice(pagina*8,pagina*8+8),actual,datos);
+  const datos=todas(),porPagina=!juegoFallido&&window.VoidJuegoIslas?.capacidad?VoidJuegoIslas.capacidad(innerWidth,innerHeight):8;if(actual)pagina=Math.floor(datos.findIndex(d=>d.id===actual)/porPagina);
+  pagina=Math.max(0,Math.min(pagina,Math.ceil(datos.length/porPagina)-1));
+  paisaje.pintar(datos.slice(pagina*porPagina,pagina*porPagina+porPagina),actual,datos);
   const paginas=$('islas-paginas');paginas.replaceChildren();
-  if(datos.length>8){paginas.append(boton('Página anterior',()=>{pagina--;pintarVistas();},pagina===0));const texto=document.createElement('span');texto.textContent=`${pagina+1} de ${Math.ceil(datos.length/8)}`;paginas.append(texto,boton('Página siguiente',()=>{pagina++;pintarVistas();},pagina>=Math.ceil(datos.length/8)-1));}
+  if(datos.length>porPagina){
+   const juego=$('islas-mapa').classList.contains('vista-juego');
+   const pasar=(nombre,simbolo,delta,desactivado)=>{const b=boton(juego?simbolo:nombre,()=>{pagina+=delta;pintarVistas();$('islas-paginas').querySelector(`button[data-paso="${delta}"]:not(:disabled)`)?.focus({preventScroll:true});},desactivado);b.setAttribute('aria-label',nombre);b.dataset.paso=delta;return b;};
+   const texto=document.createElement('span');texto.textContent=`${pagina+1} / ${Math.ceil(datos.length/porPagina)}`;texto.setAttribute('role','status');
+   paginas.append(pasar('Página anterior','‹',-1,pagina===0),texto,pasar('Página siguiente','›',1,pagina>=Math.ceil(datos.length/porPagina)-1));
+  }
  }catch{if(!juegoFallido&&vista==='huellas'&&window.VoidJuegoIslas)falloJuego();else falloPaisaje('No se pudo dibujar el paisaje. Puedes seguir en la lista.');}
 }
 function pintar(){
@@ -89,7 +94,7 @@ async function recargar(mensaje){
   if(!Array.isArray(d.islas)||!Array.isArray(d.danadas))throw Error('La respuesta de las islas no se pudo leer.');
   registros=d.islas;danadas=d.danadas;ajustesRev=typeof d.ajustes==='string'?d.ajustes:null;ocultas=Array.isArray(d.ocultas)?d.ocultas:[];disponible=true;
   if(actual&&!registros.some(r=>r.isla.id===actual))volver(false);
-  if(actual)editor();pintar();aviso(mensaje||(registros.filter(r=>r.origen!=='vault').length>=40?'Ya tienes 40 islas. Puedes abrirlas y cambiarlas.':'Tus islas son privadas y se guardan en tu vault.'));
+  if(actual)editor();pintar();aviso(mensaje||(registros.filter(r=>r.origen!=='vault').length>=40?'Ya tienes 40 islas. Puedes abrirlas y cambiarlas.':'Tus islas son privadas.'));
   $('islas-recargar').hidden=false;
  }catch(e){if(g!==generacion||l!==lectura)return;tratarError(e,false);}
  finally{if(g===generacion&&l===lectura){cargando=false;controles();}}
@@ -240,6 +245,7 @@ function plantilla(nombre,tipo){
 $('islas-lista-boton').onclick=()=>{if(actual)volver(false);lista=!lista;pintarVistas();};
 $('islas-vista-boton').onclick=()=>{vista=vista==='islas'?'huellas':'islas';try{localStorage.setItem('void-vista-mapa',vista);}catch{}destruirPaisaje();lista=false;pintarVistas();};
 $('islas-recargar').onclick=()=>recargar();
+addEventListener('resize',()=>{if(disponible&&!lista&&!juegoFallido)pintarVistas();});
 $('islas-nueva').onclick=()=>{$('islas-crear-form').reset();$('islas-crear-estado').textContent='';$('islas-crear').showModal();};
 $('islas-cancelar-crear').onclick=()=>$('islas-crear').close();
 $('islas-crear-form').onsubmit=async e=>{

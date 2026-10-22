@@ -27,7 +27,10 @@ button:disabled,select:disabled{cursor:default}.saltar{position:absolute;top:12p
 /* El candado en la pantalla (14-oct): estado del espacio a la vista y su botón. */
 .candado-entrada{max-width:150px;margin:0 auto -6px}.candado-entrada svg{max-width:150px}
 button.texto{border:0;background:transparent;padding:6px 0;color:var(--acento);text-decoration:underline;text-underline-offset:4px}
-.estado-espacio{display:grid;grid-template-columns:64px 1fr auto;align-items:center;gap:16px;border:1px solid var(--linea);border-radius:16px;padding:10px 16px;margin:-8px 0 26px;background:var(--panel)}
+.estado-espacio{display:flex;align-items:center;gap:12px;border:1px solid var(--linea);border-radius:16px;padding:10px 16px;margin:-8px 0 26px;background:var(--panel);width:fit-content;max-width:100%}
+#estado-espacio-boton{display:grid;place-items:center;flex:none;width:44px;height:44px;padding:0;border:0;background:transparent}
+#estado-espacio-boton .mini-candado svg{display:block;width:28px;height:36px}
+#estado-espacio-detalle{min-width:0;font-size:12px}#estado-espacio-detalle button{margin-top:8px;padding:6px 12px;min-height:44px}
 .estado-espacio p{margin:0}.mini-candado svg{width:64px;max-width:64px;margin:0}
 .estado-espacio[data-estado=despierta]{border-color:#5b4a2c}.estado-espacio[data-estado=cerrado]{border-color:#6b3a2c}
 .estado-espacio b{font-weight:500}

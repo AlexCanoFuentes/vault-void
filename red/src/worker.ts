@@ -403,6 +403,7 @@ async function paginaDePerfil(env: Entorno, alias: string): Promise<Response> {
     agente: publico.has("agente") ? p.agente : null,
     estrellas,
     desde: fechaCorta(p.creado),
+    celestino: !!env.CELESTINO_ALIAS && p.alias === env.CELESTINO_ALIAS,
   }));
 }
 

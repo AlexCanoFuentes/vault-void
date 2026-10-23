@@ -87,12 +87,13 @@ ${o.cuerpo}
 
 export interface EstrellaDePerfil { nombre: string; titulo: string; liga: string | null }
 
-export function paginaPerfil(p: { alias: string; agente: string | null; estrellas: EstrellaDePerfil[] | null; desde: string }): string {
+export function paginaPerfil(p: { alias: string; agente: string | null; estrellas: EstrellaDePerfil[] | null; desde: string; celestino?: boolean }): string {
   const partes: string[] = [];
   partes.push(`<p class="n">En la red de Void desde ${esc(p.desde)}</p>`);
   partes.push(`<h1>@${esc(p.alias)}</h1>`);
   if (p.agente !== null) partes.push(`<p>Trabaja con su agente <strong>${esc(p.agente)}</strong>.</p>`);
   partes.push(`<p><a href="${WEB}/">Ver su huella en el lienzo de Void</a></p>`);
+  if (p.celestino) partes.push(`<p><a href="${WEB}/mi-vault#celestino">Pregúntale a Celestino</a>: contesta las dudas sobre Void con respuestas revisadas y, si no sabe, se lo pasa a una persona.</p>`);
   if (p.estrellas !== null) {
     partes.push(`<h2>Sus piezas</h2>`);
     partes.push(p.estrellas.length

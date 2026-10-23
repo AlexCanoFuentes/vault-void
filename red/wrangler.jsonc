@@ -22,7 +22,7 @@
   "services": [{ "binding": "NUBE", "service": "void-nube-prueba", "entrypoint": "VoidAlojamiento" }],
   // Piloto autorizado por Alex el 11-oct-2026, limitado a las tres cajas ya disponibles.
   // VAPID_PUBLICA: la clave pública de los avisos en el móvil (23-oct); la privada es el secreto VAPID_PRIVADA.
-  "vars": { "TOPE_WEB": "50", "VAPID_PUBLICA": "BDJ17z08ecX5Dj8OL-0oGKepPZ5JrNZu3X5RPifNEpUrWrF52O5zcVue4cwE0ISM4atotoCRX5LlygK5Bjsx7tM" },
+  "vars": { "TOPE_WEB": "50", "CELESTINO_ALIAS": "void", "VAPID_PUBLICA": "BDJ17z08ecX5Dj8OL-0oGKepPZ5JrNZu3X5RPifNEpUrWrF52O5zcVue4cwE0ISM4atotoCRX5LlygK5Bjsx7tM" },
   "d1_databases": [
     {
       "binding": "DB",

@@ -7,7 +7,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "dev": "wrangler d1 migrations apply DB --local && wrangler dev --port 8790",
-    "test": "node pruebas/todo.mjs",
+    "test": "node pruebas/celestino.mjs && node pruebas/todo.mjs",
     "sabotaje": "node pruebas/todo.mjs --sabotaje",
     "deploy": "wrangler deploy"
   },

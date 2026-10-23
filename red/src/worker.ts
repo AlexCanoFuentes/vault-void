@@ -27,6 +27,7 @@
  */
 import { leerCatalogo, ErrorDeFuente, type Catalogo } from "./catalogo.js";
 import { avisarMovil } from './movil.js';
+import { despertarCelestino } from './celestino.js';
 import { llaveNueva, huella, llaveDe, problemaAlias, problemaAgente, publicoDe, problemaTexto, TIPOS, RE_ESTRELLA, RE_ALIAS, problemaHuella, huellaNormal, type Huella } from "./reglas.js";
 import { paginaPerfil, paginaEstrella, paginaNoEncontrada, fechaCorta, CSP, type AvisoPublico } from "./paginas.js";
 import { mandarReintento } from "./idempotencia.js";
@@ -47,6 +48,9 @@ export interface Entorno {
   /** Huellas nuevas del cuento por conexión y hora. Por defecto 5. */
   TOPE_CUENTO_HORA?: string;
   NUBE?: Fetcher;
+  /** Sin alias o pase, las rondas automáticas están desactivadas. */
+  CELESTINO_ALIAS?: string;
+  CELESTINO_PASE?: string;
   /** Avisos en el móvil (movil.ts): clave privada VAPID en JWK, secreta, y la pública en base64url. */
   VAPID_PRIVADA?: string;
   VAPID_PUBLICA?: string;
@@ -304,7 +308,10 @@ async function mandar(request: Request, env: Entorno, ctx: ExecutionContext): Pr
   if (b.nonce !== undefined) {
     const r = await mandarReintento(env.DB,p.id,dest.id,para,{tipo:b.tipo as string,enc:b.enc as string,sobre:b.sobre as string,nonce:b.nonce},tope(env.TOPE_MENSAJES_HORA,20),tope(env.TOPE_NUEVOS_DIA,5));
     // El aviso al móvil no retrasa ni condiciona el envío (23-oct); avisarMovil ya mira los bloqueos.
-    if (r.status === 201) ctx.waitUntil(avisarMovil(env, dest.id, p.id));
+    if (r.status === 201) {
+      ctx.waitUntil(avisarMovil(env, dest.id, p.id));
+      ctx.waitUntil(despertarCelestino(env, para, p.id, dest.id));
+    }
     return r;
   }
 
@@ -334,6 +341,7 @@ async function mandar(request: Request, env: Entorno, ctx: ExecutionContext): Pr
     await env.DB.prepare("INSERT INTO mensajes (de_perfil, para_perfil, tipo, enc, sobre, creado, caduca) VALUES (?, ?, ?, ?, ?, ?, ?)")
       .bind(p.id, dest.id, b.tipo, b.enc, b.sobre, ahora, ahora + VIDA_MENSAJE).run();
     ctx.waitUntil(avisarMovil(env, dest.id, p.id));
+    ctx.waitUntil(despertarCelestino(env, para, p.id, dest.id));
   }
   return json(201, { para, tipo: b.tipo, enviado: true });
 }

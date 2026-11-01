@@ -1,5 +1,6 @@
 /** VV-010 · Credenciales aleatorias, sesiones privadas y alojamiento por binding. */
 import { comunidad } from './comunidad.js';
+import { apuntar, estadoMovil } from './movil.js';
 import { huella, llaveNueva, problemaAlias, problemaHuella } from './reglas.js';
 import {catalogoModelos,proveedoresWeb,pedirCaja,PROVEEDORES_PORTERO} from './modelos-web.js';
 
@@ -9,6 +10,9 @@ export interface EntradaEnv {
   TOPE_WEB?: string;
   /** Pase de operador para crear el alias reservado «void» (17-oct). Sin él, «void» sigue reservado para todos. */
   PASE_RESERVADO?: string;
+  VAPID_PUBLICA?: string;
+  VAPID_PRIVADA?: string;
+  MOVIL_PRUEBA?: string;
 }
 // El espacio del propio Void (17-oct): «void» está reservado para que nadie se haga pasar por Void. Solo el operador,
 // con su pase, puede crearlo, y solo ese alias. Se compara el resumen de los dos en tiempo constante.
@@ -243,6 +247,9 @@ export async function entradaWeb(req: Request, env: EntradaEnv, publicar: (req: 
       const h = await env.DB.prepare('SELECT datos,semilla FROM huellas WHERE perfil_id=?').bind(p.id).first<{datos:string;semilla:string|null}>();
       return json(200, { alias: p.alias, listo: !!p.listo, huella: h ? JSON.parse(h.datos) : null, semilla: h?.semilla || p.alias });
     }
+    // Avisos en el móvil (23-oct): este navegador se apunta o se borra para este espacio. La sesión y el origen ya están comprobados.
+    if (ruta === '/avisos' && req.method === 'GET') return json(200, await estadoMovil(env, p.id, url.searchParams.get('endpoint')));
+    if (ruta === '/avisos' && req.method === 'POST') { const b = await leer(req); const r = await apuntar(env, p.id, b.accion, b.endpoint); return json(r.status, r.datos); }
     if (ruta === '/candado' && req.method === 'GET' && env.NUBE && p.listo) {
       const r = await candado(env, p, 'estado');
       return new Response(r.body, { status: r.status, headers: cab });

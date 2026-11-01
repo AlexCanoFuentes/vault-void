@@ -26,6 +26,7 @@
  *   GET  /estrella/<n>                                      la página de la estrella con sus avisos
  */
 import { leerCatalogo, ErrorDeFuente, type Catalogo } from "./catalogo.js";
+import { avisarMovil } from './movil.js';
 import { llaveNueva, huella, llaveDe, problemaAlias, problemaAgente, publicoDe, problemaTexto, TIPOS, RE_ESTRELLA, RE_ALIAS, problemaHuella, huellaNormal, type Huella } from "./reglas.js";
 import { paginaPerfil, paginaEstrella, paginaNoEncontrada, fechaCorta, CSP, type AvisoPublico } from "./paginas.js";
 import { mandarReintento } from "./idempotencia.js";
@@ -46,6 +47,10 @@ export interface Entorno {
   /** Huellas nuevas del cuento por conexión y hora. Por defecto 5. */
   TOPE_CUENTO_HORA?: string;
   NUBE?: Fetcher;
+  /** Avisos en el móvil (movil.ts): clave privada VAPID en JWK, secreta, y la pública en base64url. */
+  VAPID_PRIVADA?: string;
+  VAPID_PUBLICA?: string;
+  MOVIL_PRUEBA?: string;
   TOPE_WEB?: string;
 }
 
@@ -191,6 +196,7 @@ async function baja(request: Request, env: Entorno): Promise<Response> {
     env.DB.prepare("DELETE FROM autoria WHERE perfil_id = ?").bind(p.id),
     env.DB.prepare("DELETE FROM huellas WHERE perfil_id = ?").bind(p.id),
     env.DB.prepare("DELETE FROM mensajes WHERE de_perfil = ? OR para_perfil = ?").bind(p.id, p.id),
+    env.DB.prepare("DELETE FROM avisos_movil WHERE perfil_id = ?").bind(p.id),
     env.DB.prepare("DELETE FROM contactos WHERE de_perfil = ? OR para_perfil = ?").bind(p.id, p.id),
     env.DB.prepare("DELETE FROM bloqueos WHERE perfil_id = ? OR bloquea_a = ?").bind(p.id, p.id),
     env.DB.prepare("DELETE FROM perfiles WHERE id = ?").bind(p.id),
@@ -279,7 +285,7 @@ async function claveDe(env: Entorno, alias: string): Promise<Response> {
   return json(200, { alias: r.alias, clave: r.clave_publica });
 }
 
-async function mandar(request: Request, env: Entorno): Promise<Response> {
+async function mandar(request: Request, env: Entorno, ctx: ExecutionContext): Promise<Response> {
   const p = await quien(request, env);
   const b = await cuerpo(request, MAX_MENSAJE);
   const para = typeof b.para === "string" ? b.para.trim().replace(/^@/, "").toLowerCase() : "";
@@ -295,7 +301,12 @@ async function mandar(request: Request, env: Entorno): Promise<Response> {
   if (!dest) return error(404, `Nadie se llama @${para} en la red de Void.`);
   if (!dest.clave_publica) return error(409, `@${para} todavía no puede recibir mensajes: su vault no ha publicado su clave.`);
   if (dest.id === p.id) return error(400, "No hace falta escribirte a ti mismo.");
-  if (b.nonce !== undefined) return mandarReintento(env.DB,p.id,dest.id,para,{tipo:b.tipo as string,enc:b.enc as string,sobre:b.sobre as string,nonce:b.nonce},tope(env.TOPE_MENSAJES_HORA,20),tope(env.TOPE_NUEVOS_DIA,5));
+  if (b.nonce !== undefined) {
+    const r = await mandarReintento(env.DB,p.id,dest.id,para,{tipo:b.tipo as string,enc:b.enc as string,sobre:b.sobre as string,nonce:b.nonce},tope(env.TOPE_MENSAJES_HORA,20),tope(env.TOPE_NUEVOS_DIA,5));
+    // El aviso al móvil no retrasa ni condiciona el envío (23-oct); avisarMovil ya mira los bloqueos.
+    if (r.status === 201) ctx.waitUntil(avisarMovil(env, dest.id, p.id));
+    return r;
+  }
 
   const ahora = Date.now();
   const clave = `msg:${p.id}`;
@@ -322,6 +333,7 @@ async function mandar(request: Request, env: Entorno): Promise<Response> {
   if (!bloqueado) {
     await env.DB.prepare("INSERT INTO mensajes (de_perfil, para_perfil, tipo, enc, sobre, creado, caduca) VALUES (?, ?, ?, ?, ?, ?, ?)")
       .bind(p.id, dest.id, b.tipo, b.enc, b.sobre, ahora, ahora + VIDA_MENSAJE).run();
+    ctx.waitUntil(avisarMovil(env, dest.id, p.id));
   }
   return json(201, { para, tipo: b.tipo, enviado: true });
 }
@@ -513,7 +525,7 @@ function decodificar(s: string): string {
 }
 
 export default {
-  async fetch(request: Request, env: Entorno): Promise<Response> {
+  async fetch(request: Request, env: Entorno, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     const ruta = url.pathname.replace(/\/+$/, "");
     const m = request.method;
@@ -535,7 +547,7 @@ export default {
         if (ruta === "/v1/huella/retirar") return await retirarHuella(request, env);
         if (ruta === "/v1/huella/cuento") return await huellaCuento(request, env);
         if (ruta === "/v1/clave") return await publicarClave(request, env);
-        if (ruta === "/v1/mensajes") return await mandar(request, env);
+        if (ruta === "/v1/mensajes") return await mandar(request, env, ctx);
         if (ruta === "/v1/bloquear") return await bloquear(request, env, true);
         if (ruta === "/v1/desbloquear") return await bloquear(request, env, false);
         const rr = /^\/v1\/mensajes\/(\d{1,15})\/recogido$/.exec(ruta);

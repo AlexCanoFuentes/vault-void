@@ -18,6 +18,7 @@ def encargo(notas=None):
     notas = notas or dict(clarity=18, scope=18, context=13, risk=12, validation=13, priority=8)
     return dict(objeto="Prueba de una herramienta", alcance="Solo el prototipo local",
                 fuentes="proyectos/prueba.md", cambios=["construccion"],
+                stack=[dict(pieza="datos", eleccion="SQLite", alternativas=["ficheros JSON"], porque="Consultas y escrituras seguras")],
                 dimensiones={n:dict(nota=v, porque="Valoración de prueba con límites explícitos")
                              for n,v in notas.items()})
 
@@ -86,6 +87,65 @@ class Kernel(unittest.TestCase):
             with self.assertRaises(ValueError):kernel.registrar(tmp,encargo(),kernel.evaluar(encargo()))
             self.assertEqual(p.read_text(),'roto\n')
 
+    def test_construir_pide_stack_con_alternativas_y_porque(self):
+        for roto in (None, [], [{}], [dict(pieza="datos", eleccion="SQLite", porque="x")],
+                     [dict(pieza="datos", eleccion="SQLite", alternativas=[], porque="x")],
+                     [dict(pieza="datos", eleccion="SQLite", alternativas=["JSON"], porque=" ")],
+                     [dict(pieza="datos", eleccion="A", alternativas=["B"], porque="x"), dict(pieza="datos", eleccion=" a ", alternativas=["D"], porque="y")]):
+            d=encargo();d['stack']=roto
+            if roto is None: del d['stack']
+            with self.assertRaises(ValueError): kernel.evaluar(d)
+        d=encargo();del d['stack'];d['cambios']=['permisos']
+        self.assertTrue(kernel.evaluar(d)['puede_construir'])   # sin construir, no se pide stack
+
+    def test_las_piezas_son_una_lista_cerrada(self):
+        d=encargo();d['stack'][0]['pieza']='Persistencia'      # el truco de cambiar el nombre
+        with self.assertRaises(ValueError): kernel.evaluar(d)
+        d=encargo();d['stack'][0]['pieza']='otra'
+        with self.assertRaises(ValueError): kernel.evaluar(d)  # «otra» sin nombre
+        d['stack'][0]['nombre']=' Datos '                       # el truco de «otra» con el nombre de una pieza
+        with self.assertRaises(ValueError): kernel.evaluar(d)
+        d['stack'][0]['nombre']='Colas'
+        self.assertTrue(kernel.evaluar(d)['puede_construir'])
+        d=encargo();d['stack'][0]['para']={'componente':'cache'}  # «para» que no es texto rompía la consulta
+        with self.assertRaises(ValueError): kernel.evaluar(d)
+
+    def test_un_stack_presente_se_valida_aunque_el_cambio_no_lo_pida(self):
+        d=encargo();d['cambios']=['permisos'];d['stack']=[{}]
+        with self.assertRaises(ValueError): kernel.evaluar(d)
+        antes={'datos':[dict(pieza='datos',eleccion='Postgres',porque='p',fecha='2026-11-01',objeto='otra',para='')]}
+        d=encargo();d['cambios']=['permisos']
+        with self.assertRaises(ValueError): kernel.evaluar(d, antes)   # tampoco se cuela otra elección por «permisos»
+
+    def test_separarse_de_lo_elegido_antes_exige_decir_por_que(self):
+        antes={'datos':[dict(pieza='datos',eleccion='Postgres',porque='p',fecha='2026-11-01T00:00:00',objeto='otra',para='')]}
+        with self.assertRaises(ValueError): kernel.evaluar(encargo(), antes)
+        d=encargo();d['stack'][0]['distinto_porque']='Una sola máquina, sin servidor'
+        self.assertTrue(kernel.evaluar(d, antes)['puede_construir'])
+        d=encargo();d['stack'][0]['eleccion']=' postgres '
+        self.assertTrue(kernel.evaluar(d, antes)['puede_construir'])   # lo mismo que antes no pide nada
+
+    def test_el_registro_recuerda_solo_lo_aprobado_y_lo_aplica(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            raiz=Path(tmp);d=encargo();kernel.registrar(raiz,d,kernel.evaluar(d))
+            rechazada=encargo(dict(clarity=5,scope=5,context=5,risk=5,validation=5,priority=5));rechazada['stack'][0]['eleccion']='Mongo'
+            kernel.registrar(raiz,rechazada,kernel.evaluar(rechazada))
+            with (raiz/'criterio/kernel.jsonl').open('a') as f: f.write(json.dumps(dict(fecha='x',evaluacion=dict(objeto='vieja')))+'\n')
+            self.assertEqual([x['eleccion'] for x in kernel.elecciones(raiz)['datos']],['SQLite'])   # Mongo, rechazada, no cuenta
+            otro=encargo();otro['stack'][0]['eleccion']='Postgres';(raiz/'e.json').write_text(json.dumps(otro))
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(kernel.main(['evaluar','e.json','--registrar'],raiz),2)
+            salida=io.StringIO()
+            with contextlib.redirect_stdout(salida): self.assertEqual(kernel.main(['stack','dat'],raiz),0)
+            self.assertIn('datos · SQLite',salida.getvalue())
+
+    def test_una_construccion_solo_vale_registrada(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            raiz=Path(tmp);(raiz/'e.json').write_text(json.dumps(encargo()))
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(kernel.main(['evaluar','e.json'],raiz),5)
+                self.assertEqual(kernel.main(['evaluar','e.json','--registrar'],raiz),0)
+
     def test_no_escribe_fuera_ni_a_traves_de_enlace(self):
         with tempfile.TemporaryDirectory() as tmp:
             raiz=Path(tmp)/'vault';raiz.mkdir();fuera=Path(tmp)/'fuera';fuera.mkdir()
@@ -113,22 +173,41 @@ def sabotaje():
         print('Las pruebas ya fallan sin sabotaje.');return 1
     original=kernel.necesario
     original_eval=kernel.evaluar
-    def sin_riesgo(d):
-        r=original_eval(d)
+    def sin_riesgo(d, anteriores=None):
+        r=original_eval(d, anteriores)
         if r['total']>=80:r.update(estado='EXECUTE',puede_construir=True)
         return r
-    def redondea(d):
+    def redondea(d, anteriores=None):
         dato=copy.deepcopy(d)
         if sum(v['nota'] for v in dato['dimensiones'].values())==79:
             dato['dimensiones']['priority']['nota']+=1
-        return original_eval(dato)
+        return original_eval(dato, anteriores)
+    original_stack=kernel.revisar_stack
+    original_piezas=kernel.PIEZAS;original_elecciones=kernel.elecciones
+    class _Todo(tuple):
+        def __contains__(self, x): return True
+        def __iter__(self): return iter(original_piezas)
+    def _con_rechazadas(raiz):
+        destino=kernel.ruta_local(raiz,'criterio/kernel.jsonl');hechas={}
+        if not destino.exists(): return hechas
+        for linea in destino.read_text(encoding='utf-8').splitlines():
+            a=json.loads(linea);ev=a.get('evaluacion') or {}
+            for s in ev.get('stack') or []:
+                if isinstance(s,dict) and s.get('eleccion'): hechas.setdefault(kernel._clave(s),[]).append(dict(s,fecha='',objeto=''))
+        return hechas
+    def solo_la_lista(d, anteriores):
+        original_stack(d, {})
     ataques=[('no activa KERNEL',lambda:setattr(kernel,'necesario',lambda cambios:False)),
+             ('no pide el stack',lambda:setattr(kernel,'revisar_stack',lambda d,anteriores:None)),
+             ('acepta piezas con cualquier nombre',lambda:setattr(kernel,'PIEZAS',_Todo())),
+             ('cuenta también lo rechazado',lambda:setattr(kernel,'elecciones',_con_rechazadas)),
+             ('no compara con lo elegido antes',lambda:setattr(kernel,'revisar_stack',solo_la_lista)),
              ('ignora riesgo bajo',lambda:setattr(kernel,'evaluar',sin_riesgo)),
              ('redondea 79 a 80',lambda:setattr(kernel,'evaluar',redondea))]
     for nombre,romper in ataques:
         romper()
         try:r=correr()
-        finally:kernel.necesario=original;kernel.evaluar=original_eval
+        finally:kernel.necesario=original;kernel.evaluar=original_eval;kernel.revisar_stack=original_stack;kernel.PIEZAS=original_piezas;kernel.elecciones=original_elecciones
         if r.wasSuccessful():print('NO CAZADO: '+nombre);return 1
         print('CAZADO: '+nombre)
     if not correr().wasSuccessful():return 1

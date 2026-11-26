@@ -721,7 +721,7 @@ class Repo(unittest.TestCase):
     def test_solo_biblioteca_estandar(self):
         estandar = getattr(sys, "stdlib_module_names", None) or {
             "hashlib", "io", "json", "os", "re", "socket", "ssl", "subprocess", "sys", "tempfile",
-            "time", "urllib", "zipfile", "pathlib"}
+            "time", "urllib", "zipfile", "pathlib", "base64", "hmac", "struct"}   # Python 3.9 no trae stdlib_module_names (26-nov)
         arbol = ast.parse(VOID_PY.read_text(encoding="utf-8"))
         for nodo in ast.walk(arbol):
             nombres = []

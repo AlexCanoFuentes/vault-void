@@ -34,8 +34,15 @@ nota. No uses KERNEL para retrasar trabajo autorizado. Comprueba el caso con:
 
 **Evaluar.** Primero escribe en el ticket o proyecto el objetivo, inclusiones y exclusiones,
 fuentes, riesgos, pruebas de aceptación y relación con un objetivo activo. Después crea un JSON
-relativo al vault con `objeto`, `alcance`, `fuentes`, `cambios` (lista de disparadores) y
-`dimensiones`. Sus seis claves son `clarity` (20), `scope` (20), `context` (15), `risk` (15),
+relativo al vault con `objeto`, `alcance`, `fuentes`, `cambios` (lista de disparadores),
+`stack` y `dimensiones`. **No hay stack por defecto: se usa el mejor para cada cosa, y se dice.** Si
+construyes, amplías o migras, `stack` lista cada pieza (una de: lenguaje, datos, ficheros, servidor,
+interfaz, acceso, pruebas, despliegue, modelo, entrenamiento, agentes u `otra` con su `nombre`; lo
+concreto va en `para`) con su `eleccion`, sus `alternativas` (frente a qué) y su `porque`. Mira antes
+lo ya elegido con `python3 herramientas/kernel.py stack <pieza>`: si para esa pieza eliges algo que no
+se había elegido, `distinto_porque` dice por qué, o KERNEL se niega. Solo cuenta lo registrado que
+permitió construir, y una construcción solo vale con `--registrar`. Al repetir una evaluación
+antigua de construcción, añádele su `stack`. Sus seis claves son `clarity` (20), `scope` (20), `context` (15), `risk` (15),
 `validation` (15) y `priority` (15); cada una contiene `nota` entera y `porque` con su evidencia y
 lo que falta. Las notas son tu valoración explícita, no una medición automática. El total y el
 veredicto los calcula el programa:

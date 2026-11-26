@@ -5,6 +5,17 @@
   "cambios": [
     "construccion"
   ],
+  "stack": [
+    {
+      "pieza": "datos",
+      "para": "Falta decir para qué parte del encargo",
+      "eleccion": "Falta la elección",
+      "alternativas": [
+        "Falta con qué se comparó"
+      ],
+      "porque": "Falta por qué es la mejor para esto"
+    }
+  ],
   "dimensiones": {
     "clarity": {
       "nota": 0,
